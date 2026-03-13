@@ -14,7 +14,7 @@
       "description": "Lightpanda headless browser — 14 tools: goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over"
     },
     "filesystem": {
-      "enabled": true,
+      "enabled": false,
       "type": "stdio",
       "command": "npx",
       "args": [
