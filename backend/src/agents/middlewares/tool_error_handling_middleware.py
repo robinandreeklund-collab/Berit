@@ -19,6 +19,13 @@ _MISSING_TOOL_CALL_ID = "missing_tool_call_id"
 _TEARDOWN_ERROR_TYPES = ("BrokenResourceError", "ClosedResourceError")
 
 
+def _is_mcp_teardown_error(exc: Exception) -> bool:
+    """Return True if the exception is purely MCP stdio session teardown noise."""
+    if not isinstance(exc, BaseExceptionGroup):
+        return False
+    return all(type(e).__name__ in _TEARDOWN_ERROR_TYPES for e in exc.exceptions)
+
+
 def _extract_useful_error(exc: Exception) -> str:
     """Extract a useful error message, filtering out MCP stdio teardown noise.
 
@@ -37,6 +44,16 @@ def _extract_useful_error(exc: Exception) -> str:
         return str(useful[0]).strip() or type(useful[0]).__name__
     detail = str(exc).strip()
     return detail or exc.__class__.__name__
+
+
+def _log_tool_error(exc: Exception, request: ToolCallRequest, mode: str) -> None:
+    """Log tool errors — warning-level for MCP teardown noise, exception-level otherwise."""
+    name = request.tool_call.get("name")
+    call_id = request.tool_call.get("id")
+    if _is_mcp_teardown_error(exc):
+        logger.warning("MCP tool session teardown error (%s): name=%s id=%s — %s", mode, name, call_id, _extract_useful_error(exc))
+    else:
+        logger.exception("Tool execution failed (%s): name=%s id=%s", mode, name, call_id)
 
 
 class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
@@ -72,7 +89,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             # Preserve LangGraph control-flow signals (interrupt/pause/resume).
             raise
         except Exception as exc:
-            logger.exception("Tool execution failed (sync): name=%s id=%s", request.tool_call.get("name"), request.tool_call.get("id"))
+            _log_tool_error(exc, request, "sync")
             return self._build_error_message(request, exc)
 
     @override
@@ -87,7 +104,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             # Preserve LangGraph control-flow signals (interrupt/pause/resume).
             raise
         except Exception as exc:
-            logger.exception("Tool execution failed (async): name=%s id=%s", request.tool_call.get("name"), request.tool_call.get("id"))
+            _log_tool_error(exc, request, "async")
             return self._build_error_message(request, exc)
 
 

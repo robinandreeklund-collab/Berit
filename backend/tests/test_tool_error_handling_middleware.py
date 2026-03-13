@@ -5,7 +5,7 @@ from anyio import BrokenResourceError, ClosedResourceError
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
 
-from src.agents.middlewares.tool_error_handling_middleware import ToolErrorHandlingMiddleware, _extract_useful_error
+from src.agents.middlewares.tool_error_handling_middleware import ToolErrorHandlingMiddleware, _extract_useful_error, _is_mcp_teardown_error
 
 
 def _request(name: str = "web_search", tool_call_id: str | None = "tc-1"):
@@ -131,6 +131,20 @@ def test_extract_useful_error_exception_group_closed_resource():
     group = ExceptionGroup("unhandled errors", [ClosedResourceError()])
     result = _extract_useful_error(group)
     assert "MCP tool session closed unexpectedly" in result
+
+
+def test_is_mcp_teardown_error_true():
+    group = ExceptionGroup("err", [BrokenResourceError()])
+    assert _is_mcp_teardown_error(group) is True
+
+
+def test_is_mcp_teardown_error_false_for_plain_exception():
+    assert _is_mcp_teardown_error(RuntimeError("boom")) is False
+
+
+def test_is_mcp_teardown_error_false_for_mixed_group():
+    group = ExceptionGroup("err", [BrokenResourceError(), ValueError("real")])
+    assert _is_mcp_teardown_error(group) is False
 
 
 @pytest.mark.anyio
