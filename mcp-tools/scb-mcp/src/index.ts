@@ -60,9 +60,36 @@ function errorResponse(type: string, message: string, suggestions: string[] = []
 // MCP SERVER
 // ============================================================================
 
+// Per-tool call counter to prevent infinite loops from LLMs
+const MAX_CALLS_PER_TOOL = 3;
+
+class CallTracker {
+  private calls: Map<string, number> = new Map();
+  private lastReset: number = Date.now();
+  private readonly RESET_INTERVAL = 5 * 60 * 1000; // Reset every 5 minutes
+
+  track(toolName: string, tableId?: string): { allowed: boolean; count: number } {
+    // Reset if enough time has passed (new conversation likely)
+    if (Date.now() - this.lastReset > this.RESET_INTERVAL) {
+      this.calls.clear();
+      this.lastReset = Date.now();
+    }
+    const key = tableId ? `${toolName}:${tableId}` : toolName;
+    const count = (this.calls.get(key) || 0) + 1;
+    this.calls.set(key, count);
+    return { allowed: count <= MAX_CALLS_PER_TOOL, count };
+  }
+
+  reset() {
+    this.calls.clear();
+    this.lastReset = Date.now();
+  }
+}
+
 export class SCBMCPServer {
   private server: Server;
   private apiClient: SCBApiClient;
+  private callTracker: CallTracker;
 
   constructor() {
     this.server = new Server(
@@ -70,6 +97,7 @@ export class SCBMCPServer {
       { capabilities: { tools: {}, resources: {}, prompts: {} } }
     );
     this.apiClient = new SCBApiClient();
+    this.callTracker = new CallTracker();
     this.setupToolHandlers();
   }
 
@@ -175,42 +203,9 @@ export class SCBMCPServer {
         annotations: { title: 'Visa kodlista', readOnlyHint: true, openWorldHint: true },
       },
       // ---- DATA ----
-      {
-        name: 'scb_preview',
-        description: 'Förhandsgranska data (max ~50 rader). Säkert sätt att testa en query innan fullständig hämtning.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            tableId: { type: 'string', description: 'Tabell-ID' },
-            selection: {
-              type: 'object',
-              description: 'Valfri selektion: {"VariabelKod": ["värde1", "värde2"]}. Använd "*" för alla, "TOP(N)" för senaste N.',
-              additionalProperties: { type: 'array', items: { type: 'string' } },
-            },
-            language: { type: 'string', default: 'sv' },
-          },
-          required: ['tableId'],
-        },
-        annotations: { title: 'Förhandsgranska', readOnlyHint: true, openWorldHint: true },
-      },
-      {
-        name: 'scb_validate',
-        description: 'Validera och auto-komplettera en selektion UTAN att hämta data. Fyller i saknade variabler med smarta defaults. Kör detta innan scb_fetch för att undvika fel.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            tableId: { type: 'string', description: 'Tabell-ID' },
-            selection: {
-              type: 'object',
-              description: 'Selektion att validera. Saknade variabler fylls i automatiskt.',
-              additionalProperties: { type: 'array', items: { type: 'string' } },
-            },
-            language: { type: 'string', default: 'sv' },
-          },
-          required: ['tableId'],
-        },
-        annotations: { title: 'Validera selektion', readOnlyHint: true, openWorldHint: true },
-      },
+      // NOTE: scb_validate and scb_preview are hidden from tool list to prevent
+      // LLM loops, but their handlers remain active for backwards compatibility.
+      // scb_fetch has built-in auto-complete so validate is not needed.
       {
         name: 'scb_fetch',
         description: 'Hämta statistikdata. Returnerar BÅDE strukturerad JSON och en markdown-tabell. Auto-kompletterar saknade variabler. Hanterar batching för stora queries automatiskt.',
@@ -271,6 +266,18 @@ export class SCBMCPServer {
 
   public async callTool(name: string, args: any) {
     try {
+      // Track calls to prevent infinite loops from LLMs
+      const tableId = args?.tableId || args?.table_id;
+      const { allowed, count } = this.callTracker.track(name, tableId);
+      if (!allowed) {
+        return jsonResponse({
+          error: 'STOPP — du har redan anropat detta verktyg flera gånger med samma tabell.',
+          action: 'Presentera resultaten du redan har för användaren NU. Anropa INGA fler SCB-verktyg.',
+          call_count: count,
+          max_allowed: MAX_CALLS_PER_TOOL,
+        });
+      }
+
       switch (name) {
         // Discovery
         case 'scb_search': case 'scb_search_tables': return await this.handleSearch(args);
@@ -290,7 +297,11 @@ export class SCBMCPServer {
           throw new Error(`Okänt verktyg: ${name}`);
       }
     } catch (error) {
-      return { content: [{ type: 'text' as const, text: `Fel: ${error instanceof Error ? error.message : String(error)}` }] };
+      const msg = error instanceof Error ? error.message : String(error);
+      return jsonResponse({
+        error: msg,
+        action: 'Om detta verktyg redan har misslyckats, försök INTE igen. Presentera vad du har eller prova ett annat verktyg.',
+      });
     }
   }
 
@@ -558,9 +569,10 @@ export class SCBMCPServer {
       total_rows: decoded.totalRows,
       truncated: decoded.truncated,
       markdown_table: decoded.markdown,
-      data: structured.data.slice(0, 200), // Limit JSON data to 200 records
+      data: structured.data.slice(0, 200),
       summary: structured.summary,
       dimensions: decoded.metadata.dimensions,
+      action: 'KLART! Presentera markdown_table ovan för användaren. Anropa INGA fler SCB-verktyg.',
     });
   }
 

@@ -11,18 +11,14 @@ Denna färdighet ger dig tillgång till Sveriges officiella statistik via SCB:s 
 
 ## Tillgängliga MCP-verktyg
 
-| Verktyg | Typ | Beskrivning |
-|---------|-----|-------------|
-| `scb_search` | Discovery | Sök bland statistiktabeller med nyckelord |
-| `scb_browse` | Discovery | Bläddra i SCB:s ämnesträd (ämnesområden, underämnen) |
-| `scb_find_region_code` | Discovery | Slå upp regionkoder — fuzzy matching ("Goteborg" → "Göteborg", 1480) |
-| `scb_search_regions` | Discovery | Sök bland alla 312 regioner (rike, län, kommuner) |
-| `scb_inspect` | Inspection | Visa alla variabler, kodlistor och metadata för en tabell |
-| `scb_codelist` | Inspection | Utforska en specifik variabels alla värden |
-| `scb_fetch` | Data | Hämta data med auto-complete och markdown-tabell |
-| `scb_preview` | Data | Förhandsgranska data (max ~50 rader) |
-| `scb_validate` | Data | Validera en selektion utan att hämta data |
-| `scb_check_usage` | Utility | Visa API-användning och rate limit |
+| Verktyg | Beskrivning |
+|---------|-------------|
+| `scb_search` | Sök bland statistiktabeller med nyckelord |
+| `scb_browse` | Bläddra i SCB:s ämnesträd ("BE" = befolkning, "AM" = arbetsmarknad) |
+| `scb_find_region_code` | Slå upp regionkoder — fuzzy matching ("Goteborg" → "Göteborg", 1480) |
+| `scb_inspect` | Visa variabler och metadata för en tabell |
+| `scb_codelist` | Utforska en specifik variabels alla värden |
+| `scb_fetch` | Hämta data — auto-kompletterar saknade variabler, returnerar markdown-tabell |
 
 ## Arbetsflöde — 4 steg
 
@@ -82,12 +78,13 @@ Resultatet innehåller ett `markdown_table`-fält — presentera detta direkt ti
 
 ## KRITISKA REGLER
 
-1. **Gå direkt från `scb_inspect` till `scb_fetch`** — hoppa över `scb_validate` (fetch har auto-complete)
-2. **ALDRIG anropa samma verktyg mer än 2 gånger** — om det misslyckas, gå vidare till nästa steg eller svara med vad du har
-3. **ALDRIG gissa regionkoder** — använd alltid `scb_find_region_code`
-4. **Presentera `markdown_table` direkt** i svaret — skriv INTE filer
+1. **Gå direkt från `scb_inspect` till `scb_fetch`** — fetch auto-kompletterar saknade variabler
+2. **Använd INTE `scb_validate`** — den behövs inte, fetch hanterar allt
+3. **Max 4 verktygsanrop totalt per fråga** — search → region → inspect → fetch. Sedan SVAR.
+4. **Presentera `markdown_table` direkt** från fetch-resultatet — skriv INTE filer
 5. **Fråga INTE användaren** om förtydligande — gissa rimliga defaults (senaste år, totalt)
 6. **Sök på SVENSKA** — "befolkning" inte "population"
+7. **Om ett verktyg misslyckas — försök INTE igen.** Gå vidare eller svara med vad du har.
 
 ## Tips för variabelfiltrering
 
