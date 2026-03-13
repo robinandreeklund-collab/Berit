@@ -57,7 +57,8 @@ async def get_mcp_tools() -> list[BaseTool]:
 
         # Get all tools from all servers
         tools = await client.get_tools()
-        logger.info(f"Successfully loaded {len(tools)} tool(s) from MCP servers")
+        tool_names = [t.name for t in tools]
+        logger.info(f"Successfully loaded {len(tools)} tool(s) from MCP servers: {tool_names}")
 
         return tools
 

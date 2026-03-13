@@ -108,6 +108,7 @@ else
     echo "  ⚠ Docker not found — skipping Lightpanda."
 fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
+export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # Install gomcp MCP server if not present
 if [ ! -f "$REPO_ROOT/bin/gomcp" ]; then

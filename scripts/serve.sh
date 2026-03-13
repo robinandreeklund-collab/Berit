@@ -165,6 +165,7 @@ else
     echo "  Web fetch/search requires Lightpanda. Install Docker or run Lightpanda manually."
 fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
+export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # Install gomcp MCP server if not present
 if [ ! -f "$REPO_ROOT/bin/gomcp" ]; then
