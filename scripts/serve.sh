@@ -43,6 +43,10 @@ pkill -9 -f "next dev" 2>/dev/null || true
 pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
+# Kill any remaining processes on service ports (catches zombie python processes)
+for port in 2024 8001 3000 2026; do
+    fuser -k "$port/tcp" 2>/dev/null || true
+done
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
@@ -121,6 +125,10 @@ cleanup() {
     fi
     pkill -9 nginx 2>/dev/null || true
     killall -9 nginx 2>/dev/null || true
+    # Kill any remaining processes on service ports (catches zombie python processes)
+    for port in 2024 8001 3000 2026; do
+        fuser -k "$port/tcp" 2>/dev/null || true
+    done
     echo "Cleaning up containers..."
     docker stop deer-flow-lightpanda 2>/dev/null || true
     docker rm deer-flow-lightpanda 2>/dev/null || true

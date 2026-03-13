@@ -26,6 +26,10 @@ pkill -9 -f "langgraph_api" 2>/dev/null || true
 pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -9 -f "next dev" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
+# Kill any remaining processes on service ports (catches zombie python processes)
+for port in 2024 8001 3000 2026; do
+    fuser -k "$port/tcp" 2>/dev/null || true
+done
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
@@ -77,6 +81,10 @@ cleanup_on_failure() {
     pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
     pkill -9 -f "next dev" 2>/dev/null || true
     pkill -9 nginx 2>/dev/null || true
+    # Kill any remaining processes on service ports
+    for port in 2024 8001 3000 2026; do
+        fuser -k "$port/tcp" 2>/dev/null || true
+    done
     echo "✓ Cleanup complete"
 }
 

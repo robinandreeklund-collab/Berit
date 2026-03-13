@@ -114,6 +114,7 @@ stop:
 	@-pkill -9 -f "next start" 2>/dev/null || true
 	@-pkill -9 -f "next-server" 2>/dev/null || true
 	@-pkill -9 nginx 2>/dev/null || true
+	@-for port in 2024 8001 3000 2026; do fuser -k "$$port/tcp" 2>/dev/null || true; done
 	@echo "Cleaning up containers..."
 	@-docker stop deer-flow-lightpanda 2>/dev/null || true
 	@-docker rm deer-flow-lightpanda 2>/dev/null || true
