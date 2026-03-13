@@ -12,78 +12,78 @@ except ImportError:
     TIKTOKEN_AVAILABLE = False
 
 # Prompt template for updating memory based on conversation
-MEMORY_UPDATE_PROMPT = """Du är ett minneshanteringssystem. Din uppgift är att analysera en konversation och uppdatera användarens minnesprofil.
+MEMORY_UPDATE_PROMPT = """You are a memory management system. Your task is to analyze a conversation and update the user's memory profile.
 
-VIKTIGT: Skriv alla sammanfattningar och fakta på svenska. Tekniska termer, egennamn och projektnamn behåller sin originalform.
+IMPORTANT: Write all summaries and facts in Swedish. Technical terms, proper nouns, and project names keep their original form.
 
-Aktuellt minnestillstånd:
+Current memory state:
 <current_memory>
 {current_memory}
 </current_memory>
 
-Ny konversation att bearbeta:
+New conversation to process:
 <conversation>
 {conversation}
 </conversation>
 
-Instruktioner:
-1. Analysera konversationen för viktig information om användaren
-2. Extrahera relevanta fakta, preferenser och kontext med specifika detaljer (siffror, namn, teknologier)
-3. Uppdatera minnessektionerna efter behov enligt de detaljerade längdriktlinjerna nedan
+Instructions:
+1. Analyze the conversation for important information about the user
+2. Extract relevant facts, preferences, and context with specific details (numbers, names, technologies)
+3. Update memory sections as needed according to the detailed length guidelines below
 
-Riktlinjer för minnessektioner:
+Memory section guidelines:
 
-**Användarkontext** (Aktuellt tillstånd — koncisa sammanfattningar):
-- workContext: Professionell roll, företag, nyckelprojekt, huvudsakliga teknologier (2-3 meningar)
-  Exempel: Kärnbidragsgivare, projektnamn med mätvärden (16k+ stjärnor), teknisk stack
-- personalContext: Språk, kommunikationspreferenser, nyckelintressen (1-2 meningar)
-  Exempel: Tvåspråkiga förmågor, specifika intresseområden, expertisdomäner
-- topOfMind: Flera pågående fokusområden och prioriteringar (3-5 meningar, detaljerat stycke)
-  Exempel: Primärt projektarbete, parallella tekniska undersökningar, pågående lärande/bevakning
-  Inkludera: Aktivt implementationsarbete, felsökningsproblem, marknads-/forskningsintressen
-  Obs: Detta fångar FLERA samtidiga fokusområden, inte bara en uppgift
+**User Context** (Current state — concise summaries):
+- workContext: Professional role, company, key projects, main technologies (2-3 sentences)
+  Example: Core contributor, project name with metrics (16k+ stars), tech stack
+- personalContext: Languages, communication preferences, key interests (1-2 sentences)
+  Example: Bilingual abilities, specific interest areas, expertise domains
+- topOfMind: Multiple ongoing focus areas and priorities (3-5 sentences, detailed paragraph)
+  Example: Primary project work, parallel technical investigations, ongoing learning/monitoring
+  Include: Active implementation work, debugging issues, market/research interests
+  Note: This captures MULTIPLE simultaneous focus areas, not just one task
 
-**Historik** (Temporal kontext — rika stycken):
-- recentMonths: Detaljerad sammanfattning av senaste aktiviteterna (4-6 meningar eller 1-2 stycken)
-  Tidsperiod: Senaste 1-3 månadernas interaktioner
-  Inkludera: Utforskade teknologier, projekt man arbetat med, lösta problem, visade intressen
-- earlierContext: Viktiga historiska mönster (3-5 meningar eller 1 stycke)
-  Tidsperiod: 3-12 månader sedan
-  Inkludera: Tidigare projekt, läranderesor, etablerade mönster
-- longTermBackground: Beständig bakgrund och grundläggande kontext (2-4 meningar)
-  Tidsperiod: Övergripande/grundläggande information
-  Inkludera: Kärnexpertis, långvariga intressen, grundläggande arbetsstil
+**History** (Temporal context — rich paragraphs):
+- recentMonths: Detailed summary of recent activities (4-6 sentences or 1-2 paragraphs)
+  Time period: Last 1-3 months of interactions
+  Include: Explored technologies, projects worked on, solved problems, shown interests
+- earlierContext: Important historical patterns (3-5 sentences or 1 paragraph)
+  Time period: 3-12 months ago
+  Include: Previous projects, learning journeys, established patterns
+- longTermBackground: Persistent background and fundamental context (2-4 sentences)
+  Time period: Overall/fundamental information
+  Include: Core expertise, long-standing interests, fundamental work style
 
-**Faktaextraktion**:
-- Extrahera specifika, kvantifierbara detaljer (t.ex. "16k+ GitHub-stjärnor", "200+ dataset")
-- Inkludera egennamn (företagsnamn, projektnamn, teknologinamn)
-- Bevara teknisk terminologi och versionsnummer
-- Kategorier:
-  * preference: Verktyg, stilar, tillvägagångssätt som användaren föredrar/ogillar
-  * knowledge: Specifik expertis, behärskade teknologier, domänkunskap
-  * context: Bakgrundsfakta (jobbtitel, projekt, platser, språk)
-  * behavior: Arbetsmönster, kommunikationsvanor, problemlösningsmetoder
-  * goal: Uttalade mål, lärandemål, projektambitioner
-- Konfidensnivåer:
-  * 0.9-1.0: Uttryckligen angivna fakta ("Jag jobbar med X", "Min roll är Y")
-  * 0.7-0.8: Starkt underförstått från handlingar/diskussioner
-  * 0.5-0.6: Härledda mönster (använd sparsamt, bara för tydliga mönster)
+**Fact extraction**:
+- Extract specific, quantifiable details (e.g. "16k+ GitHub stars", "200+ datasets")
+- Include proper nouns (company names, project names, technology names)
+- Preserve technical terminology and version numbers
+- Categories:
+  * preference: Tools, styles, approaches the user prefers/dislikes
+  * knowledge: Specific expertise, mastered technologies, domain knowledge
+  * context: Background facts (job title, projects, locations, languages)
+  * behavior: Work patterns, communication habits, problem-solving methods
+  * goal: Stated goals, learning objectives, project ambitions
+- Confidence levels:
+  * 0.9-1.0: Explicitly stated facts ("I work with X", "My role is Y")
+  * 0.7-0.8: Strongly implied from actions/discussions
+  * 0.5-0.6: Inferred patterns (use sparingly, only for clear patterns)
 
-**Vad hamnar var**:
-- workContext: Nuvarande jobb, aktiva projekt, primär teknisk stack
-- personalContext: Språk, personlighet, intressen utanför direkta arbetsuppgifter
-- topOfMind: Flera pågående prioriteringar och fokusområden som användaren bryr sig om nyligen (uppdateras oftast)
-  Bör fånga 3-5 samtidiga teman: huvudarbete, sidoutforskningar, lärandebevakning
-- recentMonths: Detaljerad redogörelse för senaste tekniska utforskningar och arbete
-- earlierContext: Mönster från något äldre interaktioner som fortfarande är relevanta
-- longTermBackground: Oföränderliga grundläggande fakta om användaren
+**What goes where**:
+- workContext: Current job, active projects, primary tech stack
+- personalContext: Languages, personality, interests outside direct work tasks
+- topOfMind: Multiple ongoing priorities and focus areas the user cares about recently (updated most often)
+  Should capture 3-5 concurrent themes: main work, side explorations, learning monitoring
+- recentMonths: Detailed account of recent technical explorations and work
+- earlierContext: Patterns from somewhat older interactions that are still relevant
+- longTermBackground: Unchanging fundamental facts about the user
 
-**Flerspråkigt innehåll**:
-- Bevara originalspråk för egennamn och företagsnamn
-- Behåll tekniska termer i sin originalform (DeepSeek, LangGraph, etc.)
-- Notera språkförmågor i personalContext
+**Multilingual content**:
+- Preserve original language for proper nouns and company names
+- Keep technical terms in their original form (DeepSeek, LangGraph, etc.)
+- Note language abilities in personalContext
 
-Utdataformat (JSON):
+Output format (JSON):
 {{
   "user": {{
     "workContext": {{ "summary": "...", "shouldUpdate": true/false }},
@@ -101,50 +101,50 @@ Utdataformat (JSON):
   "factsToRemove": ["fact_id_1", "fact_id_2"]
 }}
 
-Viktiga regler:
-- Sätt bara shouldUpdate=true om det finns meningsfull ny information
-- Följ längdriktlinjerna: workContext/personalContext är koncisa (1-3 meningar), topOfMind och historik-sektioner är detaljerade (stycken)
-- Inkludera specifika mätvärden, versionsnummer och egennamn i fakta
-- Lägg bara till fakta som tydligt angetts (0.9+) eller starkt antytts (0.7+)
-- Ta bort fakta som motsägs av ny information
-- Vid uppdatering av topOfMind, integrera nya fokusområden och ta bort slutförda/övergivna
-  Behåll 3-5 samtidiga fokusteman som fortfarande är aktiva och relevanta
-- För historiksektioner, integrera ny information kronologiskt i rätt tidsperiod
-- Bevara teknisk precision — behåll exakta namn på teknologier, företag, projekt
-- Fokusera på information som är användbar för framtida interaktioner och personalisering
-- VIKTIGT: Spara INTE filuppladdningshändelser i minnet. Uppladdade filer är
-  sessionsspecifika och tillfälliga — de kommer inte vara tillgängliga i framtida sessioner.
-  Att spara uppladdningshändelser orsakar förvirring i efterföljande konversationer.
+Important rules:
+- Only set shouldUpdate=true if there is meaningful new information
+- Follow length guidelines: workContext/personalContext are concise (1-3 sentences), topOfMind and history sections are detailed (paragraphs)
+- Include specific metrics, version numbers, and proper nouns in facts
+- Only add facts that are clearly stated (0.9+) or strongly implied (0.7+)
+- Remove facts that are contradicted by new information
+- When updating topOfMind, integrate new focus areas and remove completed/abandoned ones
+  Keep 3-5 concurrent focus themes that are still active and relevant
+- For history sections, integrate new information chronologically in the correct time period
+- Preserve technical precision — keep exact names of technologies, companies, projects
+- Focus on information that is useful for future interactions and personalization
+- IMPORTANT: Do NOT save file upload events in memory. Uploaded files are
+  session-specific and temporary — they will not be available in future sessions.
+  Saving upload events causes confusion in subsequent conversations.
 
-Returnera ENBART giltig JSON, ingen förklaring eller markdown."""
+Return ONLY valid JSON, no explanation or markdown."""
 
 
 # Prompt template for extracting facts from a single message
-FACT_EXTRACTION_PROMPT = """Extrahera fakta om användaren från detta meddelande. Skriv fakta på svenska.
+FACT_EXTRACTION_PROMPT = """Extract facts about the user from this message. Write facts in Swedish.
 
-Meddelande:
+Message:
 {message}
 
-Extrahera fakta i detta JSON-format:
+Extract facts in this JSON format:
 {{
   "facts": [
     {{ "content": "...", "category": "preference|knowledge|context|behavior|goal", "confidence": 0.0-1.0 }}
   ]
 }}
 
-Kategorier:
-- preference: Användarpreferenser (gillar/ogillar, stilar, verktyg)
-- knowledge: Användarens expertis eller kunskapsområden
-- context: Bakgrundskontext (plats, jobb, projekt)
-- behavior: Beteendemönster
-- goal: Användarens mål eller målsättningar
+Categories:
+- preference: User preferences (likes/dislikes, styles, tools)
+- knowledge: User's expertise or knowledge areas
+- context: Background context (location, job, projects)
+- behavior: Behavioral patterns
+- goal: User's goals or objectives
 
-Regler:
-- Extrahera bara tydliga, specifika fakta
-- Konfidens ska spegla säkerhet (uttryckligt uttalande = 0.9+, underförstått = 0.6-0.8)
-- Hoppa över vag eller tillfällig information
+Rules:
+- Only extract clear, specific facts
+- Confidence should reflect certainty (explicit statement = 0.9+, implied = 0.6-0.8)
+- Skip vague or temporary information
 
-Returnera ENBART giltig JSON."""
+Return ONLY valid JSON."""
 
 
 def _count_tokens(text: str, encoding_name: str = "cl100k_base") -> int:

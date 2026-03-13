@@ -16,38 +16,38 @@ def ask_clarification_tool(
     context: str | None = None,
     options: list[str] | None = None,
 ) -> str:
-    """Be användaren om förtydligande när du behöver mer information för att fortsätta. Ställ frågan på SVENSKA.
+    """Ask the user for clarification when you need more information to proceed. Write the question in SWEDISH.
 
-    Använd detta verktyg när du stöter på situationer där du inte kan fortsätta utan användarens input:
+    Use this tool when you encounter situations where you cannot proceed without user input:
 
-    - **Saknad information**: Nödvändiga detaljer har inte angetts (t.ex. filsökvägar, URLer, specifika krav)
-    - **Tvetydiga krav**: Flera giltiga tolkningar finns
-    - **Val av tillvägagångssätt**: Flera giltiga metoder finns och du behöver användarens preferens
-    - **Riskfyllda operationer**: Destruktiva åtgärder som behöver uttrycklig bekräftelse (t.ex. radera filer, ändra produktion)
-    - **Förslag**: Du har en rekommendation men vill ha användarens godkännande innan du fortsätter
+    - **Missing information**: Required details have not been specified (e.g. file paths, URLs, specific requirements)
+    - **Ambiguous requirements**: Multiple valid interpretations exist
+    - **Approach choice**: Multiple valid methods exist and you need the user's preference
+    - **Risky operations**: Destructive actions that need explicit confirmation (e.g. delete files, modify production)
+    - **Suggestions**: You have a recommendation but want the user's approval before proceeding
 
-    Utförandet avbryts och frågan presenteras för användaren.
-    Vänta på användarens svar innan du fortsätter.
+    Execution is interrupted and the question is presented to the user.
+    Wait for the user's response before continuing.
 
-    När du ska använda ask_clarification:
-    - Du behöver information som inte angavs i användarens förfrågan
-    - Kravet kan tolkas på flera sätt
-    - Flera giltiga implementeringsmetoder finns
-    - Du är på väg att utföra en potentiellt farlig operation
-    - Du har en rekommendation men behöver användarens godkännande
+    When to use ask_clarification:
+    - You need information that was not specified in the user's request
+    - The requirement can be interpreted in multiple ways
+    - Multiple valid implementation methods exist
+    - You are about to perform a potentially dangerous operation
+    - You have a recommendation but need the user's approval
 
-    Bästa praxis:
-    - Ställ EN förtydligande fråga åt gången för tydlighet
-    - Var specifik och tydlig i din fråga — på svenska
-    - Gör inte antaganden när förtydligande behövs
-    - För riskfyllda operationer, be ALLTID om bekräftelse
-    - Efter att detta verktyg anropats avbryts utförandet automatiskt
+    Best practices:
+    - Ask ONE clarification question at a time for clarity
+    - Be specific and clear in your question — write in Swedish
+    - Do not make assumptions when clarification is needed
+    - For risky operations, ALWAYS ask for confirmation
+    - After this tool is called, execution is automatically interrupted
 
     Args:
-        question: Förtydligande frågan att ställa till användaren. Var specifik och tydlig. Skriv på SVENSKA.
-        clarification_type: Typ av förtydligande som behövs (missing_info, ambiguous_requirement, approach_choice, risk_confirmation, suggestion).
-        context: Valfri kontext som förklarar varför förtydligande behövs. Hjälper användaren förstå situationen. Skriv på SVENSKA.
-        options: Valfri lista med alternativ (för approach_choice eller suggestion-typer). Presentera tydliga alternativ på svenska.
+        question: The clarification question to ask the user. Be specific and clear. Write in SWEDISH.
+        clarification_type: Type of clarification needed (missing_info, ambiguous_requirement, approach_choice, risk_confirmation, suggestion).
+        context: Optional context explaining why clarification is needed. Helps the user understand the situation. Write in SWEDISH.
+        options: Optional list of alternatives (for approach_choice or suggestion types). Present clear options in Swedish.
     """
     # This is a placeholder implementation
     # The actual logic is handled by ClarificationMiddleware which intercepts this tool call

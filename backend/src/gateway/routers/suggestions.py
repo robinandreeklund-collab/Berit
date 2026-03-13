@@ -89,15 +89,15 @@ async def generate_suggestions(thread_id: str, request: SuggestionsRequest) -> S
         return SuggestionsResponse(suggestions=[])
 
     prompt = (
-        "Du genererar uppföljningsfrågor för att hjälpa användaren fortsätta konversationen.\n"
-        f"Baserat på konversationen nedan, producera EXAKT {n} korta frågor som användaren kan tänkas ställa härnäst.\n"
-        "Krav:\n"
-        "- Frågorna MÅSTE vara på svenska.\n"
-        "- Frågorna måste vara relevanta för konversationen.\n"
-        "- Håll varje fråga koncis (helst <= 20 ord).\n"
-        "- Inkludera INTE numrering, markdown eller extra text.\n"
-        "- Utdata MÅSTE vara en JSON-array med enbart strängar.\n\n"
-        "Konversation:\n"
+        "You generate follow-up questions to help the user continue the conversation.\n"
+        f"Based on the conversation below, produce EXACTLY {n} short questions the user might ask next.\n"
+        "Requirements:\n"
+        "- The questions MUST be in Swedish.\n"
+        "- The questions must be relevant to the conversation.\n"
+        "- Keep each question concise (preferably <= 20 words).\n"
+        "- Do NOT include numbering, markdown, or extra text.\n"
+        "- Output MUST be a JSON array of strings only.\n\n"
+        "Conversation:\n"
         f"{conversation}\n"
     )
 

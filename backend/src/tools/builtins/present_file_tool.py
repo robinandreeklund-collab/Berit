@@ -65,24 +65,24 @@ def present_file_tool(
     filepaths: list[str],
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
-    """Gör filer synliga för användaren för visning och rendering i klientgränssnittet.
+    """Make files visible to the user for viewing and rendering in the client UI.
 
-    När du ska använda present_files-verktyget:
+    When to use the present_files tool:
 
-    - Göra filer tillgängliga för användaren att visa, ladda ner eller interagera med
-    - Presentera flera relaterade filer samtidigt
-    - Efter att filer skapats som ska presenteras för användaren
+    - Make files available for the user to view, download, or interact with
+    - Present multiple related files simultaneously
+    - After files have been created that should be presented to the user
 
-    När du INTE ska använda present_files-verktyget:
-    - När du bara behöver läsa filinnehåll för din egen bearbetning
-    - För temporära eller mellanliggande filer som inte är avsedda för användarvisning
+    When NOT to use the present_files tool:
+    - When you only need to read file contents for your own processing
+    - For temporary or intermediate files not intended for user viewing
 
-    Noteringar:
-    - Du bör anropa detta verktyg efter att ha skapat filer och flyttat dem till katalogen `/mnt/user-data/outputs`.
-    - Detta verktyg kan säkert anropas parallellt med andra verktyg. Tillståndsuppdateringar hanteras av en reducer för att förhindra konflikter.
+    Notes:
+    - You should call this tool after creating files and moving them to the `/mnt/user-data/outputs` directory.
+    - This tool can safely be called in parallel with other tools. State updates are handled by a reducer to prevent conflicts.
 
     Args:
-        filepaths: Lista med absoluta filsökvägar att presentera för användaren. **Bara** filer i `/mnt/user-data/outputs` kan presenteras.
+        filepaths: List of absolute file paths to present to the user. **Only** files in `/mnt/user-data/outputs` can be presented.
     """
     try:
         normalized_paths = [_normalize_presented_filepath(runtime, filepath) for filepath in filepaths]
