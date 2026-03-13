@@ -7,14 +7,13 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY mcp-tools/scb-mcp/package.json mcp-tools/scb-mcp/tsconfig.json ./
-RUN npm install
 COPY mcp-tools/scb-mcp/src ./src
-RUN npm run build
+RUN npm install
 
 FROM node:22-alpine
 WORKDIR /app
 COPY --from=build /app/package.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/dist ./dist
 ENV PORT=3000
 EXPOSE 3000

@@ -6,14 +6,13 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.json ./
-RUN npm ci
 COPY src ./src
-RUN npm run build
+RUN npm ci
 
 FROM node:22-alpine
 WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/dist ./dist
 ENV PORT=3000
 EXPOSE 3000
