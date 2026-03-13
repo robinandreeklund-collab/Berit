@@ -80,7 +80,7 @@ def test_build_server_params_lightpanda_gomcp():
     config = McpServerConfig(
         enabled=True,
         type="stdio",
-        command="./scripts/run-gomcp.sh",
+        command="../scripts/run-gomcp.sh",
         args=[],
         env={"LIGHTPANDA_CDP_URL": "ws://localhost:9222"},
         description="Lightpanda headless browser",
@@ -90,7 +90,7 @@ def test_build_server_params_lightpanda_gomcp():
 
     assert params == {
         "transport": "stdio",
-        "command": "./scripts/run-gomcp.sh",
+        "command": "../scripts/run-gomcp.sh",
         "args": [],
         "env": {"LIGHTPANDA_CDP_URL": "ws://localhost:9222"},
     }
@@ -103,7 +103,7 @@ def test_build_servers_config_includes_lightpanda_when_enabled():
             "lightpanda": McpServerConfig(
                 enabled=True,
                 type="stdio",
-                command="./scripts/run-gomcp.sh",
+                command="../scripts/run-gomcp.sh",
                 args=[],
                 env={"LIGHTPANDA_CDP_URL": "ws://lightpanda:9222"},
             ),
@@ -115,7 +115,7 @@ def test_build_servers_config_includes_lightpanda_when_enabled():
     result = build_servers_config(extensions)
 
     assert "lightpanda" in result
-    assert result["lightpanda"]["command"] == "./scripts/run-gomcp.sh"
+    assert result["lightpanda"]["command"] == "../scripts/run-gomcp.sh"
     assert result["lightpanda"]["env"]["LIGHTPANDA_CDP_URL"] == "ws://lightpanda:9222"
     assert "filesystem" not in result
 

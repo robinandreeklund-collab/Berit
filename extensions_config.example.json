@@ -3,7 +3,7 @@
     "lightpanda": {
       "enabled": false,
       "type": "stdio",
-      "command": "./scripts/run-gomcp.sh",
+      "command": "../scripts/run-gomcp.sh",
       "args": [],
       "env": {
         "LIGHTPANDA_CDP_URL": "$LIGHTPANDA_CDP_URL"
