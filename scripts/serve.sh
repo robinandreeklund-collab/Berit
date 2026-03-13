@@ -72,7 +72,11 @@ fi
 echo ""
 echo "Services starting up..."
 echo "  → Lightpanda: Headless Browser"
-echo "  → SCB MCP: Swedish Statistics"
+if [ -z "${SCB_MCP_URL:-}" ]; then
+    echo "  → SCB MCP: Swedish Statistics (local)"
+else
+    echo "  → SCB MCP: Swedish Statistics (remote)"
+fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
 echo "  → Nginx: Reverse Proxy"
@@ -93,6 +97,13 @@ if ! { \
     echo ""
     echo "  Run 'make config' from the repo root to generate ./config.yaml, then set required model API keys in .env or your config file."
     exit 1
+fi
+
+# Load .env if it exists (so SCB_MCP_URL and other vars are available)
+if [ -f "$REPO_ROOT/.env" ]; then
+    set -a
+    source "$REPO_ROOT/.env"
+    set +a
 fi
 
 # Ensure extensions_config.json exists (MCP servers + skills)
@@ -179,8 +190,10 @@ export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # SCB MCP Server — Swedish official statistics
 SCB_MCP_PORT="${SCB_MCP_PORT:-3100}"
-SCB_MCP_DIR="$REPO_ROOT/.scb-mcp"
-if [ -z "${SCB_MCP_URL:-}" ]; then
+SCB_MCP_DIR="$REPO_ROOT/mcp-tools/scb-mcp"
+if [ -n "${SCB_MCP_URL:-}" ]; then
+    echo "✓ SCB MCP using remote instance: ${SCB_MCP_URL}"
+elif [ -z "${SCB_MCP_URL:-}" ]; then
     echo "Starting SCB MCP server..."
     SCB_MCP_STARTED=false
 
@@ -206,12 +219,9 @@ if [ -z "${SCB_MCP_URL:-}" ]; then
     if ! $SCB_MCP_STARTED && command -v node >/dev/null 2>&1; then
         echo "  Docker unavailable, starting SCB MCP with Node.js..."
         if [ ! -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
-            echo "  Cloning and building SCB-MCP (first time)..."
-            rm -rf "$SCB_MCP_DIR"
-            git clone --depth 1 https://github.com/isakskogstad/SCB-MCP.git "$SCB_MCP_DIR" > /dev/null 2>&1 && \
+            echo "  Building SCB MCP from local source (first time)..."
             (cd "$SCB_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
                 echo "  ⚠ SCB MCP build failed. SCB statistics will not be available."
-                rm -rf "$SCB_MCP_DIR"
             }
         fi
         if [ -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
@@ -305,7 +315,11 @@ echo "  🌐 Application:  http://localhost:2026"
 echo "  📡 API Gateway:  http://localhost:2026/api/*"
 echo "  🤖 LangGraph:    http://localhost:2026/api/langgraph/*"
 echo "  🌍 Lightpanda:   http://localhost:${LIGHTPANDA_PORT:-9222}"
-echo "  📊 SCB MCP:      ${SCB_MCP_URL}"
+if [ -n "${SCB_MCP_URL:-}" ]; then
+    echo "  📊 SCB MCP:      ${SCB_MCP_URL}"
+else
+    echo "  📊 SCB MCP:      (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -315,7 +329,7 @@ echo "     - Nginx:       logs/nginx.log"
 echo "     - Lightpanda:  docker logs deer-flow-lightpanda"
 if [ -n "${SCB_MCP_PID:-}" ]; then
     echo "     - SCB MCP:     logs/scb-mcp.log"
-else
+elif [ -z "${SCB_MCP_URL:-}" ] || echo "${SCB_MCP_URL}" | grep -q "localhost"; then
     echo "     - SCB MCP:     docker logs deer-flow-scb-mcp"
 fi
 echo ""

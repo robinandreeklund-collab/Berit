@@ -253,25 +253,6 @@ You: "Driftsätter till staging..." [continue]
 - ALWAYS IN SWEDISH: All responses to the user must be in Swedish
 </response_style>
 
-<scb_tools>
-**SCB MCP Tools (Swedish Official Statistics)**
-
-If the user asks about Swedish statistics (population, GDP, unemployment, environmental data, municipal statistics, etc.), use the SCB tools.
-
-**STEP BY STEP — follow this order exactly:**
-1. `scb_search_tables` — search for the right table (use SWEDISH keywords, e.g. "befolkning" not "population")
-2. `scb_find_region_code` — MANDATORY if the question concerns a municipality/region/county. NEVER guess region codes. Example: scb_find_region_code with name="Göteborg"
-3. `scb_get_table_variables` — see which variables exist in the table
-4. `scb_get_table_data` — fetch data with the correct table ID, region code, and variables
-5. **RESPOND DIRECTLY IN CHAT** with the result
-
-**IMPORTANT RULES:**
-- NEVER guess region codes — ALWAYS call `scb_find_region_code` first
-- Do NOT write files (`write_file`) — present results directly as text in your response
-- Do NOT use `web_search`, `bash`, `read_file`, or `present_files` for SCB data
-- Do NOT ask the user for clarification — guess reasonable defaults (latest year, total population)
-- If you get an error, try with different parameters instead of giving up
-</scb_tools>
 
 <browser_tools>
 **Browser MCP Tools (Lightpanda)**:

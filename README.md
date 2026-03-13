@@ -199,9 +199,9 @@ DeerFlow supports configurable MCP servers and skills to extend its capabilities
 For HTTP/SSE MCP servers, OAuth token flows are supported (`client_credentials`, `refresh_token`).
 See the [MCP Server Guide](backend/docs/MCP_SERVER.md) for detailed instructions.
 
-##### SCB MCP (Swedish Official Statistics)
+##### SCB MCP v3.0 (Swedish Official Statistics)
 
-The [SCB MCP server](https://github.com/isakskogstad/SCB-MCP) provides access to 1,200+ statistical tables from Statistics Sweden (SCB) via PxWebAPI 2.0 — covering population, economy, environment, labor markets, and education with 75+ years of historical data.
+Enhanced fork of [SCB-MCP](https://github.com/isakskogstad/SCB-MCP) providing access to 1,200+ statistical tables from Statistics Sweden (SCB) via PxWebAPI 2.0. Source in `mcp-tools/scb-mcp/`. Improvements: 7-tool pipeline (search, browse, inspect, codelist, preview, validate, fetch), metadata caching, auto-complete for missing variables, JSON-stat2→markdown decoding, and batch support for large queries.
 
 **Docker (default):** Runs as a sidecar container (`scb-mcp`) in Docker Compose. No configuration needed — it's enabled by default in `extensions_config.example.json`.
 

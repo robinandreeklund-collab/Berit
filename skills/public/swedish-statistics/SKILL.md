@@ -3,7 +3,7 @@ name: swedish-statistics
 description: Använd denna färdighet när användaren frågar om svensk statistik, svenska befolkningsdata, ekonomisk data för Sverige, svensk arbetsmarknad, svensk miljöstatistik, utbildningsstatistik, BNP, invånarantal i svenska kommuner/regioner, eller annan officiell statistik från SCB (Statistiska centralbyrån). Denna färdighet använder SCB MCP-verktygen för att hämta data direkt från SCB:s PxWebAPI 2.0.
 ---
 
-# Svensk Statistik (SCB MCP)
+# Svensk Statistik (SCB MCP v3.0)
 
 ## Översikt
 
@@ -11,128 +11,120 @@ Denna färdighet ger dig tillgång till Sveriges officiella statistik via SCB:s 
 
 ## Tillgängliga MCP-verktyg
 
-Du har dessa verktyg tillgängliga via SCB MCP-servern:
-
 | Verktyg | Beskrivning |
 |---------|-------------|
-| `search_tables` | Sök bland statistiktabeller med nyckelord (fuzzy matching — "Goteborg" matchar "Göteborg") |
-| `find_region_code` | Slå upp regionkoder för svenska kommuner och regioner (312+ regioner) |
-| `get_table_variables` | Hämta tillgängliga dimensioner/variabler för en specifik tabell |
-| `get_table_data` | Hämta faktisk statistikdata med filtrering |
-| `preview_data` | Testa frågor innan full hämtning |
+| `scb_search` | Sök bland statistiktabeller med nyckelord |
+| `scb_browse` | Bläddra i SCB:s ämnesträd ("BE" = befolkning, "AM" = arbetsmarknad) |
+| `scb_find_region_code` | Slå upp regionkoder — fuzzy matching ("Goteborg" → "Göteborg", 1480) |
+| `scb_inspect` | Visa variabler och metadata för en tabell |
+| `scb_codelist` | Utforska en specifik variabels alla värden |
+| `scb_fetch` | Hämta data — auto-kompletterar saknade variabler, returnerar markdown-tabell |
 
-## Arbetsflöde
+## Arbetsflöde — 4 steg
 
 ### Steg 1: Sök rätt tabell
 
-Börja ALLTID med att söka efter relevanta tabeller:
-
 ```
-search_tables(query="befolkning kommun")
+scb_search(query="befolkning kommun")
 ```
 
-Sökningar fungerar bäst på svenska. Servern stödjer fuzzy matching.
+Sökningar fungerar bäst på **svenska**. Fuzzy matching stöds.
 
 **Vanliga söktermer:**
-- Befolkning: `"befolkning"`, `"folkmängd"`, `"invånare"`
+- Befolkning: `"befolkning"`, `"folkmängd"`, `"invånare"`, `"medelålder"`
 - Ekonomi: `"BNP"`, `"bruttonationalprodukt"`, `"inflation"`
 - Arbetsmarknad: `"sysselsättning"`, `"arbetslöshet"`, `"förvärvsarbetande"`
 - Miljö: `"utsläpp"`, `"växthusgaser"`, `"avfall"`
 - Utbildning: `"studenter"`, `"utbildningsnivå"`
 
+Alternativt, bläddra i ämnesträdet:
+```
+scb_browse(path="BE")  // BE = Befolkning, AM = Arbetsmarknad, NR = Nationalräkenskaper
+```
+
 ### Steg 2: Slå upp regionkoder (om regiondata behövs)
 
-Om frågan gäller en specifik kommun/region, slå upp koden:
+Om frågan gäller en specifik kommun eller region:
 
 ```
-find_region_code(query="Göteborg")
+scb_find_region_code(query="Göteborg")
 ```
+
+Fuzzy matching: "Goteborg", "göteborg", "gbg" hittar alla "Göteborg" (1480).
 
 Vanliga regionkoder:
+- `"00"` = Hela riket
 - `"0180"` = Stockholm
 - `"1480"` = Göteborg
 - `"1280"` = Malmö
-- `"00"` = Hela riket
 
-### Steg 3: Undersök tabellens variabler
-
-Innan du hämtar data, se vilka dimensioner som finns:
+### Steg 3: Inspektera tabellens variabler
 
 ```
-get_table_variables(table_id="BE0101N1")
+scb_inspect(tableId="TAB637")
 ```
 
-Detta visar tillgängliga filtrerings- och grupperingsalternativ.
+Detta visar alla dimensioner, deras värden och metadata. Använd `scb_codelist` om du behöver se alla värden för en specifik variabel.
 
-### Steg 4: Förhandsgranska data (valfritt)
+### Steg 4: Hämta data
 
-Testa din fråga med ett litet urval först:
-
-```
-preview_data(table_id="BE0101N1", variables={"region": ["0180"], "tid": ["2024"]})
-```
-
-### Steg 5: Hämta data
-
-Hämta den faktiska statistiken:
+Gå **direkt** från inspect till fetch. `scb_fetch` har inbyggd **auto-complete** — saknade variabler fylls i automatiskt.
 
 ```
-get_table_data(table_id="BE0101N1", variables={"region": ["0180", "1480"], "tid": ["2020", "2021", "2022", "2023", "2024"]})
+scb_fetch(tableId="TAB637", selection={"Region": ["1480"], "Kon": ["1+2"], "Tid": ["TOP(3)"]})
 ```
 
-**Tips för variabelfiltrering:**
-- Använd `TOP(n)` för att hämta de senaste n tidsperioderna: `"tid": ["TOP(5)"]`
-- Använd `*` som wildcard för alla värden: `"region": ["*"]`
-- Kombinera specifika värden: `"tid": ["2020", "2021", "2022"]`
+Resultatet innehåller ett `markdown_table`-fält — presentera detta direkt till användaren.
 
-## Vanliga frågor och exempelarbetsflöden
+## KRITISKA REGLER
 
-### "Hur många invånare har Göteborg?"
+1. **Gå direkt från `scb_inspect` till `scb_fetch`** — fetch auto-kompletterar saknade variabler
+2. **Använd INTE `scb_validate`** — den behövs inte, fetch hanterar allt
+3. **Max 4 verktygsanrop totalt per fråga** — search → region → inspect → fetch. Sedan SVAR.
+4. **Presentera `markdown_table` direkt** från fetch-resultatet — skriv INTE filer
+5. **Fråga INTE användaren** om förtydligande — gissa rimliga defaults (senaste år, totalt)
+6. **Sök på SVENSKA** — "befolkning" inte "population"
+7. **Om ett verktyg misslyckas — försök INTE igen.** Gå vidare eller svara med vad du har.
 
-1. `find_region_code(query="Göteborg")` → `"1480"`
-2. `search_tables(query="folkmängd kommun")` → hitta tabellens ID
-3. `get_table_data(table_id="...", variables={"region": ["1480"], "tid": ["TOP(1)"]})` → aktuell data
+## Tips för variabelfiltrering
+
+- `TOP(n)` — senaste n tidsperioderna: `"Tid": ["TOP(5)"]`
+- `BOTTOM(n)` — äldsta n tidsperioderna
+- `*` — alla värden: `"Region": ["*"]`
+- Kombinera specifika värden: `"Tid": ["2022", "2023", "2024"]`
+
+## Vanliga frågor — exempelarbetsflöden
+
+### "Hur många bor i Borås?"
+
+1. `scb_find_region_code(query="Borås")` → `"1490"`
+2. `scb_search(query="folkmängd kommun")` → hitta tabell-ID
+3. `scb_fetch(tableId="...", selection={"Region": ["1490"], "Tid": ["TOP(1)"]})` → data
 
 ### "Jämför befolkningen i Stockholm, Göteborg och Malmö"
 
-1. `find_region_code(query="Stockholm")` → `"0180"`
-2. `find_region_code(query="Göteborg")` → `"1480"`
-3. `find_region_code(query="Malmö")` → `"1280"`
-4. `search_tables(query="folkmängd kommun")` → tabellens ID
-5. `get_table_data(table_id="...", variables={"region": ["0180", "1480", "1280"], "tid": ["TOP(5)"]})` → data
+1. `scb_find_region_code(query="Stockholm")` → `"0180"`
+2. `scb_find_region_code(query="Göteborg")` → `"1480"`
+3. `scb_find_region_code(query="Malmö")` → `"1280"`
+4. `scb_search(query="folkmängd kommun")` → tabell-ID
+5. `scb_fetch(tableId="...", selection={"Region": ["0180", "1480", "1280"], "Tid": ["TOP(5)"]})` → data
 
 ### "Visa BNP-utveckling de senaste 10 åren"
 
-1. `search_tables(query="BNP bruttonationalprodukt")` → tabellens ID
-2. `get_table_variables(table_id="...")` → se tillgängliga dimensioner
-3. `get_table_data(table_id="...", variables={"tid": ["TOP(10)"]})` → data
-
-### "Hur ser arbetslösheten ut i Sverige?"
-
-1. `search_tables(query="arbetslöshet")` → tabellens ID
-2. `get_table_data(table_id="...", variables={"tid": ["TOP(5)"]})` → data
+1. `scb_search(query="BNP bruttonationalprodukt")` → tabell-ID
+2. `scb_inspect(tableId="...")` → se tillgängliga dimensioner
+3. `scb_fetch(tableId="...", selection={"Tid": ["TOP(10)"]})` → data
 
 ## Presentera resultat
 
-- Presentera data i tydliga tabeller (Markdown-format)
-- Inkludera trender och jämförelser när det är relevant
+- Visa `markdown_table` direkt från `scb_fetch`-resultatet
+- Inkludera trender och jämförelser när relevant
 - Ange alltid källa: "Källa: SCB (Statistiska centralbyrån)"
-- Använd svenska siffror (mellanslag som tusentalsavgränsare: 1 000 000)
 - Förklara vad siffrorna betyder i kontext
 
 ## Felsökning
 
 - **Tom sökning**: Prova synonymer eller bredare söktermer
-- **Tabell hittades inte**: Kontrollera tabellens ID med `search_tables`
-- **Regionkod okänd**: Använd `find_region_code` — stödjer fuzzy matching
-- **Timeout**: SCB:s API kan ibland vara långsamt — försök igen
-
-## Datakategorier
-
-| Kategori | Exempel |
-|----------|---------|
-| Befolkning | Folkmängd, födelseöverskott, invandring/utvandring, åldersfördelning |
-| Ekonomi | BNP, skatter, företagsstatistik, nationalräkenskaper |
-| Miljö | Växthusgasutsläpp, avfallshantering, vattenanvändning |
-| Arbetsmarknad | Sysselsättning, arbetslöshet, yrkesdata, löner |
-| Utbildning | Studentantal, utbildningsnivå, kompetensutveckling |
+- **Tabell hittades inte**: Kontrollera med `scb_search`
+- **Regionkod okänd**: Använd `scb_find_region_code` — stödjer fuzzy matching
+- **Många anrop**: Om du fastnar — **sluta loopa**, presentera vad du har hittills
