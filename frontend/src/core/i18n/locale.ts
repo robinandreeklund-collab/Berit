@@ -1,6 +1,6 @@
-export const SUPPORTED_LOCALES = ["en-US", "zh-CN"] as const;
+export const SUPPORTED_LOCALES = ["en-US", "sv-SE", "zh-CN"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "en-US";
+export const DEFAULT_LOCALE: Locale = "sv-SE";
 
 export function isLocale(value: string): value is Locale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(value);
@@ -13,6 +13,10 @@ export function normalizeLocale(locale: string | null | undefined): Locale {
 
   if (isLocale(locale)) {
     return locale;
+  }
+
+  if (locale.toLowerCase().startsWith("sv")) {
+    return "sv-SE";
   }
 
   if (locale.toLowerCase().startsWith("zh")) {

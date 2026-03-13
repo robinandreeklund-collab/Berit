@@ -90,104 +90,104 @@ def _create_todo_list_middleware(is_plan_mode: bool) -> TodoMiddleware | None:
     if not is_plan_mode:
         return None
 
-    # Custom prompts matching DeerFlow's style
+    # Custom prompts matching DeerFlow's style - Swedish
     system_prompt = """
 <todo_list_system>
-You have access to the `write_todos` tool to help you manage and track complex multi-step objectives.
+Du har tillgång till verktyget `write_todos` för att hantera och spåra komplexa flerstegsuppgifter.
 
-**CRITICAL RULES:**
-- Mark todos as completed IMMEDIATELY after finishing each step - do NOT batch completions
-- Keep EXACTLY ONE task as `in_progress` at any time (unless tasks can run in parallel)
-- Update the todo list in REAL-TIME as you work - this gives users visibility into your progress
-- DO NOT use this tool for simple tasks (< 3 steps) - just complete them directly
+**KRITISKA REGLER:**
+- Markera uppgifter som slutförda OMEDELBART efter varje steg — batcha INTE slutföranden
+- Håll EXAKT EN uppgift som `in_progress` åt gången (om inte uppgifter kan köras parallellt)
+- Uppdatera att-göra-listan i REALTID medan du arbetar — detta ger användaren insyn i dina framsteg
+- Använd INTE detta verktyg för enkla uppgifter (< 3 steg) — slutför dem direkt
 
-**When to Use:**
-This tool is designed for complex objectives that require systematic tracking:
-- Complex multi-step tasks requiring 3+ distinct steps
-- Non-trivial tasks needing careful planning and execution
-- User explicitly requests a todo list
-- User provides multiple tasks (numbered or comma-separated list)
-- The plan may need revisions based on intermediate results
+**När du ska använda det:**
+Detta verktyg är utformat för komplexa mål som kräver systematisk spårning:
+- Komplexa flerstegsuppgifter som kräver 3+ distinkta steg
+- Icke-triviala uppgifter som kräver noggrann planering och utförande
+- Användaren ber uttryckligen om en att-göra-lista
+- Användaren ger flera uppgifter (numrerade eller kommaseparerade)
+- Planen kan behöva revideras baserat på mellanliggande resultat
 
-**When NOT to Use:**
-- Single, straightforward tasks
-- Trivial tasks (< 3 steps)
-- Purely conversational or informational requests
-- Simple tool calls where the approach is obvious
+**När du INTE ska använda det:**
+- Enstaka, enkla uppgifter
+- Triviala uppgifter (< 3 steg)
+- Rent konversationella eller informationella förfrågningar
+- Enkla verktygsanrop där tillvägagångssättet är uppenbart
 
-**Best Practices:**
-- Break down complex tasks into smaller, actionable steps
-- Use clear, descriptive task names
-- Remove tasks that become irrelevant
-- Add new tasks discovered during implementation
-- Don't be afraid to revise the todo list as you learn more
+**Bästa praxis:**
+- Bryt ner komplexa uppgifter i mindre, hanterbara steg
+- Använd tydliga, beskrivande uppgiftsnamn
+- Ta bort uppgifter som inte längre är relevanta
+- Lägg till nya uppgifter som upptäcks under implementering
+- Tveka inte att revidera att-göra-listan när du lär dig mer
 
-**Task Management:**
-Writing todos takes time and tokens - use it when helpful for managing complex problems, not for simple requests.
+**Uppgiftshantering:**
+Att skriva uppgifter tar tid och tokens — använd det när det hjälper för att hantera komplexa problem, inte för enkla förfrågningar.
 </todo_list_system>
 """
 
-    tool_description = """Use this tool to create and manage a structured task list for complex work sessions.
+    tool_description = """Använd detta verktyg för att skapa och hantera en strukturerad uppgiftslista för komplexa arbetssessioner.
 
-**IMPORTANT: Only use this tool for complex tasks (3+ steps). For simple requests, just do the work directly.**
+**VIKTIGT: Använd bara detta verktyg för komplexa uppgifter (3+ steg). För enkla förfrågningar, gör bara arbetet direkt.**
 
-## When to Use
+## När du ska använda det
 
-Use this tool in these scenarios:
-1. **Complex multi-step tasks**: When a task requires 3 or more distinct steps or actions
-2. **Non-trivial tasks**: Tasks requiring careful planning or multiple operations
-3. **User explicitly requests todo list**: When the user directly asks you to track tasks
-4. **Multiple tasks**: When users provide a list of things to be done
-5. **Dynamic planning**: When the plan may need updates based on intermediate results
+Använd detta verktyg i dessa scenarier:
+1. **Komplexa flerstegsuppgifter**: När en uppgift kräver 3 eller fler distinkta steg eller åtgärder
+2. **Icke-triviala uppgifter**: Uppgifter som kräver noggrann planering eller flera operationer
+3. **Användaren ber uttryckligen om uppgiftslista**: När användaren direkt ber dig spåra uppgifter
+4. **Flera uppgifter**: När användare ger en lista med saker att göra
+5. **Dynamisk planering**: När planen kan behöva uppdateringar baserat på mellanliggande resultat
 
-## When NOT to Use
+## När du INTE ska använda det
 
-Skip this tool when:
-1. The task is straightforward and takes less than 3 steps
-2. The task is trivial and tracking provides no benefit
-3. The task is purely conversational or informational
-4. It's clear what needs to be done and you can just do it
+Hoppa över detta verktyg när:
+1. Uppgiften är enkel och tar färre än 3 steg
+2. Uppgiften är trivial och spårning ger ingen nytta
+3. Uppgiften är rent konversationell eller informationell
+4. Det är tydligt vad som behöver göras och du kan bara göra det
 
-## How to Use
+## Hur du använder det
 
-1. **Starting a task**: Mark it as `in_progress` BEFORE beginning work
-2. **Completing a task**: Mark it as `completed` IMMEDIATELY after finishing
-3. **Updating the list**: Add new tasks, remove irrelevant ones, or update descriptions as needed
-4. **Multiple updates**: You can make several updates at once (e.g., complete one task and start the next)
+1. **Starta en uppgift**: Markera den som `in_progress` INNAN du börjar arbeta
+2. **Slutföra en uppgift**: Markera den som `completed` OMEDELBART efter avslut
+3. **Uppdatera listan**: Lägg till nya uppgifter, ta bort irrelevanta eller uppdatera beskrivningar vid behov
+4. **Flera uppdateringar**: Du kan göra flera uppdateringar samtidigt (t.ex. slutföra en uppgift och starta nästa)
 
-## Task States
+## Uppgiftsstatus
 
-- `pending`: Task not yet started
-- `in_progress`: Currently working on (can have multiple if tasks run in parallel)
-- `completed`: Task finished successfully
+- `pending`: Uppgift ej påbörjad
+- `in_progress`: Arbetar med just nu (kan ha flera om uppgifter körs parallellt)
+- `completed`: Uppgift slutförd
 
-## Task Completion Requirements
+## Krav för uppgiftsslutförande
 
-**CRITICAL: Only mark a task as completed when you have FULLY accomplished it.**
+**KRITISKT: Markera en uppgift som slutförd BARA när du har FULLSTÄNDIGT genomfört den.**
 
-Never mark a task as completed if:
-- There are unresolved issues or errors
-- Work is partial or incomplete
-- You encountered blockers preventing completion
-- You couldn't find necessary resources or dependencies
-- Quality standards haven't been met
+Markera aldrig en uppgift som slutförd om:
+- Det finns olösta problem eller fel
+- Arbetet är delvis eller ofullständigt
+- Du stötte på hinder som förhindrar slutförande
+- Du inte kunde hitta nödvändiga resurser eller beroenden
+- Kvalitetsstandarder inte har uppfyllts
 
-If blocked, keep the task as `in_progress` and create a new task describing what needs to be resolved.
+Om du är blockerad, behåll uppgiften som `in_progress` och skapa en ny uppgift som beskriver vad som behöver lösas.
 
-## Best Practices
+## Bästa praxis
 
-- Create specific, actionable items
-- Break complex tasks into smaller, manageable steps
-- Use clear, descriptive task names
-- Update task status in real-time as you work
-- Mark tasks complete IMMEDIATELY after finishing (don't batch completions)
-- Remove tasks that are no longer relevant
-- **IMPORTANT**: When you write the todo list, mark your first task(s) as `in_progress` immediately
-- **IMPORTANT**: Unless all tasks are completed, always have at least one task `in_progress` to show progress
+- Skapa specifika, handlingsbara uppgifter
+- Bryt ner komplexa uppgifter i mindre, hanterbara steg
+- Använd tydliga, beskrivande uppgiftsnamn
+- Uppdatera uppgiftsstatus i realtid medan du arbetar
+- Markera uppgifter som slutförda OMEDELBART (batcha inte slutföranden)
+- Ta bort uppgifter som inte längre är relevanta
+- **VIKTIGT**: När du skriver att-göra-listan, markera din(a) första uppgift(er) som `in_progress` omedelbart
+- **VIKTIGT**: Om inte alla uppgifter är slutförda, ha alltid minst en uppgift som `in_progress` för att visa framsteg
 
-Being proactive with task management demonstrates thoroughness and ensures all requirements are completed successfully.
+Att vara proaktiv med uppgiftshantering visar grundlighet och säkerställer att alla krav slutförs framgångsrikt.
 
-**Remember**: If you only need a few tool calls to complete a task and it's clear what to do, it's better to just do the task directly and NOT use this tool at all.
+**Kom ihåg**: Om du bara behöver några verktygsanrop för att slutföra en uppgift och det är tydligt vad som ska göras, är det bättre att bara göra uppgiften direkt och INTE använda detta verktyg alls.
 """
 
     return TodoMiddleware(system_prompt=system_prompt, tool_description=tool_description)
