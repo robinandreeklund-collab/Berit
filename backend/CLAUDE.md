@@ -213,6 +213,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
    - `task` - Delegate to subagent (description, prompt, subagent_type, max_turns)
 
 **Community tools** (`src/community/`):
+- `lightpanda/` - Web search & fetch via Lightpanda headless browser (full JS rendering, CDP support, no API key needed)
 - `tavily/` - Web search (5 results default) and web fetch (4KB limit)
 - `jina_ai/` - Web fetch via Jina reader API with readability extraction
 - `firecrawl/` - Web scraping via Firecrawl API

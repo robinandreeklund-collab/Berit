@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Gateway API** (port 8001): REST API for models, MCP, skills, memory, artifacts, uploads
 - **Frontend** (port 3000): Next.js web interface
 - **LM Studio** (port 8000, external): Local LLM inference via OpenAI-compatible API
+- **Lightpanda** (port 9222): High-performance headless browser for web fetching with JS rendering
 
 ## Project Structure
 
@@ -32,7 +33,7 @@ Berit/
 │   │   ├── models/             # LLM model factory
 │   │   ├── skills/             # Skills discovery and loading
 │   │   ├── config/             # Configuration system
-│   │   ├── community/          # Community tools (Tavily, Jina, Firecrawl, etc.)
+│   │   ├── community/          # Community tools (Lightpanda, Tavily, Jina, Firecrawl, etc.)
 │   │   ├── channels/           # IM integrations (Slack, Telegram, Feishu)
 │   │   └── client.py           # Embedded Python client (DeerFlowClient)
 │   └── tests/                  # Backend test suite

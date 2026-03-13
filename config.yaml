@@ -31,17 +31,23 @@ tool_groups:
 # Tools Configuration
 # ============================================================================
 tools:
-  # Web search tool (requires Tavily API key)
+  # Web search tool (Lightpanda + DuckDuckGo, no API key needed)
+  # Alternative: src.community.tavily.tools:web_search_tool (requires Tavily API key)
   - name: web_search
     group: web
-    use: src.community.tavily.tools:web_search_tool
+    use: src.community.lightpanda.tools:web_search_tool
     max_results: 5
+    timeout: 30
 
-  # Web fetch tool (uses Jina AI reader)
+  # Web fetch tool (uses Lightpanda headless browser for full JS rendering)
+  # Alternative options:
+  #   src.community.jina_ai.tools:web_fetch_tool     (Jina AI reader, no JS)
+  #   src.community.firecrawl.tools:web_fetch_tool   (Firecrawl API, no JS)
   - name: web_fetch
     group: web
-    use: src.community.jina_ai.tools:web_fetch_tool
-    timeout: 10
+    use: src.community.lightpanda.tools:web_fetch_tool
+    timeout: 30
+    use_cdp: false
 
   # Image search tool (uses DuckDuckGo)
   - name: image_search
