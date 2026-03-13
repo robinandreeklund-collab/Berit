@@ -51,6 +51,12 @@ if ! { \
     exit 1
 fi
 
+# Ensure extensions_config.json exists (MCP servers + skills)
+if [ ! -f "$REPO_ROOT/extensions_config.json" ] && [ -f "$REPO_ROOT/extensions_config.example.json" ]; then
+    echo "Creating extensions_config.json from example..."
+    cp "$REPO_ROOT/extensions_config.example.json" "$REPO_ROOT/extensions_config.json"
+fi
+
 # ── Cleanup on failure ───────────────────────────────────────────────────────
 
 cleanup_on_failure() {

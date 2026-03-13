@@ -32,6 +32,7 @@ config:
 		exit 1; \
 	fi
 	@cp config.example.yaml config.yaml
+	@test -f extensions_config.json || cp extensions_config.example.json extensions_config.json
 	@test -f .env || cp .env.example .env
 	@test -f frontend/.env || cp frontend/.env.example frontend/.env
 
