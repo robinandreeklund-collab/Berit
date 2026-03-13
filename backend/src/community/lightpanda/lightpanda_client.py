@@ -15,24 +15,23 @@ _LOAD_EVENT_FALLBACK_TIMEOUT = 5
 class LightpandaClient:
     """Client for Lightpanda headless browser via Chrome DevTools Protocol (CDP).
 
-    Lightpanda is a high-performance headless browser that uses 9x less memory
-    and is 11x faster than Chrome. It supports JavaScript execution via V8 and
-    exposes a CDP-compatible WebSocket interface.
+    Lightpanda is a headless browser written in Zig that exposes a CDP-compatible
+    WebSocket interface. Unlike Chrome, Lightpanda requires explicit creation of
+    a browser context and page target before navigation.
 
-    The client communicates with Lightpanda's CDP endpoint to navigate pages,
-    extract rendered DOM content, and capture network responses.
+    CDP flow: connect → Target.createBrowserContext → Target.createTarget
+              → Target.attachToTarget → Page.navigate → waitForLoad
+              → Runtime.evaluate → cleanup
     """
 
     def __init__(self, base_url: str | None = None):
         self.base_url = base_url or os.getenv("LIGHTPANDA_URL", DEFAULT_LIGHTPANDA_URL)
-        self._session_id: str | None = None
 
     def fetch(self, url: str, timeout: int = 30) -> str:
         """Fetch a URL using Lightpanda CDP WebSocket protocol.
 
-        Connects to Lightpanda's CDP WebSocket endpoint, navigates to the URL,
-        waits for the page to load (including JavaScript execution), and returns
-        the rendered HTML.
+        Creates a browser context and page, navigates to the URL, waits for
+        the page to load, and returns the rendered HTML.
 
         Args:
             url: The URL to fetch and render.
@@ -51,29 +50,92 @@ class LightpandaClient:
 
         try:
             ws = websocket.create_connection(ws_url, timeout=timeout)
-            msg_id = 1
+            msg_id = 0
+            browser_context_id = None
+            target_id = None
 
-            # Navigate to URL (skip Page.enable — Lightpanda doesn't need it)
-            ws.send(json.dumps({"id": msg_id, "method": "Page.navigate", "params": {"url": url}}))
-            msg_id += 1
-            _read_cdp_response(ws, msg_id - 1, timeout)
+            try:
+                # Step 1: Create a browser context (required by Lightpanda)
+                msg_id += 1
+                ws.send(json.dumps({"id": msg_id, "method": "Target.createBrowserContext"}))
+                resp = _read_cdp_response(ws, msg_id, timeout)
+                if resp and "result" in resp:
+                    browser_context_id = resp["result"].get("browserContextId")
+                if not browser_context_id:
+                    return "Error: Failed to create browser context in Lightpanda"
 
-            # Wait for Page.loadEventFired with a short fallback timeout
-            # Lightpanda may not always fire this event, so we don't block forever
-            _wait_for_event(ws, "Page.loadEventFired", min(_LOAD_EVENT_FALLBACK_TIMEOUT, timeout))
+                # Step 2: Create a new page/target
+                msg_id += 1
+                ws.send(json.dumps({
+                    "id": msg_id,
+                    "method": "Target.createTarget",
+                    "params": {"url": "about:blank", "browserContextId": browser_context_id},
+                }))
+                resp = _read_cdp_response(ws, msg_id, timeout)
+                if resp and "result" in resp:
+                    target_id = resp["result"].get("targetId")
+                if not target_id:
+                    return "Error: Failed to create page target in Lightpanda"
 
-            # Get the rendered HTML
-            ws.send(json.dumps({"id": msg_id, "method": "Runtime.evaluate", "params": {"expression": "document.documentElement.outerHTML", "returnByValue": True}}))
-            result = _read_cdp_response(ws, msg_id, timeout)
+                # Step 3: Attach to the target to get a session
+                msg_id += 1
+                ws.send(json.dumps({
+                    "id": msg_id,
+                    "method": "Target.attachToTarget",
+                    "params": {"targetId": target_id, "flatten": True},
+                }))
+                resp = _read_cdp_response(ws, msg_id, timeout)
+                session_id = None
+                if resp and "result" in resp:
+                    session_id = resp["result"].get("sessionId")
+                if not session_id:
+                    return "Error: Failed to attach to page target in Lightpanda"
 
-            ws.close()
+                # Step 4: Navigate to the URL (within the session)
+                msg_id += 1
+                ws.send(json.dumps({
+                    "id": msg_id,
+                    "sessionId": session_id,
+                    "method": "Page.navigate",
+                    "params": {"url": url},
+                }))
+                _read_cdp_response(ws, msg_id, timeout)
 
-            if result and "result" in result:
-                inner = result["result"]
-                if "result" in inner and "value" in inner["result"]:
-                    return inner["result"]["value"]
+                # Step 5: Wait for page load event (with fallback timeout)
+                _wait_for_event(ws, "Page.loadEventFired", min(_LOAD_EVENT_FALLBACK_TIMEOUT, timeout))
 
-            return "Error: Could not extract page content from CDP response"
+                # Step 6: Extract the rendered HTML
+                msg_id += 1
+                ws.send(json.dumps({
+                    "id": msg_id,
+                    "sessionId": session_id,
+                    "method": "Runtime.evaluate",
+                    "params": {"expression": "document.documentElement.outerHTML", "returnByValue": True},
+                }))
+                result = _read_cdp_response(ws, msg_id, timeout)
+
+                if result and "result" in result:
+                    inner = result["result"]
+                    if "result" in inner and "value" in inner["result"]:
+                        return inner["result"]["value"]
+
+                return "Error: Could not extract page content from CDP response"
+
+            finally:
+                # Cleanup: close target and dispose context
+                try:
+                    if target_id:
+                        msg_id += 1
+                        ws.send(json.dumps({"id": msg_id, "method": "Target.closeTarget", "params": {"targetId": target_id}}))
+                    if browser_context_id:
+                        msg_id += 1
+                        ws.send(json.dumps({"id": msg_id, "method": "Target.disposeBrowserContext", "params": {"browserContextId": browser_context_id}}))
+                except Exception:
+                    pass
+                try:
+                    ws.close()
+                except Exception:
+                    pass
 
         except ConnectionRefusedError:
             error_message = f"Could not connect to Lightpanda at {ws_url}. Ensure Lightpanda is running (docker run -d -p 9222:9222 lightpanda/browser:nightly)"
@@ -117,6 +179,7 @@ def _read_cdp_response(ws, expected_id: int, timeout: float) -> dict | None:
             msg = json.loads(raw)
             if msg.get("id") == expected_id:
                 return msg
+            # Skip events and responses for other IDs
         except WebSocketConnectionClosedException:
             logger.warning(f"WebSocket closed while waiting for CDP response id={expected_id}")
             break
