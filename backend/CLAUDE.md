@@ -213,6 +213,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
    - `task` - Delegate to subagent (description, prompt, subagent_type, max_turns)
 
 **Community tools** (`src/community/`):
+- `lightpanda/` - Web search & fetch via Lightpanda headless browser (full JS rendering, CDP support, no API key needed)
 - `tavily/` - Web search (5 results default) and web fetch (4KB limit)
 - `jina_ai/` - Web fetch via Jina reader API with readability extraction
 - `firecrawl/` - Web scraping via Firecrawl API
@@ -226,6 +227,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 - **Transports**: stdio (command-based), SSE, HTTP
 - **OAuth (HTTP/SSE)**: Supports token endpoint flows (`client_credentials`, `refresh_token`) with automatic token refresh + Authorization header injection
 - **Runtime updates**: Gateway API saves to extensions_config.json; LangGraph detects via mtime
+- **Lightpanda gomcp**: Pre-configured MCP server providing 14 browser tools (goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over). Installed via `scripts/install-gomcp.sh`, launched via `scripts/run-gomcp.sh` wrapper that respects `LIGHTPANDA_CDP_URL` env var.
 
 ### Skills System (`src/skills/`)
 

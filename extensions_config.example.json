@@ -1,13 +1,23 @@
 {
   "mcpServers": {
+    "lightpanda": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "../scripts/run-gomcp.sh",
+      "args": [],
+      "env": {
+        "LIGHTPANDA_CDP_URL": "$LIGHTPANDA_CDP_URL"
+      },
+      "description": "Lightpanda headless browser — 14 tools: goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over"
+    },
     "filesystem": {
-      "enabled": false,
+      "enabled": true,
       "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "/path/to/allowed/files"
+        "$FILESYSTEM_ALLOWED_PATH"
       ],
       "env": {},
       "description": "Provides filesystem access within allowed directories"

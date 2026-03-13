@@ -34,9 +34,21 @@ pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
 nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
-sleep 1
+sleep 2
+# Force-kill anything that didn't respond to SIGTERM
+pkill -9 -f "langgraph dev" 2>/dev/null || true
+pkill -9 -f "langgraph_api" 2>/dev/null || true
+pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+pkill -9 -f "next dev" 2>/dev/null || true
+pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
+# Kill any remaining processes on service ports (catches zombie python processes)
+for port in 2024 8001 3000 2026; do
+    fuser -k "$port/tcp" 2>/dev/null || true
+done
+docker stop deer-flow-lightpanda 2>/dev/null || true
+docker rm deer-flow-lightpanda 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -56,6 +68,7 @@ else
 fi
 echo ""
 echo "Services starting up..."
+echo "  → Lightpanda: Headless Browser"
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
 echo "  → Nginx: Reverse Proxy"
@@ -78,12 +91,19 @@ if ! { \
     exit 1
 fi
 
+# Ensure extensions_config.json exists (MCP servers + skills)
+if [ ! -f "$REPO_ROOT/extensions_config.json" ] && [ -f "$REPO_ROOT/extensions_config.example.json" ]; then
+    echo "Creating extensions_config.json from example..."
+    cp "$REPO_ROOT/extensions_config.example.json" "$REPO_ROOT/extensions_config.json"
+fi
+
 # ── Cleanup trap ─────────────────────────────────────────────────────────────
 
 cleanup() {
     trap - INT TERM
     echo ""
     echo "Shutting down services..."
+    # Send SIGTERM first, then SIGKILL after a grace period to ensure cleanup
     pkill -f "langgraph dev" 2>/dev/null || true
     pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
     pkill -f "next dev" 2>/dev/null || true
@@ -92,12 +112,26 @@ cleanup() {
     # then fall back to pkill/killall for any stray nginx workers.
     if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
         kill -TERM "$NGINX_PID" 2>/dev/null || true
-        sleep 1
+    fi
+    sleep 2
+    # Force-kill anything that didn't respond to SIGTERM
+    pkill -9 -f "langgraph dev" 2>/dev/null || true
+    pkill -9 -f "langgraph_api" 2>/dev/null || true
+    pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+    pkill -9 -f "next dev" 2>/dev/null || true
+    pkill -9 -f "next start" 2>/dev/null || true
+    if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
         kill -9 "$NGINX_PID" 2>/dev/null || true
     fi
     pkill -9 nginx 2>/dev/null || true
     killall -9 nginx 2>/dev/null || true
-    echo "Cleaning up sandbox containers..."
+    # Kill any remaining processes on service ports (catches zombie python processes)
+    for port in 2024 8001 3000 2026; do
+        fuser -k "$port/tcp" 2>/dev/null || true
+    done
+    echo "Cleaning up containers..."
+    docker stop deer-flow-lightpanda 2>/dev/null || true
+    docker rm deer-flow-lightpanda 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -114,6 +148,37 @@ if $DEV_MODE; then
 else
     LANGGRAPH_EXTRA_FLAGS="--no-reload"
     GATEWAY_EXTRA_FLAGS=""
+fi
+
+echo "Starting Lightpanda headless browser..."
+LIGHTPANDA_PORT="${LIGHTPANDA_PORT:-9222}"
+if command -v docker >/dev/null 2>&1; then
+    docker run -d --name deer-flow-lightpanda -p "${LIGHTPANDA_PORT}:9222" \
+        --restart unless-stopped lightpanda/browser:nightly > /dev/null 2>&1
+    ./scripts/wait-for-port.sh "$LIGHTPANDA_PORT" 15 "Lightpanda" || {
+        echo "  ⚠ Lightpanda failed to start. Web fetch/search will not work."
+        echo "  Continuing without Lightpanda..."
+    }
+    echo "✓ Lightpanda started on localhost:${LIGHTPANDA_PORT}"
+else
+    echo "  ⚠ Docker not found — skipping Lightpanda."
+    echo "  Web fetch/search requires Lightpanda. Install Docker or run Lightpanda manually."
+fi
+export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
+export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
+
+# Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
+DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
+mkdir -p "$DEER_FLOW_BASE"
+export FILESYSTEM_ALLOWED_PATH="$DEER_FLOW_BASE"
+
+# Install gomcp MCP server if not present
+if [ ! -f "$REPO_ROOT/bin/gomcp" ]; then
+    echo "Installing gomcp MCP server for Lightpanda..."
+    "$REPO_ROOT/scripts/install-gomcp.sh" || {
+        echo "  ⚠ gomcp installation failed. MCP browser tools will not be available."
+        echo "  Community tool fallbacks (web_search, web_fetch) will still work."
+    }
 fi
 
 echo "Starting LangGraph server..."
@@ -167,15 +232,17 @@ else
 fi
 echo "=========================================="
 echo ""
-echo "  🌐 Application: http://localhost:2026"
-echo "  📡 API Gateway: http://localhost:2026/api/*"
-echo "  🤖 LangGraph:   http://localhost:2026/api/langgraph/*"
+echo "  🌐 Application:  http://localhost:2026"
+echo "  📡 API Gateway:  http://localhost:2026/api/*"
+echo "  🤖 LangGraph:    http://localhost:2026/api/langgraph/*"
+echo "  🌍 Lightpanda:   http://localhost:${LIGHTPANDA_PORT:-9222}"
 echo ""
 echo "  📋 Logs:"
-echo "     - LangGraph: logs/langgraph.log"
-echo "     - Gateway:   logs/gateway.log"
-echo "     - Frontend:  logs/frontend.log"
-echo "     - Nginx:     logs/nginx.log"
+echo "     - LangGraph:   logs/langgraph.log"
+echo "     - Gateway:     logs/gateway.log"
+echo "     - Frontend:    logs/frontend.log"
+echo "     - Nginx:       logs/nginx.log"
+echo "     - Lightpanda:  docker logs deer-flow-lightpanda"
 echo ""
 echo "Press Ctrl+C to stop all services"
 

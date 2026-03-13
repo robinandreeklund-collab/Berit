@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Gateway API** (port 8001): REST API for models, MCP, skills, memory, artifacts, uploads
 - **Frontend** (port 3000): Next.js web interface
 - **LM Studio** (port 8000, external): Local LLM inference via OpenAI-compatible API
+- **Lightpanda** (port 9222): High-performance headless browser for web fetching with JS rendering
 
 ## Project Structure
 
@@ -32,7 +33,7 @@ Berit/
 │   │   ├── models/             # LLM model factory
 │   │   ├── skills/             # Skills discovery and loading
 │   │   ├── config/             # Configuration system
-│   │   ├── community/          # Community tools (Tavily, Jina, Firecrawl, etc.)
+│   │   ├── community/          # Community tools (Lightpanda, Tavily, Jina, Firecrawl, etc.)
 │   │   ├── channels/           # IM integrations (Slack, Telegram, Feishu)
 │   │   └── client.py           # Embedded Python client (DeerFlowClient)
 │   └── tests/                  # Backend test suite
@@ -56,6 +57,7 @@ Berit/
 | Frontend | Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4 |
 | Package Managers | uv (Python), pnpm 10.26.2 (Node.js) |
 | Linting/Formatting | Ruff (Python), ESLint + Prettier (TypeScript) |
+| Browser Engine | Lightpanda (headless, CDP, 14 MCP tools via gomcp) |
 | Infrastructure | Nginx, Docker & Docker Compose |
 | Database | SQLite (checkpointing) |
 
@@ -66,8 +68,8 @@ Berit/
 ```bash
 make check      # Check system requirements (Node, Python, uv, pnpm, Nginx)
 make install    # Install all dependencies (frontend + backend)
-make dev        # Start all services (LangGraph + Gateway + Frontend + Nginx)
-make stop       # Stop all services
+make dev        # Start all services (Lightpanda + LangGraph + Gateway + Frontend + Nginx)
+make stop       # Stop all services (including Lightpanda container)
 make config     # Generate local configuration files from examples
 ```
 

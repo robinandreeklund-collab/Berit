@@ -91,6 +91,23 @@ def present_file_tool(
             update={"messages": [ToolMessage(f"Error: {exc}", tool_call_id=tool_call_id)]},
         )
 
+    # Verify files actually exist on disk before presenting them
+    thread_data = runtime.state.get("thread_data") or {}
+    outputs_dir = Path(thread_data.get("outputs_path", "")).resolve()
+    missing = []
+    for vpath in normalized_paths:
+        # Extract relative path from virtual prefix and resolve against actual outputs dir
+        relative = vpath[len(OUTPUTS_VIRTUAL_PREFIX):].lstrip("/")
+        actual = outputs_dir / relative
+        if not actual.exists():
+            missing.append(vpath)
+
+    if missing:
+        names = ", ".join(missing)
+        return Command(
+            update={"messages": [ToolMessage(f"Error: Files do not exist yet: {names}. Use write_file to create them in /mnt/user-data/outputs/ first, then call present_files again.", tool_call_id=tool_call_id)]},
+        )
+
     # The merge_artifacts reducer will handle merging and deduplication
     return Command(
         update={

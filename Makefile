@@ -32,6 +32,7 @@ config:
 		exit 1; \
 	fi
 	@cp config.example.yaml config.yaml
+	@test -f extensions_config.json || cp extensions_config.example.json extensions_config.json
 	@test -f .env || cp .env.example .env
 	@test -f frontend/.env || cp frontend/.env.example frontend/.env
 
@@ -104,11 +105,19 @@ stop:
 	@-pkill -f "next dev" 2>/dev/null || true
 	@-pkill -f "next start" 2>/dev/null || true
 	@-pkill -f "next-server" 2>/dev/null || true
-	@-pkill -f "next-server" 2>/dev/null || true
 	@-nginx -c $(PWD)/docker/nginx/nginx.local.conf -p $(PWD) -s quit 2>/dev/null || true
-	@sleep 1
+	@sleep 2
+	@-pkill -9 -f "langgraph dev" 2>/dev/null || true
+	@-pkill -9 -f "langgraph_api" 2>/dev/null || true
+	@-pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+	@-pkill -9 -f "next dev" 2>/dev/null || true
+	@-pkill -9 -f "next start" 2>/dev/null || true
+	@-pkill -9 -f "next-server" 2>/dev/null || true
 	@-pkill -9 nginx 2>/dev/null || true
-	@echo "Cleaning up sandbox containers..."
+	@-for port in 2024 8001 3000 2026; do fuser -k "$$port/tcp" 2>/dev/null || true; done
+	@echo "Cleaning up containers..."
+	@-docker stop deer-flow-lightpanda 2>/dev/null || true
+	@-docker rm deer-flow-lightpanda 2>/dev/null || true
 	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 	@echo "✓ All services stopped"
 

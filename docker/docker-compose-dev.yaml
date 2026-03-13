@@ -55,6 +55,23 @@ services:
       retries: 6
       start_period: 15s
 
+  # ── Lightpanda Headless Browser ──────────────────────────────────────
+  # High-performance headless browser for web fetching with JS rendering.
+  # 9x less memory and 11x faster than Chrome.
+  # CDP endpoint available at ws://lightpanda:9222
+  lightpanda:
+    image: lightpanda/browser:nightly
+    container_name: deer-flow-lightpanda
+    networks:
+      - deer-flow-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9222/json/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   # ── Reverse Proxy ──────────────────────────────────────────────────────
   # Routes API traffic to gateway/langgraph and (optionally) provisioner.
   # Select nginx config via NGINX_CONF:
@@ -125,11 +142,15 @@ services:
       # DooD: same as gateway — AioSandboxProvider runs inside LangGraph process.
       - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /app
+    depends_on:
+      - lightpanda
     environment:
       - CI=true
       - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT}/backend/.deer-flow
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+      - LIGHTPANDA_URL=http://lightpanda:9222
+      - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
     env_file:
       - ../.env
     extra_hosts:
@@ -166,11 +187,15 @@ services:
       - DEER_FLOW_HOST_BASE_DIR=${DEER_FLOW_ROOT}/backend/.deer-flow
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
+      - LIGHTPANDA_URL=http://lightpanda:9222
+      - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
     env_file:
       - ../.env
     extra_hosts:
       # For Linux: map host.docker.internal to host gateway
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - lightpanda
     networks:
       - deer-flow-dev
     restart: unless-stopped

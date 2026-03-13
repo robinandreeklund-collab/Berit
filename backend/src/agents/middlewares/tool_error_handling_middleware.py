@@ -15,6 +15,46 @@ logger = logging.getLogger(__name__)
 
 _MISSING_TOOL_CALL_ID = "missing_tool_call_id"
 
+# Known MCP stdio teardown errors that mask the real tool error
+_TEARDOWN_ERROR_TYPES = ("BrokenResourceError", "ClosedResourceError")
+
+
+def _is_mcp_teardown_error(exc: Exception) -> bool:
+    """Return True if the exception is purely MCP stdio session teardown noise."""
+    if not isinstance(exc, BaseExceptionGroup):
+        return False
+    return all(type(e).__name__ in _TEARDOWN_ERROR_TYPES for e in exc.exceptions)
+
+
+def _extract_useful_error(exc: Exception) -> str:
+    """Extract a useful error message, filtering out MCP stdio teardown noise.
+
+    When an MCP stdio tool returns an error, the session teardown can race and
+    raise a BrokenResourceError ExceptionGroup that masks the original message.
+    This function filters those out and returns the most useful detail.
+    """
+    if isinstance(exc, BaseExceptionGroup):
+        # Filter out known teardown errors to find the real cause
+        useful = [e for e in exc.exceptions if type(e).__name__ not in _TEARDOWN_ERROR_TYPES]
+        teardown_only = len(useful) == 0
+        if teardown_only:
+            # All sub-exceptions are teardown artifacts — return a clear message
+            return "MCP tool session closed unexpectedly (possible tool error — check the tool's logs)"
+        # Return the first non-teardown error
+        return str(useful[0]).strip() or type(useful[0]).__name__
+    detail = str(exc).strip()
+    return detail or exc.__class__.__name__
+
+
+def _log_tool_error(exc: Exception, request: ToolCallRequest, mode: str) -> None:
+    """Log tool errors — warning-level for MCP teardown noise, exception-level otherwise."""
+    name = request.tool_call.get("name")
+    call_id = request.tool_call.get("id")
+    if _is_mcp_teardown_error(exc):
+        logger.warning("MCP tool session teardown error (%s): name=%s id=%s — %s", mode, name, call_id, _extract_useful_error(exc))
+    else:
+        logger.exception("Tool execution failed (%s): name=%s id=%s", mode, name, call_id)
+
 
 class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
     """Convert tool exceptions into error ToolMessages so the run can continue."""
@@ -22,7 +62,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
     def _build_error_message(self, request: ToolCallRequest, exc: Exception) -> ToolMessage:
         tool_name = str(request.tool_call.get("name") or "unknown_tool")
         tool_call_id = str(request.tool_call.get("id") or _MISSING_TOOL_CALL_ID)
-        detail = str(exc).strip() or exc.__class__.__name__
+        detail = _extract_useful_error(exc)
         if len(detail) > 500:
             detail = detail[:497] + "..."
 
@@ -49,7 +89,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             # Preserve LangGraph control-flow signals (interrupt/pause/resume).
             raise
         except Exception as exc:
-            logger.exception("Tool execution failed (sync): name=%s id=%s", request.tool_call.get("name"), request.tool_call.get("id"))
+            _log_tool_error(exc, request, "sync")
             return self._build_error_message(request, exc)
 
     @override
@@ -64,7 +104,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             # Preserve LangGraph control-flow signals (interrupt/pause/resume).
             raise
         except Exception as exc:
-            logger.exception("Tool execution failed (async): name=%s id=%s", request.tool_call.get("name"), request.tool_call.get("id"))
+            _log_tool_error(exc, request, "async")
             return self._build_error_message(request, exc)
 
 
