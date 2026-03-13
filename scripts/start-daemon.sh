@@ -19,7 +19,12 @@ pkill -f "langgraph dev" 2>/dev/null || true
 pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
-sleep 1
+sleep 2
+# Force-kill anything that didn't respond to SIGTERM
+pkill -9 -f "langgraph dev" 2>/dev/null || true
+pkill -9 -f "langgraph_api" 2>/dev/null || true
+pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+pkill -9 -f "next dev" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
@@ -65,7 +70,12 @@ cleanup_on_failure() {
     pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
     pkill -f "next dev" 2>/dev/null || true
     nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
-    sleep 1
+    sleep 2
+    # Force-kill anything that didn't respond to SIGTERM
+    pkill -9 -f "langgraph dev" 2>/dev/null || true
+    pkill -9 -f "langgraph_api" 2>/dev/null || true
+    pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+    pkill -9 -f "next dev" 2>/dev/null || true
     pkill -9 nginx 2>/dev/null || true
     echo "✓ Cleanup complete"
 }

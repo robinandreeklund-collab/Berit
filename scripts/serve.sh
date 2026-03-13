@@ -34,7 +34,13 @@ pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
 nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
-sleep 1
+sleep 2
+# Force-kill anything that didn't respond to SIGTERM
+pkill -9 -f "langgraph dev" 2>/dev/null || true
+pkill -9 -f "langgraph_api" 2>/dev/null || true
+pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+pkill -9 -f "next dev" 2>/dev/null || true
+pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
@@ -93,6 +99,7 @@ cleanup() {
     trap - INT TERM
     echo ""
     echo "Shutting down services..."
+    # Send SIGTERM first, then SIGKILL after a grace period to ensure cleanup
     pkill -f "langgraph dev" 2>/dev/null || true
     pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
     pkill -f "next dev" 2>/dev/null || true
@@ -101,7 +108,15 @@ cleanup() {
     # then fall back to pkill/killall for any stray nginx workers.
     if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
         kill -TERM "$NGINX_PID" 2>/dev/null || true
-        sleep 1
+    fi
+    sleep 2
+    # Force-kill anything that didn't respond to SIGTERM
+    pkill -9 -f "langgraph dev" 2>/dev/null || true
+    pkill -9 -f "langgraph_api" 2>/dev/null || true
+    pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+    pkill -9 -f "next dev" 2>/dev/null || true
+    pkill -9 -f "next start" 2>/dev/null || true
+    if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
         kill -9 "$NGINX_PID" 2>/dev/null || true
     fi
     pkill -9 nginx 2>/dev/null || true

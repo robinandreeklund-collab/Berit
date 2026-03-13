@@ -105,9 +105,14 @@ stop:
 	@-pkill -f "next dev" 2>/dev/null || true
 	@-pkill -f "next start" 2>/dev/null || true
 	@-pkill -f "next-server" 2>/dev/null || true
-	@-pkill -f "next-server" 2>/dev/null || true
 	@-nginx -c $(PWD)/docker/nginx/nginx.local.conf -p $(PWD) -s quit 2>/dev/null || true
-	@sleep 1
+	@sleep 2
+	@-pkill -9 -f "langgraph dev" 2>/dev/null || true
+	@-pkill -9 -f "langgraph_api" 2>/dev/null || true
+	@-pkill -9 -f "uvicorn src.gateway.app:app" 2>/dev/null || true
+	@-pkill -9 -f "next dev" 2>/dev/null || true
+	@-pkill -9 -f "next start" 2>/dev/null || true
+	@-pkill -9 -f "next-server" 2>/dev/null || true
 	@-pkill -9 nginx 2>/dev/null || true
 	@echo "Cleaning up containers..."
 	@-docker stop deer-flow-lightpanda 2>/dev/null || true
