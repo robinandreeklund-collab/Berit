@@ -49,6 +49,8 @@ for port in 2024 8001 3000 2026; do
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
+docker stop deer-flow-scb-mcp 2>/dev/null || true
+docker rm deer-flow-scb-mcp 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -69,6 +71,7 @@ fi
 echo ""
 echo "Services starting up..."
 echo "  → Lightpanda: Headless Browser"
+echo "  → SCB MCP: Swedish Statistics"
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
 echo "  → Nginx: Reverse Proxy"
@@ -169,8 +172,32 @@ fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
 export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
-# SCB MCP Server URL — defaults to Render-hosted instance for non-Docker dev.
-# Override with SCB_MCP_URL env var or use Docker Compose (sets http://scb-mcp:3000/mcp).
+# SCB MCP Server — Swedish official statistics (local Docker container)
+SCB_MCP_PORT="${SCB_MCP_PORT:-3100}"
+if [ -z "${SCB_MCP_URL:-}" ] && command -v docker >/dev/null 2>&1; then
+    echo "Starting SCB MCP server..."
+    # Build image if not already built
+    if ! docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
+        echo "  Building SCB MCP Docker image (first time, may take a minute)..."
+        docker build -t deer-flow-scb-mcp -f docker/scb-mcp/Dockerfile . > /dev/null 2>&1 || {
+            echo "  ⚠ SCB MCP Docker image build failed. SCB statistics will not be available."
+            echo "  Falling back to Render-hosted instance..."
+        }
+    fi
+    if docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
+        docker run -d --name deer-flow-scb-mcp -p "${SCB_MCP_PORT}:3000" \
+            -e PORT=3000 --restart unless-stopped deer-flow-scb-mcp > /dev/null 2>&1
+        ./scripts/wait-for-port.sh "$SCB_MCP_PORT" 30 "SCB MCP" || {
+            echo "  ⚠ SCB MCP failed to start. SCB statistics will not be available."
+            echo "  Falling back to Render-hosted instance..."
+        }
+        if docker ps --filter name=deer-flow-scb-mcp --format '{{.Status}}' | grep -q "Up"; then
+            export SCB_MCP_URL="http://localhost:${SCB_MCP_PORT}/mcp"
+            echo "✓ SCB MCP started on localhost:${SCB_MCP_PORT}"
+        fi
+    fi
+fi
+# Fallback to Render-hosted instance if local container is not running
 export SCB_MCP_URL="${SCB_MCP_URL:-https://scb-mcp.onrender.com/mcp}"
 
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
@@ -242,6 +269,7 @@ echo "  🌐 Application:  http://localhost:2026"
 echo "  📡 API Gateway:  http://localhost:2026/api/*"
 echo "  🤖 LangGraph:    http://localhost:2026/api/langgraph/*"
 echo "  🌍 Lightpanda:   http://localhost:${LIGHTPANDA_PORT:-9222}"
+echo "  📊 SCB MCP:      ${SCB_MCP_URL}"
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -249,6 +277,7 @@ echo "     - Gateway:     logs/gateway.log"
 echo "     - Frontend:    logs/frontend.log"
 echo "     - Nginx:       logs/nginx.log"
 echo "     - Lightpanda:  docker logs deer-flow-lightpanda"
+echo "     - SCB MCP:     docker logs deer-flow-scb-mcp"
 echo ""
 echo "Press Ctrl+C to stop all services"
 
