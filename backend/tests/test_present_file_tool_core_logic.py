@@ -50,6 +50,29 @@ def test_present_files_keeps_virtual_outputs_path(tmp_path, monkeypatch):
     assert result.update["artifacts"] == ["/mnt/user-data/outputs/summary.json"]
 
 
+def test_present_files_rejects_nonexistent_file(tmp_path, monkeypatch):
+    outputs_dir = tmp_path / "threads" / "thread-1" / "user-data" / "outputs"
+    outputs_dir.mkdir(parents=True)
+    # File does NOT exist on disk
+    missing_path = outputs_dir / "missing.txt"
+
+    monkeypatch.setattr(
+        present_file_tool_module,
+        "get_paths",
+        lambda: SimpleNamespace(resolve_virtual_path=lambda thread_id, path: missing_path),
+    )
+
+    result = present_file_tool_module.present_file_tool.func(
+        runtime=_make_runtime(str(outputs_dir)),
+        filepaths=["/mnt/user-data/outputs/missing.txt"],
+        tool_call_id="tc-missing",
+    )
+
+    assert "artifacts" not in result.update
+    assert "do not exist yet" in result.update["messages"][0].content
+    assert "write_file" in result.update["messages"][0].content
+
+
 def test_present_files_rejects_paths_outside_outputs(tmp_path):
     outputs_dir = tmp_path / "threads" / "thread-1" / "user-data" / "outputs"
     workspace_dir = tmp_path / "threads" / "thread-1" / "user-data" / "workspace"
