@@ -31,29 +31,29 @@ tool_groups:
 # Tools Configuration
 # ============================================================================
 tools:
-  # ── Web tools ──────────────────────────────────────────────────────────
-  # Primary web browsing is provided by Lightpanda gomcp MCP server
-  # (14 tools: goto, search, markdown, links, click, screenshot, execute_js,
-  #  fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over).
-  # See extensions_config.json → mcpServers.lightpanda
-  #
-  # The community tools below serve as fallbacks and for simple use cases:
-
-  # Web search fallback (Lightpanda + DuckDuckGo, no API key needed)
-  # Alternative: src.community.tavily.tools:web_search_tool (requires Tavily API key)
+  # Web search tool (requires Tavily API key)
   - name: web_search
     group: web
-    use: src.community.lightpanda.tools:web_search_tool
+    use: src.community.tavily.tools:web_search_tool
     max_results: 5
-    timeout: 30
 
-  # Web fetch fallback (Lightpanda headless browser, full JS rendering)
-  # Alternative: src.community.jina_ai.tools:web_fetch_tool (Jina AI, no JS)
+  # Web fetch tool (uses Jina AI reader)
   - name: web_fetch
     group: web
-    use: src.community.lightpanda.tools:web_fetch_tool
-    timeout: 30
-    use_cdp: false
+    use: src.community.jina_ai.tools:web_fetch_tool
+    timeout: 10
+
+  # Alternative: Lightpanda-based tools (no API key, full JS rendering, requires Lightpanda running)
+  # - name: web_search
+  #   group: web
+  #   use: src.community.lightpanda.tools:web_search_tool
+  #   max_results: 5
+  #   timeout: 30
+  # - name: web_fetch
+  #   group: web
+  #   use: src.community.lightpanda.tools:web_fetch_tool
+  #   timeout: 30
+  #   use_cdp: false
 
   # Image search tool (uses DuckDuckGo)
   - name: image_search
