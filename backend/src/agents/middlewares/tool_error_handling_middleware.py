@@ -15,6 +15,29 @@ logger = logging.getLogger(__name__)
 
 _MISSING_TOOL_CALL_ID = "missing_tool_call_id"
 
+# Known MCP stdio teardown errors that mask the real tool error
+_TEARDOWN_ERROR_TYPES = ("BrokenResourceError", "ClosedResourceError")
+
+
+def _extract_useful_error(exc: Exception) -> str:
+    """Extract a useful error message, filtering out MCP stdio teardown noise.
+
+    When an MCP stdio tool returns an error, the session teardown can race and
+    raise a BrokenResourceError ExceptionGroup that masks the original message.
+    This function filters those out and returns the most useful detail.
+    """
+    if isinstance(exc, BaseExceptionGroup):
+        # Filter out known teardown errors to find the real cause
+        useful = [e for e in exc.exceptions if type(e).__name__ not in _TEARDOWN_ERROR_TYPES]
+        teardown_only = len(useful) == 0
+        if teardown_only:
+            # All sub-exceptions are teardown artifacts — return a clear message
+            return "MCP tool session closed unexpectedly (possible tool error — check the tool's logs)"
+        # Return the first non-teardown error
+        return str(useful[0]).strip() or type(useful[0]).__name__
+    detail = str(exc).strip()
+    return detail or exc.__class__.__name__
+
 
 class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
     """Convert tool exceptions into error ToolMessages so the run can continue."""
@@ -22,7 +45,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
     def _build_error_message(self, request: ToolCallRequest, exc: Exception) -> ToolMessage:
         tool_name = str(request.tool_call.get("name") or "unknown_tool")
         tool_call_id = str(request.tool_call.get("id") or _MISSING_TOOL_CALL_ID)
-        detail = str(exc).strip() or exc.__class__.__name__
+        detail = _extract_useful_error(exc)
         if len(detail) > 500:
             detail = detail[:497] + "..."
 
