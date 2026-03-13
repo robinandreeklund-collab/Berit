@@ -53,15 +53,32 @@ async def get_mcp_tools() -> list[BaseTool]:
         if oauth_interceptor is not None:
             tool_interceptors.append(oauth_interceptor)
 
-        client = MultiServerMCPClient(servers_config, tool_interceptors=tool_interceptors)
+        # Load each server independently so one failure doesn't kill all others
+        all_tools: list[BaseTool] = []
+        for server_name, server_config in servers_config.items():
+            tools = await _load_tools_from_server(server_name, {server_name: server_config}, tool_interceptors)
+            all_tools.extend(tools)
 
-        # Get all tools from all servers
-        tools = await client.get_tools()
-        tool_names = [t.name for t in tools]
-        logger.info(f"Successfully loaded {len(tools)} tool(s) from MCP servers: {tool_names}")
+        tool_names = [t.name for t in all_tools]
+        logger.info(f"Successfully loaded {len(all_tools)} total MCP tool(s): {tool_names}")
 
-        return tools
+        return all_tools
 
     except Exception as e:
         logger.error(f"Failed to load MCP tools: {e}", exc_info=True)
+        return []
+
+
+async def _load_tools_from_server(server_name: str, server_config: dict, tool_interceptors: list) -> list[BaseTool]:
+    """Load tools from a single MCP server, returning empty list on failure."""
+    try:
+        from langchain_mcp_adapters.client import MultiServerMCPClient
+
+        client = MultiServerMCPClient(server_config, tool_interceptors=tool_interceptors)
+        tools = await client.get_tools()
+        tool_names = [t.name for t in tools]
+        logger.info(f"Loaded {len(tools)} tool(s) from MCP server '{server_name}': {tool_names}")
+        return tools
+    except Exception as e:
+        logger.error(f"Failed to load tools from MCP server '{server_name}': {e}")
         return []
