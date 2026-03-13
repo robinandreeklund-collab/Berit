@@ -565,12 +565,16 @@ export class SCBMCPServer {
   }
 
   // ---- scb_find_region_code ----
-  private async handleFindRegionCode(args: { query: string; tableId?: string; language?: string }) {
+  private async handleFindRegionCode(args: { query?: string; name?: string; tableId?: string; language?: string }) {
+    const query = args.query || args.name;
+    if (!query || typeof query !== 'string') {
+      return jsonResponse({ error: 'Parametern "query" krävs. Ange ett kommun- eller länsnamn.' });
+    }
     const langValidation = validateLanguage(args.language);
     const language = langValidation.language;
 
     // First: fast local database search
-    const localMatches = searchRegions(args.query);
+    const localMatches = searchRegions(query);
 
     if (localMatches.length > 0 && !args.tableId) {
       const results = localMatches.slice(0, 10).map(r => ({
@@ -581,7 +585,7 @@ export class SCBMCPServer {
       }));
 
       return jsonResponse({
-        query: args.query,
+        query: query,
         matches: results,
         primary_match: results[0],
         usage_example: { Region: [results[0].code] },
@@ -596,16 +600,16 @@ export class SCBMCPServer {
         const metadata = await this.apiClient.getTableMetadata(args.tableId, language);
         if (metadata.dimension?.Region) {
           const regionDim = metadata.dimension.Region;
-          const normalizedQuery = normalizeForSearch(args.query);
+          const normalizedQuery = normalizeForSearch(query);
           const matches = Object.entries(regionDim.category.label || {}).filter(([code, label]) => {
             const normalizedLabel = normalizeForSearch(label);
-            return normalizedLabel.includes(normalizedQuery) || code === args.query || code.includes(args.query);
+            return normalizedLabel.includes(normalizedQuery) || code === query || code.includes(query);
           });
 
           if (matches.length > 0) {
             const results = matches.slice(0, 10).map(([code, label]) => ({ code, name: label }));
             return jsonResponse({
-              query: args.query,
+              query: query,
               matches: results,
               primary_match: results[0],
               usage_example: { Region: [results[0].code] },
@@ -623,7 +627,7 @@ export class SCBMCPServer {
         code: r.code, name: r.name, type: r.type,
       }));
       return jsonResponse({
-        query: args.query,
+        query: query,
         matches: results,
         primary_match: results[0],
         usage_example: { Region: [results[0].code] },
@@ -632,9 +636,9 @@ export class SCBMCPServer {
     }
 
     return jsonResponse({
-      query: args.query,
+      query: query,
       matches: [],
-      error: `Ingen region hittades för "${args.query}"`,
+      error: `Ingen region hittades för "${query}"`,
       tips: [
         'Försök med svenskt namn: "Göteborg" istället för "Gothenburg"',
         'Fuzzy-matching fungerar: "Goteborg" hittar "Göteborg"',
@@ -645,6 +649,9 @@ export class SCBMCPServer {
 
   // ---- scb_search_regions ----
   private async handleSearchRegions(args: { query: string }) {
+    if (!args.query || typeof args.query !== 'string') {
+      return jsonResponse({ error: 'Parametern "query" krävs. Ange ett regionnamn eller kod.' });
+    }
     const matches = searchRegions(args.query);
 
     if (matches.length === 0) {
