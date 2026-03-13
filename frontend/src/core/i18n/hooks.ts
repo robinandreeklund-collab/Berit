@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useI18nContext } from "./context";
 import { getLocaleFromCookie, setLocaleInCookie } from "./cookies";
 import { enUS } from "./locales/en-US";
+import { svSE } from "./locales/sv-SE";
 import { zhCN } from "./locales/zh-CN";
 
 import {
@@ -17,6 +18,7 @@ import {
 
 const translations: Record<Locale, Translations> = {
   "en-US": enUS,
+  "sv-SE": svSE,
   "zh-CN": zhCN,
 };
 
