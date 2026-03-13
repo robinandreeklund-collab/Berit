@@ -34,6 +34,7 @@ pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
 pkill -f "dist/http-server.js" 2>/dev/null || true
+pkill -f "dist/streamable-http-server.js" 2>/dev/null || true
 nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
 sleep 2
 # Force-kill anything that didn't respond to SIGTERM
@@ -45,13 +46,15 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100; do
+for port in 2024 8001 3000 2026 3100 3101; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 docker stop deer-flow-scb-mcp 2>/dev/null || true
 docker rm deer-flow-scb-mcp 2>/dev/null || true
+docker stop deer-flow-skolverket-mcp 2>/dev/null || true
+docker rm deer-flow-skolverket-mcp 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -73,6 +76,7 @@ echo ""
 echo "Services starting up..."
 echo "  → Lightpanda: Headless Browser"
 echo "  → SCB MCP: Swedish Statistics"
+echo "  → Skolverket MCP: Swedish Education"
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
 echo "  → Nginx: Reverse Proxy"
@@ -133,8 +137,12 @@ cleanup() {
     if [ -n "${SCB_MCP_PID:-}" ] && kill -0 "$SCB_MCP_PID" 2>/dev/null; then
         kill "$SCB_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Skolverket MCP Node.js process if running
+    if [ -n "${SKOLVERKET_MCP_PID:-}" ] && kill -0 "$SKOLVERKET_MCP_PID" 2>/dev/null; then
+        kill "$SKOLVERKET_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100; do
+    for port in 2024 8001 3000 2026 3100 3101; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -142,6 +150,8 @@ cleanup() {
     docker rm deer-flow-lightpanda 2>/dev/null || true
     docker stop deer-flow-scb-mcp 2>/dev/null || true
     docker rm deer-flow-scb-mcp 2>/dev/null || true
+    docker stop deer-flow-skolverket-mcp 2>/dev/null || true
+    docker rm deer-flow-skolverket-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -236,6 +246,65 @@ if [ -z "${SCB_MCP_URL:-}" ]; then
 fi
 export SCB_MCP_URL="${SCB_MCP_URL:-}"
 
+# Skolverket MCP Server — Swedish education data
+SKOLVERKET_MCP_PORT="${SKOLVERKET_MCP_PORT:-3101}"
+SKOLVERKET_MCP_DIR="$REPO_ROOT/.skolverket-mcp"
+if [ -z "${SKOLVERKET_MCP_URL:-}" ]; then
+    echo "Starting Skolverket MCP server..."
+    SKOLVERKET_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $SKOLVERKET_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-skolverket-mcp >/dev/null 2>&1; then
+            echo "  Building Skolverket MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-skolverket-mcp -f docker/skolverket-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-skolverket-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-skolverket-mcp -p "${SKOLVERKET_MCP_PORT}:3000" \
+                -e PORT=3000 --restart unless-stopped deer-flow-skolverket-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$SKOLVERKET_MCP_PORT" 30 "Skolverket MCP" || true
+            if docker ps --filter name=deer-flow-skolverket-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export SKOLVERKET_MCP_URL="http://localhost:${SKOLVERKET_MCP_PORT}/mcp"
+                echo "✓ Skolverket MCP started via Docker on localhost:${SKOLVERKET_MCP_PORT}"
+                SKOLVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $SKOLVERKET_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Skolverket MCP with Node.js..."
+        if [ ! -f "$SKOLVERKET_MCP_DIR/dist/streamable-http-server.js" ]; then
+            echo "  Cloning and building Skolverket-MCP (first time)..."
+            rm -rf "$SKOLVERKET_MCP_DIR"
+            git clone --depth 1 https://github.com/isakskogstad/Skolverket-MCP.git "$SKOLVERKET_MCP_DIR" > /dev/null 2>&1 && \
+            (cd "$SKOLVERKET_MCP_DIR" && npm ci --ignore-scripts > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Skolverket MCP build failed. Swedish education tools will not be available."
+                rm -rf "$SKOLVERKET_MCP_DIR"
+            }
+        fi
+        if [ -f "$SKOLVERKET_MCP_DIR/dist/streamable-http-server.js" ]; then
+            PORT="$SKOLVERKET_MCP_PORT" node "$SKOLVERKET_MCP_DIR/dist/streamable-http-server.js" > logs/skolverket-mcp.log 2>&1 &
+            SKOLVERKET_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$SKOLVERKET_MCP_PORT" 15 "Skolverket MCP" || {
+                echo "  ⚠ Skolverket MCP failed to start."
+                kill "$SKOLVERKET_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$SKOLVERKET_MCP_PID" 2>/dev/null; then
+                export SKOLVERKET_MCP_URL="http://localhost:${SKOLVERKET_MCP_PORT}/mcp"
+                echo "✓ Skolverket MCP started via Node.js on localhost:${SKOLVERKET_MCP_PORT}"
+                SKOLVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $SKOLVERKET_MCP_STARTED; then
+        echo "  ⚠ Skolverket MCP could not be started. Swedish education tools will not be available."
+        echo "  Install Docker or Node.js to enable Skolverket MCP."
+    fi
+fi
+export SKOLVERKET_MCP_URL="${SKOLVERKET_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -306,6 +375,7 @@ echo "  📡 API Gateway:  http://localhost:2026/api/*"
 echo "  🤖 LangGraph:    http://localhost:2026/api/langgraph/*"
 echo "  🌍 Lightpanda:   http://localhost:${LIGHTPANDA_PORT:-9222}"
 echo "  📊 SCB MCP:      ${SCB_MCP_URL}"
+echo "  🎓 Skolverket:   ${SKOLVERKET_MCP_URL}"
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -317,6 +387,11 @@ if [ -n "${SCB_MCP_PID:-}" ]; then
     echo "     - SCB MCP:     logs/scb-mcp.log"
 else
     echo "     - SCB MCP:     docker logs deer-flow-scb-mcp"
+fi
+if [ -n "${SKOLVERKET_MCP_PID:-}" ]; then
+    echo "     - Skolverket:  logs/skolverket-mcp.log"
+else
+    echo "     - Skolverket:  docker logs deer-flow-skolverket-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"

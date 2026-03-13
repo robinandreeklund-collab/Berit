@@ -91,6 +91,25 @@ services:
       timeout: 5s
       retries: 3
 
+  # ── Skolverket MCP Server (Swedish education data) ───────────────────
+  # Provides access to Skolverket APIs: Syllabus, School Units Registry, Planned Educations.
+  # HTTP MCP endpoint at http://skolverket-mcp:3000/mcp
+  skolverket-mcp:
+    build:
+      context: ../
+      dockerfile: docker/skolverket-mcp/Dockerfile
+    container_name: deer-flow-skolverket-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # ── Reverse Proxy ──────────────────────────────────────────────────────
   # Routes API traffic to gateway/langgraph and (optionally) provisioner.
   # Select nginx config via NGINX_CONF:
@@ -171,6 +190,7 @@ services:
       - LIGHTPANDA_URL=http://lightpanda:9222
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
+      - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -210,6 +230,7 @@ services:
       - LIGHTPANDA_URL=http://lightpanda:9222
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
+      - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:

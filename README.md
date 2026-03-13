@@ -210,6 +210,17 @@ The [SCB MCP server](https://github.com/isakskogstad/SCB-MCP) provides access to
 SCB_MCP_URL=https://scb-mcp.onrender.com/mcp
 ```
 
+##### Skolverket MCP (Swedish Education Data)
+
+The [Skolverket MCP server](https://github.com/isakskogstad/Skolverket-MCP) provides access to Swedish education data via Skolverket's open APIs — curricula (läroplaner), syllabi (kursplaner), school unit registry (skolenhetsregistret), and planned educations (yrkeshögskola, komvux, SFI). 41 tools, 4 resources, 5 prompt templates.
+
+**Docker (default):** Runs as a sidecar container (`skolverket-mcp`) in Docker Compose. No configuration needed — it's enabled by default in `extensions_config.example.json`.
+
+**Without Docker:** Falls back to the Render-hosted instance automatically. Override by setting `SKOLVERKET_MCP_URL` in `.env`:
+```bash
+SKOLVERKET_MCP_URL=https://skolverket-mcp.onrender.com/mcp
+```
+
 #### IM Channels
 
 DeerFlow supports receiving tasks from messaging apps. Channels auto-start when configured — no public IP required for any of them.

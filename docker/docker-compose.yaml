@@ -78,6 +78,7 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
+      - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -112,6 +113,7 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_REPO_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
+      - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -129,6 +131,23 @@ services:
       context: ../
       dockerfile: docker/scb-mcp/Dockerfile
     container_name: deer-flow-scb-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Skolverket MCP Server (Swedish education data) ──────────────────
+  skolverket-mcp:
+    build:
+      context: ../
+      dockerfile: docker/skolverket-mcp/Dockerfile
+    container_name: deer-flow-skolverket-mcp
     environment:
       - PORT=3000
     networks:

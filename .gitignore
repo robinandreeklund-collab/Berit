@@ -31,6 +31,8 @@ bin/
 
 # SCB MCP local clone (built by serve.sh when Docker unavailable)
 .scb-mcp/
+# Skolverket MCP local clone (built by serve.sh when Docker unavailable)
+.skolverket-mcp/
 
 # IDE
 .idea/
