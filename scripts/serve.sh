@@ -313,7 +313,11 @@ echo "     - Gateway:     logs/gateway.log"
 echo "     - Frontend:    logs/frontend.log"
 echo "     - Nginx:       logs/nginx.log"
 echo "     - Lightpanda:  docker logs deer-flow-lightpanda"
-echo "     - SCB MCP:     docker logs deer-flow-scb-mcp"
+if [ -n "${SCB_MCP_PID:-}" ]; then
+    echo "     - SCB MCP:     logs/scb-mcp.log"
+else
+    echo "     - SCB MCP:     docker logs deer-flow-scb-mcp"
+fi
 echo ""
 echo "Press Ctrl+C to stop all services"
 
