@@ -16,6 +16,9 @@ WORKDIR /app
 COPY --from=build /app/package.json /app/package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/README.md ./
 ENV PORT=3000
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+# CRITICAL: http-server.js runs the Express HTTP server (Streamable HTTP MCP).
+# index.js is the stdio transport version and does NOT listen on any port.
+CMD ["node", "dist/http-server.js"]
