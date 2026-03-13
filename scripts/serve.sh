@@ -33,6 +33,7 @@ pkill -f "langgraph dev" 2>/dev/null || true
 pkill -f "uvicorn src.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
+pkill -f "dist/http-server.js" 2>/dev/null || true
 nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
 sleep 2
 # Force-kill anything that didn't respond to SIGTERM
@@ -44,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026; do
+for port in 2024 8001 3000 2026 3100; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
@@ -128,8 +129,12 @@ cleanup() {
     fi
     pkill -9 nginx 2>/dev/null || true
     killall -9 nginx 2>/dev/null || true
+    # Kill SCB MCP Node.js process if running
+    if [ -n "${SCB_MCP_PID:-}" ] && kill -0 "$SCB_MCP_PID" 2>/dev/null; then
+        kill "$SCB_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026; do
+    for port in 2024 8001 3000 2026 3100; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -172,33 +177,64 @@ fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
 export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
-# SCB MCP Server — Swedish official statistics (local Docker container)
+# SCB MCP Server — Swedish official statistics
 SCB_MCP_PORT="${SCB_MCP_PORT:-3100}"
-if [ -z "${SCB_MCP_URL:-}" ] && command -v docker >/dev/null 2>&1; then
+SCB_MCP_DIR="$REPO_ROOT/.scb-mcp"
+if [ -z "${SCB_MCP_URL:-}" ]; then
     echo "Starting SCB MCP server..."
-    # Build image if not already built
-    if ! docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
-        echo "  Building SCB MCP Docker image (first time, may take a minute)..."
-        docker build -t deer-flow-scb-mcp -f docker/scb-mcp/Dockerfile . > /dev/null 2>&1 || {
-            echo "  ⚠ SCB MCP Docker image build failed. SCB statistics will not be available."
-            echo "  Falling back to Render-hosted instance..."
-        }
-    fi
-    if docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
-        docker run -d --name deer-flow-scb-mcp -p "${SCB_MCP_PORT}:3000" \
-            -e PORT=3000 --restart unless-stopped deer-flow-scb-mcp > /dev/null 2>&1
-        ./scripts/wait-for-port.sh "$SCB_MCP_PORT" 30 "SCB MCP" || {
-            echo "  ⚠ SCB MCP failed to start. SCB statistics will not be available."
-            echo "  Falling back to Render-hosted instance..."
-        }
-        if docker ps --filter name=deer-flow-scb-mcp --format '{{.Status}}' | grep -q "Up"; then
-            export SCB_MCP_URL="http://localhost:${SCB_MCP_PORT}/mcp"
-            echo "✓ SCB MCP started on localhost:${SCB_MCP_PORT}"
+    SCB_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $SCB_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
+            echo "  Building SCB MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-scb-mcp -f docker/scb-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-scb-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-scb-mcp -p "${SCB_MCP_PORT}:3000" \
+                -e PORT=3000 --restart unless-stopped deer-flow-scb-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$SCB_MCP_PORT" 30 "SCB MCP" || true
+            if docker ps --filter name=deer-flow-scb-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export SCB_MCP_URL="http://localhost:${SCB_MCP_PORT}/mcp"
+                echo "✓ SCB MCP started via Docker on localhost:${SCB_MCP_PORT}"
+                SCB_MCP_STARTED=true
+            fi
         fi
     fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $SCB_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting SCB MCP with Node.js..."
+        if [ ! -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Cloning and building SCB-MCP (first time)..."
+            rm -rf "$SCB_MCP_DIR"
+            git clone --depth 1 https://github.com/isakskogstad/SCB-MCP.git "$SCB_MCP_DIR" > /dev/null 2>&1 && \
+            (cd "$SCB_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ SCB MCP build failed. SCB statistics will not be available."
+                rm -rf "$SCB_MCP_DIR"
+            }
+        fi
+        if [ -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$SCB_MCP_PORT" node "$SCB_MCP_DIR/dist/http-server.js" > logs/scb-mcp.log 2>&1 &
+            SCB_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$SCB_MCP_PORT" 15 "SCB MCP" || {
+                echo "  ⚠ SCB MCP failed to start."
+                kill "$SCB_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$SCB_MCP_PID" 2>/dev/null; then
+                export SCB_MCP_URL="http://localhost:${SCB_MCP_PORT}/mcp"
+                echo "✓ SCB MCP started via Node.js on localhost:${SCB_MCP_PORT}"
+                SCB_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $SCB_MCP_STARTED; then
+        echo "  ⚠ SCB MCP could not be started. Swedish statistics tools will not be available."
+        echo "  Install Docker or Node.js to enable SCB MCP."
+    fi
 fi
-# Fallback to Render-hosted instance if local container is not running
-export SCB_MCP_URL="${SCB_MCP_URL:-https://scb-mcp.onrender.com/mcp}"
+export SCB_MCP_URL="${SCB_MCP_URL:-}"
 
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"

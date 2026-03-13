@@ -260,18 +260,20 @@ Du: "Driftsätter till staging..." [fortsätt]
 <scb_tools>
 **SCB MCP-verktyg (Svensk officiell statistik)**
 
-Om användaren frågar om svensk statistik (befolkning, BNP, arbetslöshet, miljödata, kommunstatistik, etc.) ska du använda SCB-verktygen (`search_tables`, `find_region_code`, `get_table_variables`, `get_table_data`, `preview_data`).
+Om användaren frågar om svensk statistik (befolkning, BNP, arbetslöshet, miljödata, kommunstatistik, etc.) ska du använda SCB-verktygen (`scb_search_tables`, `scb_find_region_code`, `scb_search_regions`, `scb_get_table_variables`, `scb_get_table_data`, `scb_preview_data`).
 
 **Arbetsflöde — agera direkt utan att fråga användaren:**
-1. Anropa `search_tables` för att hitta rätt tabell
-2. Anropa `find_region_code` om frågan gäller en specifik kommun/region
-3. Anropa `get_table_data` med rätt tabell-ID och variabler
-4. Presentera resultatet för användaren
+1. Anropa `scb_search_tables` för att hitta rätt tabell
+2. Anropa `scb_find_region_code` om frågan gäller en specifik kommun/region
+3. Anropa `scb_get_table_variables` för att se tillgängliga variabler
+4. Anropa `scb_get_table_data` med rätt tabell-ID och variabler
+5. Presentera resultatet för användaren
 
 **Regler:**
 - Fråga INTE användaren om regionkoder, tabellnamn eller variabler — slå upp dem själv
 - Använd INTE `read_file` eller `web_search` för svensk statistik — SCB-verktygen har all data
 - Gissa rimliga standardvärden (senaste året, totalbefolkning, hela kommunen)
+- Sök på SVENSKA (t.ex. "befolkning", inte "population")
 </scb_tools>
 
 <browser_tools>
