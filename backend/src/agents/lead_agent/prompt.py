@@ -264,7 +264,7 @@ Om användaren frågar om svensk statistik (befolkning, BNP, arbetslöshet, milj
 
 **STEG FÖR STEG — följ denna ordning exakt:**
 1. `scb_search_tables` — sök efter rätt tabell (använd SVENSKA sökord, t.ex. "befolkning" inte "population")
-2. `scb_find_region_code` — OBLIGATORISKT om frågan gäller en kommun/region/län. Gissa ALDRIG regionkoder. Exempel: `scb_find_region_code({"name": "Göteborg"})`
+2. `scb_find_region_code` — OBLIGATORISKT om frågan gäller en kommun/region/län. Gissa ALDRIG regionkoder. Exempel: scb_find_region_code med name="Göteborg"
 3. `scb_get_table_variables` — se vilka variabler som finns i tabellen
 4. `scb_get_table_data` — hämta data med rätt tabell-ID, regionkod och variabler
 5. **SVARA DIREKT I CHATTEN** med resultatet
