@@ -530,8 +530,8 @@ export class SCBMCPServer {
       errors: result.errors,
       suggestions: result.suggestions,
       next_step: result.isValid
-        ? `Redo! Kör: scb_fetch({tableId: "${args.tableId}", selection: ${JSON.stringify(result.completedSelection)})`
-        : 'Åtgärda felen ovan och kör scb_validate igen',
+        ? `Redo! Kör: scb_fetch({tableId: "${args.tableId}", selection: ${JSON.stringify(result.completedSelection)}})`
+        : `Fel hittades — men du kan köra scb_fetch direkt ändå (den auto-kompletterar). Kör: scb_fetch({tableId: "${args.tableId}", selection: ${JSON.stringify(result.completedSelection)}})`,
     });
   }
 
