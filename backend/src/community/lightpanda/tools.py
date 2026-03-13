@@ -22,17 +22,11 @@ def web_fetch_tool(url: str) -> str:
     """
     config = get_app_config().get_tool_config("web_fetch")
     timeout = 30
-    use_cdp = False
     if config is not None:
         timeout = config.model_extra.get("timeout", timeout)
-        use_cdp = config.model_extra.get("use_cdp", use_cdp)
 
     client = LightpandaClient()
-
-    if use_cdp:
-        html_content = client.fetch_cdp(url, timeout=timeout)
-    else:
-        html_content = client.fetch(url, timeout=timeout)
+    html_content = client.fetch(url, timeout=timeout)
 
     if html_content.startswith("Error:"):
         return html_content

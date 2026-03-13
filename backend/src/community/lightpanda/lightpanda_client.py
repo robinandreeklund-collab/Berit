@@ -25,10 +25,11 @@ class LightpandaClient:
         self._session_id: str | None = None
 
     def fetch(self, url: str, timeout: int = 30) -> str:
-        """Fetch a URL using Lightpanda's built-in fetch endpoint.
+        """Fetch a URL using Lightpanda CDP WebSocket protocol.
 
-        Uses the /json/fetch CDP-compatible endpoint for simple page retrieval
-        with full JavaScript rendering.
+        Connects to Lightpanda's CDP WebSocket endpoint, navigates to the URL,
+        waits for the page to load (including JavaScript execution), and returns
+        the rendered HTML.
 
         Args:
             url: The URL to fetch and render.
@@ -38,63 +39,12 @@ class LightpandaClient:
             The rendered HTML content of the page.
         """
         try:
-            fetch_url = f"{self.base_url}/json/fetch?url={requests.utils.quote(url, safe='')}"
-            response = requests.get(fetch_url, timeout=timeout)
-
-            if response.status_code != 200:
-                error_message = f"Lightpanda returned status {response.status_code}: {response.text}"
-                logger.error(error_message)
-                return f"Error: {error_message}"
-
-            if not response.text or not response.text.strip():
-                error_message = "Lightpanda returned empty response"
-                logger.error(error_message)
-                return f"Error: {error_message}"
-
-            return response.text
-
-        except requests.exceptions.ConnectionError:
-            error_message = f"Could not connect to Lightpanda at {self.base_url}. Ensure Lightpanda is running (e.g., docker run -d -p 9222:9222 lightpanda/browser:nightly)"
-            logger.error(error_message)
-            return f"Error: {error_message}"
-        except Exception as e:
-            error_message = f"Lightpanda fetch failed: {str(e)}"
-            logger.error(error_message)
-            return f"Error: {error_message}"
-
-    def fetch_cdp(self, url: str, timeout: int = 30, wait_for_idle: bool = True) -> str:
-        """Fetch a URL using CDP WebSocket protocol for full page rendering.
-
-        Connects to Lightpanda's CDP WebSocket endpoint, navigates to the URL,
-        waits for the page to load (including JavaScript execution), and returns
-        the rendered HTML.
-
-        Args:
-            url: The URL to navigate to and render.
-            timeout: Maximum wait time in seconds.
-            wait_for_idle: Whether to wait for network idle before extracting content.
-
-        Returns:
-            The fully rendered HTML content of the page.
-        """
-        try:
             import websocket
         except ImportError:
-            logger.warning("websocket-client not installed. Install with: uv add websocket-client")
-            return self.fetch(url, timeout=timeout)
+            logger.error("websocket-client not installed. Install with: uv add websocket-client")
+            return "Error: websocket-client package not installed. Run: uv add websocket-client"
 
-        ws_url = None
-        try:
-            # Get the CDP WebSocket URL from the /json/version endpoint
-            version_response = requests.get(f"{self.base_url}/json/version", timeout=5)
-            if version_response.status_code == 200:
-                version_data = version_response.json()
-                ws_url = version_data.get("webSocketDebuggerUrl")
-        except Exception:
-            pass
-
-        if not ws_url:
-            ws_url = f"ws://{self.base_url.replace('http://', '').replace('https://', '')}"
+        ws_url = self._get_ws_url()
 
         try:
             ws = websocket.create_connection(ws_url, timeout=timeout)
@@ -110,9 +60,8 @@ class LightpandaClient:
             msg_id += 1
             _read_cdp_response(ws, msg_id - 1, timeout)
 
-            if wait_for_idle:
-                # Wait for Page.loadEventFired
-                _wait_for_event(ws, "Page.loadEventFired", timeout)
+            # Wait for Page.loadEventFired
+            _wait_for_event(ws, "Page.loadEventFired", timeout)
 
             # Get the rendered HTML
             ws.send(json.dumps({"id": msg_id, "method": "Runtime.evaluate", "params": {"expression": "document.documentElement.outerHTML", "returnByValue": True}}))
@@ -125,16 +74,31 @@ class LightpandaClient:
                 if "result" in inner and "value" in inner["result"]:
                     return inner["result"]["value"]
 
-            return f"Error: Could not extract page content from CDP response"
+            return "Error: Could not extract page content from CDP response"
 
-        except requests.exceptions.ConnectionError:
-            error_message = f"Could not connect to Lightpanda at {self.base_url}. Ensure Lightpanda is running."
+        except ConnectionRefusedError:
+            error_message = f"Could not connect to Lightpanda at {ws_url}. Ensure Lightpanda is running (docker run -d -p 9222:9222 lightpanda/browser:nightly)"
             logger.error(error_message)
             return f"Error: {error_message}"
         except Exception as e:
             error_message = f"Lightpanda CDP fetch failed: {str(e)}"
             logger.error(error_message)
             return f"Error: {error_message}"
+
+    def _get_ws_url(self) -> str:
+        """Get the CDP WebSocket URL from Lightpanda's /json/version endpoint."""
+        try:
+            version_response = requests.get(f"{self.base_url}/json/version", timeout=5)
+            if version_response.status_code == 200:
+                version_data = version_response.json()
+                ws_url = version_data.get("webSocketDebuggerUrl")
+                if ws_url:
+                    return ws_url
+        except Exception:
+            pass
+
+        # Fallback: construct WebSocket URL from base URL
+        return f"ws://{self.base_url.replace('http://', '').replace('https://', '')}"
 
 
 def _read_cdp_response(ws, expected_id: int, timeout: float) -> dict | None:

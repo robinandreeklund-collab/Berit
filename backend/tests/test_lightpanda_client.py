@@ -23,71 +23,71 @@ class TestLightpandaClient:
         client = LightpandaClient()
         assert client.base_url == "http://env-lightpanda:9222"
 
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_success(self, mock_get):
-        """Test successful fetch operation."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "<html><body><h1>Hello World</h1></body></html>"
-        mock_get.return_value = mock_response
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_success(self, mock_ws_url, mock_create_conn):
+        """Test successful fetch via CDP WebSocket."""
+        mock_ws = MagicMock()
+        mock_create_conn.return_value = mock_ws
+
+        # Simulate CDP responses: Page.enable, Page.navigate, Page.loadEventFired, Runtime.evaluate
+        html_content = "<html><body><h1>Hello World</h1></body></html>"
+        mock_ws.recv.side_effect = [
+            json.dumps({"id": 1}),  # Page.enable response
+            json.dumps({"id": 2}),  # Page.navigate response
+            json.dumps({"method": "Page.loadEventFired"}),  # load event
+            json.dumps({"id": 3, "result": {"result": {"value": html_content}}}),  # Runtime.evaluate
+        ]
 
         client = LightpandaClient()
         result = client.fetch("https://example.com")
 
-        assert result == "<html><body><h1>Hello World</h1></body></html>"
-        mock_get.assert_called_once()
-        args, kwargs = mock_get.call_args
-        assert "example.com" in args[0]
-        assert kwargs["timeout"] == 30
+        assert result == html_content
+        mock_create_conn.assert_called_once_with("ws://localhost:9222", timeout=30)
 
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_custom_timeout(self, mock_get):
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_custom_timeout(self, mock_ws_url, mock_create_conn):
         """Test fetch with custom timeout."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "<html></html>"
-        mock_get.return_value = mock_response
+        mock_ws = MagicMock()
+        mock_create_conn.return_value = mock_ws
+
+        mock_ws.recv.side_effect = [
+            json.dumps({"id": 1}),
+            json.dumps({"id": 2}),
+            json.dumps({"method": "Page.loadEventFired"}),
+            json.dumps({"id": 3, "result": {"result": {"value": "<html></html>"}}}),
+        ]
 
         client = LightpandaClient()
         client.fetch("https://example.com", timeout=60)
 
-        _, kwargs = mock_get.call_args
-        assert kwargs["timeout"] == 60
+        mock_create_conn.assert_called_once_with("ws://localhost:9222", timeout=60)
 
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_non_200_status(self, mock_get):
-        """Test fetch operation with non-200 status code."""
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
-        mock_get.return_value = mock_response
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_no_content_in_response(self, mock_ws_url, mock_create_conn):
+        """Test fetch when CDP returns no content."""
+        mock_ws = MagicMock()
+        mock_create_conn.return_value = mock_ws
 
-        client = LightpandaClient()
-        result = client.fetch("https://example.com")
-
-        assert result.startswith("Error:")
-        assert "500" in result
-
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_empty_response(self, mock_get):
-        """Test fetch operation with empty response."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = ""
-        mock_get.return_value = mock_response
+        mock_ws.recv.side_effect = [
+            json.dumps({"id": 1}),
+            json.dumps({"id": 2}),
+            json.dumps({"method": "Page.loadEventFired"}),
+            json.dumps({"id": 3, "result": {}}),  # No result.value
+        ]
 
         client = LightpandaClient()
         result = client.fetch("https://example.com")
 
         assert result.startswith("Error:")
-        assert "empty" in result.lower()
 
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_connection_error(self, mock_get):
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_connection_error(self, mock_ws_url, mock_create_conn):
         """Test fetch when Lightpanda is not running."""
-        import requests
-
-        mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
+        mock_create_conn.side_effect = ConnectionRefusedError("Connection refused")
 
         client = LightpandaClient()
         result = client.fetch("https://example.com")
@@ -95,10 +95,11 @@ class TestLightpandaClient:
         assert result.startswith("Error:")
         assert "connect" in result.lower()
 
-    @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_generic_exception(self, mock_get):
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_generic_exception(self, mock_ws_url, mock_create_conn):
         """Test fetch with unexpected exception."""
-        mock_get.side_effect = Exception("Unexpected error")
+        mock_create_conn.side_effect = Exception("Unexpected error")
 
         client = LightpandaClient()
         result = client.fetch("https://example.com")
@@ -107,19 +108,27 @@ class TestLightpandaClient:
         assert "Unexpected error" in result
 
     @patch("src.community.lightpanda.lightpanda_client.requests.get")
-    def test_fetch_url_encoding(self, mock_get):
-        """Test that URLs with special characters are properly encoded."""
+    def test_get_ws_url_from_version_endpoint(self, mock_get):
+        """Test _get_ws_url fetches URL from /json/version."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.text = "<html></html>"
+        mock_response.json.return_value = {"webSocketDebuggerUrl": "ws://localhost:9222/devtools/browser/abc"}
         mock_get.return_value = mock_response
 
         client = LightpandaClient()
-        client.fetch("https://example.com/path?q=hello world&lang=sv")
+        ws_url = client._get_ws_url()
 
-        args, _ = mock_get.call_args
-        # The URL should be properly encoded
-        assert "example.com" in args[0]
+        assert ws_url == "ws://localhost:9222/devtools/browser/abc"
+
+    @patch("src.community.lightpanda.lightpanda_client.requests.get")
+    def test_get_ws_url_fallback(self, mock_get):
+        """Test _get_ws_url falls back to constructed URL when /json/version fails."""
+        mock_get.side_effect = Exception("Connection refused")
+
+        client = LightpandaClient()
+        ws_url = client._get_ws_url()
+
+        assert ws_url == "ws://localhost:9222"
 
 
 class TestLightpandaTools:
@@ -130,7 +139,7 @@ class TestLightpandaTools:
         from src.community.lightpanda import tools
 
         mock_config = MagicMock()
-        mock_config.get_tool_config.return_value = MagicMock(model_extra={"timeout": 30, "use_cdp": False})
+        mock_config.get_tool_config.return_value = MagicMock(model_extra={"timeout": 30})
         mock_get_config.return_value = mock_config
 
         mock_client = MagicMock()
@@ -141,25 +150,6 @@ class TestLightpandaTools:
 
         assert "Test" in result
         mock_client.fetch.assert_called_once_with("https://example.com", timeout=30)
-
-    @patch("src.community.lightpanda.tools.LightpandaClient")
-    @patch("src.community.lightpanda.tools.get_app_config")
-    def test_web_fetch_tool_cdp_mode(self, mock_get_config, mock_client_class):
-        """Test web_fetch_tool uses CDP when configured."""
-        from src.community.lightpanda import tools
-
-        mock_config = MagicMock()
-        mock_config.get_tool_config.return_value = MagicMock(model_extra={"timeout": 30, "use_cdp": True})
-        mock_get_config.return_value = mock_config
-
-        mock_client = MagicMock()
-        mock_client.fetch_cdp.return_value = "<html><head><title>CDP Page</title></head><body><p>CDP content</p></body></html>"
-        mock_client_class.return_value = mock_client
-
-        result = tools.web_fetch_tool.run("https://example.com")
-
-        assert "CDP" in result
-        mock_client.fetch_cdp.assert_called_once_with("https://example.com", timeout=30)
 
     @patch("src.community.lightpanda.tools.LightpandaClient")
     @patch("src.community.lightpanda.tools.get_app_config")

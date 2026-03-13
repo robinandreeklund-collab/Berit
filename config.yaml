@@ -43,7 +43,6 @@ tools:
     group: web
     use: src.community.lightpanda.tools:web_fetch_tool
     timeout: 30
-    use_cdp: false
 
   # Alternative: API-based tools (require API keys in .env)
   # - name: web_search
