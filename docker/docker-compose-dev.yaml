@@ -150,6 +150,7 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - LIGHTPANDA_URL=http://lightpanda:9222
+      - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
     env_file:
       - ../.env
     extra_hosts:
@@ -187,6 +188,7 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - LIGHTPANDA_URL=http://lightpanda:9222
+      - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
     env_file:
       - ../.env
     extra_hosts:

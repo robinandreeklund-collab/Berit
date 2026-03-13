@@ -137,6 +137,15 @@ else
 fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
 
+# Install gomcp MCP server if not present
+if [ ! -f "$REPO_ROOT/bin/gomcp" ]; then
+    echo "Installing gomcp MCP server for Lightpanda..."
+    "$REPO_ROOT/scripts/install-gomcp.sh" || {
+        echo "  ⚠ gomcp installation failed. MCP browser tools will not be available."
+        echo "  Community tool fallbacks (web_search, web_fetch) will still work."
+    }
+fi
+
 echo "Starting LangGraph server..."
 (cd backend && NO_COLOR=1 uv run langgraph dev --no-browser --allow-blocking $LANGGRAPH_EXTRA_FLAGS > ../logs/langgraph.log 2>&1) &
 ./scripts/wait-for-port.sh 2024 60 "LangGraph" || {

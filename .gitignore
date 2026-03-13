@@ -26,6 +26,9 @@ venv/
 mcp_config.json
 extensions_config.json
 
+# Downloaded binaries (gomcp, etc.)
+bin/
+
 # IDE
 .idea/
 .vscode/

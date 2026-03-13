@@ -75,6 +75,51 @@ def test_build_servers_config_returns_empty_when_no_enabled_servers():
     assert build_servers_config(extensions) == {}
 
 
+def test_build_server_params_lightpanda_gomcp():
+    """Test that Lightpanda gomcp MCP server config is correctly built."""
+    config = McpServerConfig(
+        enabled=True,
+        type="stdio",
+        command="./scripts/run-gomcp.sh",
+        args=[],
+        env={"LIGHTPANDA_CDP_URL": "ws://localhost:9222"},
+        description="Lightpanda headless browser",
+    )
+
+    params = build_server_params("lightpanda", config)
+
+    assert params == {
+        "transport": "stdio",
+        "command": "./scripts/run-gomcp.sh",
+        "args": [],
+        "env": {"LIGHTPANDA_CDP_URL": "ws://localhost:9222"},
+    }
+
+
+def test_build_servers_config_includes_lightpanda_when_enabled():
+    """Test that Lightpanda is included in the assembled server config."""
+    extensions = ExtensionsConfig(
+        mcp_servers={
+            "lightpanda": McpServerConfig(
+                enabled=True,
+                type="stdio",
+                command="./scripts/run-gomcp.sh",
+                args=[],
+                env={"LIGHTPANDA_CDP_URL": "ws://lightpanda:9222"},
+            ),
+            "filesystem": McpServerConfig(enabled=False, type="stdio", command="npx", args=["-y", "fs-server"]),
+        },
+        skills={},
+    )
+
+    result = build_servers_config(extensions)
+
+    assert "lightpanda" in result
+    assert result["lightpanda"]["command"] == "./scripts/run-gomcp.sh"
+    assert result["lightpanda"]["env"]["LIGHTPANDA_CDP_URL"] == "ws://lightpanda:9222"
+    assert "filesystem" not in result
+
+
 def test_build_servers_config_skips_invalid_server_and_keeps_valid_ones():
     extensions = ExtensionsConfig(
         mcp_servers={

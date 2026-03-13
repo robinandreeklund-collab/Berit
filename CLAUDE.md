@@ -57,6 +57,7 @@ Berit/
 | Frontend | Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4 |
 | Package Managers | uv (Python), pnpm 10.26.2 (Node.js) |
 | Linting/Formatting | Ruff (Python), ESLint + Prettier (TypeScript) |
+| Browser Engine | Lightpanda (headless, CDP, 14 MCP tools via gomcp) |
 | Infrastructure | Nginx, Docker & Docker Compose |
 | Database | SQLite (checkpointing) |
 
@@ -67,8 +68,8 @@ Berit/
 ```bash
 make check      # Check system requirements (Node, Python, uv, pnpm, Nginx)
 make install    # Install all dependencies (frontend + backend)
-make dev        # Start all services (LangGraph + Gateway + Frontend + Nginx)
-make stop       # Stop all services
+make dev        # Start all services (Lightpanda + LangGraph + Gateway + Frontend + Nginx)
+make stop       # Stop all services (including Lightpanda container)
 make config     # Generate local configuration files from examples
 ```
 

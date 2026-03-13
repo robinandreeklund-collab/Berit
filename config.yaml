@@ -31,7 +31,15 @@ tool_groups:
 # Tools Configuration
 # ============================================================================
 tools:
-  # Web search tool (Lightpanda + DuckDuckGo, no API key needed)
+  # ── Web tools ──────────────────────────────────────────────────────────
+  # Primary web browsing is provided by Lightpanda gomcp MCP server
+  # (14 tools: goto, search, markdown, links, click, screenshot, execute_js,
+  #  fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over).
+  # See extensions_config.json → mcpServers.lightpanda
+  #
+  # The community tools below serve as fallbacks and for simple use cases:
+
+  # Web search fallback (Lightpanda + DuckDuckGo, no API key needed)
   # Alternative: src.community.tavily.tools:web_search_tool (requires Tavily API key)
   - name: web_search
     group: web
@@ -39,10 +47,8 @@ tools:
     max_results: 5
     timeout: 30
 
-  # Web fetch tool (uses Lightpanda headless browser for full JS rendering)
-  # Alternative options:
-  #   src.community.jina_ai.tools:web_fetch_tool     (Jina AI reader, no JS)
-  #   src.community.firecrawl.tools:web_fetch_tool   (Firecrawl API, no JS)
+  # Web fetch fallback (Lightpanda headless browser, full JS rendering)
+  # Alternative: src.community.jina_ai.tools:web_fetch_tool (Jina AI, no JS)
   - name: web_fetch
     group: web
     use: src.community.lightpanda.tools:web_fetch_tool
