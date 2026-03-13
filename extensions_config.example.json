@@ -69,6 +69,17 @@
       "headers": {},
       "oauth": null,
       "description": "SCB — Sveriges officiella statistik via PxWebAPI 2.0. 1200+ tabeller: befolkning, ekonomi, miljö, arbetsmarknad, utbildning. 75+ års historisk data."
+    },
+    "skolverket": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$SKOLVERKET_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Skolverket — Sveriges utbildningsdata. Läroplaner (LGR22, GY25), skolenhetsregistret, vuxenutbildning (YH, SFI, Komvux), gymnasieprogram. 37 verktyg."
     }
   },
   "skills": {}

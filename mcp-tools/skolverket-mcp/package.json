@@ -1,0 +1,90 @@
+{
+  "name": "skolverket-mcp",
+  "mcpName": "io.github.KSAklfszf921/skolverket-mcp",
+  "version": "2.7.0",
+  "description": "MCP server för alla Skolverkets öppna API:er - Läroplan API, Skolenhetsregistret och Planned Educations API",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "skolverket-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "server.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build",
+    "start": "node dist/index.js",
+    "start:http": "node dist/http-server.js",
+    "start:streamable": "node dist/streamable-http-server.js",
+    "test": "vitest",
+    "lint": "tsc --noEmit",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write ."
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "skolverket",
+    "läroplan",
+    "utbildning",
+    "education",
+    "sweden",
+    "curriculum",
+    "skolenheter",
+    "school-units",
+    "vuxenutbildning",
+    "adult-education",
+    "yrkeshögskola",
+    "komvux",
+    "sfi",
+    "model-context-protocol",
+    "anthropic",
+    "claude",
+    "chatgpt",
+    "ai",
+    "llm"
+  ],
+  "author": {
+    "name": "Isak Skogstad",
+    "email": "isak.skogstad@me.com",
+    "url": "https://x.com/isakskogstad"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KSAklfszf921/Skolverket-MCP.git"
+  },
+  "homepage": "https://github.com/KSAklfszf921/Skolverket-MCP#readme",
+  "bugs": {
+    "url": "https://github.com/KSAklfszf921/Skolverket-MCP/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "axios": "^1.7.9",
+    "axios-retry": "^4.5.0",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "p-limit": "^7.2.0",
+    "uuid": "^13.0.0",
+    "winston": "^3.18.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/node": "^22.10.2",
+    "@types/uuid": "^10.0.0",
+    "@vitest/expect": "^4.0.14",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
