@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Frontend** (port 3000): Next.js web interface
 - **LM Studio** (port 8000, external): Local LLM inference via OpenAI-compatible API
 - **Lightpanda** (port 9222): High-performance headless browser for web fetching with JS rendering
-- **SCB MCP** (port 3000, Docker sidecar): Swedish official statistics via PxWebAPI 2.0
+- **SCB MCP v3.0** (port 3000, Docker sidecar): Swedish official statistics via PxWebAPI 2.0 — 7-tool pipeline with caching, auto-complete, and markdown output
 
 ## Project Structure
 
@@ -46,8 +46,10 @@ Berit/
 ├── skills/                     # Agent skills library
 │   ├── public/                 # Public skills (19 built-in)
 │   └── custom/                 # Custom skills (gitignored)
+├── mcp-tools/                  # MCP tool servers (local source)
+│   └── scb-mcp/               # SCB MCP v3.0 (forked & enhanced from isakskogstad/SCB-MCP)
 ├── docker/                     # Docker Compose & Nginx configs
-│   └── scb-mcp/               # SCB MCP server Dockerfile
+│   └── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 

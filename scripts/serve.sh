@@ -179,7 +179,7 @@ export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # SCB MCP Server — Swedish official statistics
 SCB_MCP_PORT="${SCB_MCP_PORT:-3100}"
-SCB_MCP_DIR="$REPO_ROOT/.scb-mcp"
+SCB_MCP_DIR="$REPO_ROOT/mcp-tools/scb-mcp"
 if [ -z "${SCB_MCP_URL:-}" ]; then
     echo "Starting SCB MCP server..."
     SCB_MCP_STARTED=false
@@ -206,12 +206,9 @@ if [ -z "${SCB_MCP_URL:-}" ]; then
     if ! $SCB_MCP_STARTED && command -v node >/dev/null 2>&1; then
         echo "  Docker unavailable, starting SCB MCP with Node.js..."
         if [ ! -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
-            echo "  Cloning and building SCB-MCP (first time)..."
-            rm -rf "$SCB_MCP_DIR"
-            git clone --depth 1 https://github.com/isakskogstad/SCB-MCP.git "$SCB_MCP_DIR" > /dev/null 2>&1 && \
+            echo "  Building SCB MCP from local source (first time)..."
             (cd "$SCB_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
                 echo "  ⚠ SCB MCP build failed. SCB statistics will not be available."
-                rm -rf "$SCB_MCP_DIR"
             }
         fi
         if [ -f "$SCB_MCP_DIR/dist/http-server.js" ]; then
