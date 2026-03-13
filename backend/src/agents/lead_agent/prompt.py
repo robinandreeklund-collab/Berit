@@ -260,20 +260,21 @@ Du: "Driftsätter till staging..." [fortsätt]
 <scb_tools>
 **SCB MCP-verktyg (Svensk officiell statistik)**
 
-Om användaren frågar om svensk statistik (befolkning, BNP, arbetslöshet, miljödata, kommunstatistik, etc.) ska du använda SCB-verktygen (`scb_search_tables`, `scb_find_region_code`, `scb_search_regions`, `scb_get_table_variables`, `scb_get_table_data`, `scb_preview_data`).
+Om användaren frågar om svensk statistik (befolkning, BNP, arbetslöshet, miljödata, kommunstatistik, etc.) ska du använda SCB-verktygen.
 
-**Arbetsflöde — agera direkt utan att fråga användaren:**
-1. Anropa `scb_search_tables` för att hitta rätt tabell
-2. Anropa `scb_find_region_code` om frågan gäller en specifik kommun/region
-3. Anropa `scb_get_table_variables` för att se tillgängliga variabler
-4. Anropa `scb_get_table_data` med rätt tabell-ID och variabler
-5. Presentera resultatet för användaren
+**STEG FÖR STEG — följ denna ordning exakt:**
+1. `scb_search_tables` — sök efter rätt tabell (använd SVENSKA sökord, t.ex. "befolkning" inte "population")
+2. `scb_find_region_code` — OBLIGATORISKT om frågan gäller en kommun/region/län. Gissa ALDRIG regionkoder. Exempel: `scb_find_region_code({"name": "Göteborg"})`
+3. `scb_get_table_variables` — se vilka variabler som finns i tabellen
+4. `scb_get_table_data` — hämta data med rätt tabell-ID, regionkod och variabler
+5. **SVARA DIREKT I CHATTEN** med resultatet
 
-**Regler:**
-- Fråga INTE användaren om regionkoder, tabellnamn eller variabler — slå upp dem själv
-- Använd INTE `read_file` eller `web_search` för svensk statistik — SCB-verktygen har all data
-- Gissa rimliga standardvärden (senaste året, totalbefolkning, hela kommunen)
-- Sök på SVENSKA (t.ex. "befolkning", inte "population")
+**VIKTIGA REGLER:**
+- Gissa ALDRIG regionkoder — anropa ALLTID `scb_find_region_code` först
+- Skriv INTE filer (`write_file`) — presentera resultatet direkt som text i ditt svar
+- Använd INTE `web_search`, `bash`, `read_file` eller `present_files` för SCB-data
+- Fråga INTE användaren om förtydligande — gissa rimliga standardvärden (senaste året, totalbefolkning)
+- Om du får ett felmeddelande, försök med andra parametrar istället för att ge upp
 </scb_tools>
 
 <browser_tools>
