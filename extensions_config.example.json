@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "lightpanda": {
-      "enabled": true,
+      "enabled": false,
       "type": "stdio",
       "command": "./scripts/run-gomcp.sh",
       "args": [],
