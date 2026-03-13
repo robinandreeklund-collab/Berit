@@ -108,7 +108,9 @@ stop:
 	@-nginx -c $(PWD)/docker/nginx/nginx.local.conf -p $(PWD) -s quit 2>/dev/null || true
 	@sleep 1
 	@-pkill -9 nginx 2>/dev/null || true
-	@echo "Cleaning up sandbox containers..."
+	@echo "Cleaning up containers..."
+	@-docker stop deer-flow-lightpanda 2>/dev/null || true
+	@-docker rm deer-flow-lightpanda 2>/dev/null || true
 	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 	@echo "✓ All services stopped"
 
