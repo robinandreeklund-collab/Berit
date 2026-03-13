@@ -8,6 +8,9 @@
       "env": {
         "LIGHTPANDA_CDP_URL": "$LIGHTPANDA_CDP_URL"
       },
+      "url": null,
+      "headers": {},
+      "oauth": null,
       "description": "Lightpanda headless browser — 14 tools: goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over"
     },
     "filesystem": {
@@ -20,6 +23,9 @@
         "$FILESYSTEM_ALLOWED_PATH"
       ],
       "env": {},
+      "url": null,
+      "headers": {},
+      "oauth": null,
       "description": "Provides filesystem access within allowed directories"
     },
     "github": {
@@ -33,6 +39,9 @@
       "env": {
         "GITHUB_TOKEN": "$GITHUB_TOKEN"
       },
+      "url": null,
+      "headers": {},
+      "oauth": null,
       "description": "GitHub MCP server for repository operations"
     },
     "postgres": {
@@ -45,13 +54,20 @@
         "postgresql://localhost/mydb"
       ],
       "env": {},
+      "url": null,
+      "headers": {},
+      "oauth": null,
       "description": "PostgreSQL database access"
     },
     "scb": {
       "enabled": true,
       "type": "http",
-      "url": "$SCB_MCP_URL",
+      "command": null,
+      "args": [],
       "env": {},
+      "url": "$SCB_MCP_URL",
+      "headers": {},
+      "oauth": null,
       "description": "SCB — Sveriges officiella statistik via PxWebAPI 2.0. 1200+ tabeller: befolkning, ekonomi, miljö, arbetsmarknad, utbildning. 75+ års historisk data."
     }
   },
