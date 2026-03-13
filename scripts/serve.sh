@@ -132,6 +132,8 @@ cleanup() {
     echo "Cleaning up containers..."
     docker stop deer-flow-lightpanda 2>/dev/null || true
     docker rm deer-flow-lightpanda 2>/dev/null || true
+    docker stop deer-flow-scb-mcp 2>/dev/null || true
+    docker rm deer-flow-scb-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -166,6 +168,10 @@ else
 fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
 export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
+
+# SCB MCP Server URL — defaults to Render-hosted instance for non-Docker dev.
+# Override with SCB_MCP_URL env var or use Docker Compose (sets http://scb-mcp:3000/mcp).
+export SCB_MCP_URL="${SCB_MCP_URL:-https://scb-mcp.onrender.com/mcp}"
 
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"

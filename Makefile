@@ -118,6 +118,8 @@ stop:
 	@echo "Cleaning up containers..."
 	@-docker stop deer-flow-lightpanda 2>/dev/null || true
 	@-docker rm deer-flow-lightpanda 2>/dev/null || true
+	@-docker stop deer-flow-scb-mcp 2>/dev/null || true
+	@-docker rm deer-flow-scb-mcp 2>/dev/null || true
 	@-./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 	@echo "✓ All services stopped"
 

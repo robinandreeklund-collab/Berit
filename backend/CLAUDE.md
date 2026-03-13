@@ -228,6 +228,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 - **OAuth (HTTP/SSE)**: Supports token endpoint flows (`client_credentials`, `refresh_token`) with automatic token refresh + Authorization header injection
 - **Runtime updates**: Gateway API saves to extensions_config.json; LangGraph detects via mtime
 - **Lightpanda gomcp**: Pre-configured MCP server providing 14 browser tools (goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over). Installed via `scripts/install-gomcp.sh`, launched via `scripts/run-gomcp.sh` wrapper that respects `LIGHTPANDA_CDP_URL` env var.
+- **SCB MCP**: Swedish official statistics (1,200+ tables) via HTTP transport. Runs as Docker sidecar (`http://scb-mcp:3000/mcp`) or falls back to Render-hosted instance (`https://scb-mcp.onrender.com/mcp`). URL configured via `$SCB_MCP_URL` env var. Source: [isakskogstad/SCB-MCP](https://github.com/isakskogstad/SCB-MCP). Tools: `search_tables`, `find_region_code`, `get_table_variables`, `get_table_data`, `preview_data`.
 
 ### Skills System (`src/skills/`)
 

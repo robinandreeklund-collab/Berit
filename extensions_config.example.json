@@ -46,6 +46,13 @@
       ],
       "env": {},
       "description": "PostgreSQL database access"
+    },
+    "scb": {
+      "enabled": true,
+      "type": "http",
+      "url": "$SCB_MCP_URL",
+      "env": {},
+      "description": "SCB — Sveriges officiella statistik via PxWebAPI 2.0. 1200+ tabeller: befolkning, ekonomi, miljö, arbetsmarknad, utbildning. 75+ års historisk data."
     }
   },
   "skills": {}
