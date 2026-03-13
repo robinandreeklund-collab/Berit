@@ -110,6 +110,11 @@ fi
 export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
 export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
+# Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
+DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
+mkdir -p "$DEER_FLOW_BASE"
+export FILESYSTEM_ALLOWED_PATH="$DEER_FLOW_BASE"
+
 # Install gomcp MCP server if not present
 if [ ! -f "$REPO_ROOT/bin/gomcp" ]; then
     echo "Installing gomcp MCP server for Lightpanda..."

@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LIGHTPANDA_URL = "http://localhost:9222"
 
+# Seconds to wait for Page.loadEventFired before proceeding anyway
+_LOAD_EVENT_FALLBACK_TIMEOUT = 5
+
 
 class LightpandaClient:
     """Client for Lightpanda headless browser via Chrome DevTools Protocol (CDP).
@@ -50,18 +53,14 @@ class LightpandaClient:
             ws = websocket.create_connection(ws_url, timeout=timeout)
             msg_id = 1
 
-            # Enable Page domain
-            ws.send(json.dumps({"id": msg_id, "method": "Page.enable"}))
-            msg_id += 1
-            _read_cdp_response(ws, msg_id - 1, timeout)
-
-            # Navigate to URL
+            # Navigate to URL (skip Page.enable — Lightpanda doesn't need it)
             ws.send(json.dumps({"id": msg_id, "method": "Page.navigate", "params": {"url": url}}))
             msg_id += 1
             _read_cdp_response(ws, msg_id - 1, timeout)
 
-            # Wait for Page.loadEventFired
-            _wait_for_event(ws, "Page.loadEventFired", timeout)
+            # Wait for Page.loadEventFired with a short fallback timeout
+            # Lightpanda may not always fire this event, so we don't block forever
+            _wait_for_event(ws, "Page.loadEventFired", min(_LOAD_EVENT_FALLBACK_TIMEOUT, timeout))
 
             # Get the rendered HTML
             ws.send(json.dumps({"id": msg_id, "method": "Runtime.evaluate", "params": {"expression": "document.documentElement.outerHTML", "returnByValue": True}}))
@@ -105,6 +104,11 @@ def _read_cdp_response(ws, expected_id: int, timeout: float) -> dict | None:
     """Read CDP WebSocket messages until we get the response for expected_id."""
     import time
 
+    try:
+        from websocket import WebSocketConnectionClosedException
+    except ImportError:
+        WebSocketConnectionClosedException = Exception
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -113,14 +117,25 @@ def _read_cdp_response(ws, expected_id: int, timeout: float) -> dict | None:
             msg = json.loads(raw)
             if msg.get("id") == expected_id:
                 return msg
-        except Exception:
+        except WebSocketConnectionClosedException:
+            logger.warning(f"WebSocket closed while waiting for CDP response id={expected_id}")
+            break
+        except (TimeoutError, OSError):
+            break
+        except Exception as e:
+            logger.debug(f"Unexpected error reading CDP response: {e}")
             break
     return None
 
 
 def _wait_for_event(ws, event_name: str, timeout: float) -> dict | None:
-    """Wait for a specific CDP event."""
+    """Wait for a specific CDP event with a timeout fallback."""
     import time
+
+    try:
+        from websocket import WebSocketConnectionClosedException
+    except ImportError:
+        WebSocketConnectionClosedException = Exception
 
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -130,6 +145,13 @@ def _wait_for_event(ws, event_name: str, timeout: float) -> dict | None:
             msg = json.loads(raw)
             if msg.get("method") == event_name:
                 return msg
-        except Exception:
+        except WebSocketConnectionClosedException:
+            logger.debug(f"WebSocket closed while waiting for event '{event_name}' — proceeding anyway")
+            break
+        except (TimeoutError, OSError):
+            # Timeout reached — proceed without the event
+            break
+        except Exception as e:
+            logger.debug(f"Error waiting for event '{event_name}': {e}")
             break
     return None

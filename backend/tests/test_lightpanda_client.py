@@ -30,13 +30,12 @@ class TestLightpandaClient:
         mock_ws = MagicMock()
         mock_create_conn.return_value = mock_ws
 
-        # Simulate CDP responses: Page.enable, Page.navigate, Page.loadEventFired, Runtime.evaluate
+        # Simulate CDP responses: Page.navigate, Page.loadEventFired, Runtime.evaluate
         html_content = "<html><body><h1>Hello World</h1></body></html>"
         mock_ws.recv.side_effect = [
-            json.dumps({"id": 1}),  # Page.enable response
-            json.dumps({"id": 2}),  # Page.navigate response
+            json.dumps({"id": 1}),  # Page.navigate response
             json.dumps({"method": "Page.loadEventFired"}),  # load event
-            json.dumps({"id": 3, "result": {"result": {"value": html_content}}}),  # Runtime.evaluate
+            json.dumps({"id": 2, "result": {"result": {"value": html_content}}}),  # Runtime.evaluate
         ]
 
         client = LightpandaClient()
@@ -54,9 +53,8 @@ class TestLightpandaClient:
 
         mock_ws.recv.side_effect = [
             json.dumps({"id": 1}),
-            json.dumps({"id": 2}),
             json.dumps({"method": "Page.loadEventFired"}),
-            json.dumps({"id": 3, "result": {"result": {"value": "<html></html>"}}}),
+            json.dumps({"id": 2, "result": {"result": {"value": "<html></html>"}}}),
         ]
 
         client = LightpandaClient()
@@ -73,9 +71,8 @@ class TestLightpandaClient:
 
         mock_ws.recv.side_effect = [
             json.dumps({"id": 1}),
-            json.dumps({"id": 2}),
             json.dumps({"method": "Page.loadEventFired"}),
-            json.dumps({"id": 3, "result": {}}),  # No result.value
+            json.dumps({"id": 2, "result": {}}),  # No result.value
         ]
 
         client = LightpandaClient()
@@ -106,6 +103,44 @@ class TestLightpandaClient:
 
         assert result.startswith("Error:")
         assert "Unexpected error" in result
+
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_load_event_timeout_fallback(self, mock_ws_url, mock_create_conn):
+        """Test fetch proceeds when Page.loadEventFired never arrives (timeout fallback)."""
+        mock_ws = MagicMock()
+        mock_create_conn.return_value = mock_ws
+
+        html_content = "<html><body>Loaded without event</body></html>"
+        # Page.navigate response, then timeout on loadEventFired (OSError), then Runtime.evaluate
+        mock_ws.recv.side_effect = [
+            json.dumps({"id": 1}),  # Page.navigate response
+            TimeoutError("recv timed out"),  # loadEventFired never arrives
+            json.dumps({"id": 2, "result": {"result": {"value": html_content}}}),  # Runtime.evaluate
+        ]
+
+        client = LightpandaClient()
+        result = client.fetch("https://example.com")
+
+        assert result == html_content
+
+    @patch("websocket.create_connection")
+    @patch.object(LightpandaClient, "_get_ws_url", return_value="ws://localhost:9222")
+    def test_fetch_websocket_closed_during_navigate(self, mock_ws_url, mock_create_conn):
+        """Test fetch handles WebSocket closed during navigation gracefully."""
+        mock_ws = MagicMock()
+        mock_create_conn.return_value = mock_ws
+
+        # Import the actual exception class for realistic testing
+        from websocket import WebSocketConnectionClosedException
+
+        mock_ws.recv.side_effect = WebSocketConnectionClosedException("socket is already closed")
+
+        client = LightpandaClient()
+        result = client.fetch("https://example.com")
+
+        # Should return an error, not crash
+        assert result.startswith("Error:")
 
     @patch("src.community.lightpanda.lightpanda_client.requests.get")
     def test_get_ws_url_from_version_endpoint(self, mock_get):
