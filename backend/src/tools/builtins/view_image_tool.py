@@ -18,19 +18,19 @@ def view_image_tool(
     image_path: str,
     tool_call_id: Annotated[str, InjectedToolCallId],
 ) -> Command:
-    """Läs en bildfil.
+    """Read an image file.
 
-    Använd detta verktyg för att läsa en bildfil och göra den tillgänglig för visning.
+    Use this tool to read an image file and make it available for viewing.
 
-    När du ska använda view_image-verktyget:
-    - När du behöver visa en bildfil.
+    When to use the view_image tool:
+    - When you need to view an image file.
 
-    När du INTE ska använda view_image-verktyget:
-    - För icke-bildfiler (använd present_files istället)
-    - För flera filer samtidigt (använd present_files istället)
+    When NOT to use the view_image tool:
+    - For non-image files (use present_files instead)
+    - For multiple files simultaneously (use present_files instead)
 
     Args:
-        image_path: Absolut sökväg till bildfilen. Vanliga format som stöds: jpg, jpeg, png, webp.
+        image_path: Absolute path to the image file. Common supported formats: jpg, jpeg, png, webp.
     """
     # Replace virtual path with actual path
     # /mnt/user-data/* paths are mapped to thread-specific directories

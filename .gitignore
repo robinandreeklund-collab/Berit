@@ -29,6 +29,9 @@ extensions_config.json
 # Downloaded binaries (gomcp, etc.)
 bin/
 
+# SCB MCP local clone (built by serve.sh when Docker unavailable)
+.scb-mcp/
+
 # IDE
 .idea/
 .vscode/

@@ -27,35 +27,35 @@ def task_tool(
     tool_call_id: Annotated[str, InjectedToolCallId],
     max_turns: int | None = None,
 ) -> str:
-    """Delegera en uppgift till en specialiserad underagent som körs i sin egen kontext. Skriv prompt på svenska.
+    """Delegate a task to a specialized subagent that runs in its own context. Write the prompt in Swedish.
 
-    Underagenter hjälper dig att:
-    - Bevara kontext genom att hålla utforskning och implementering separata
-    - Hantera komplexa flerstegsuppgifter självständigt
-    - Utföra kommandon eller operationer i isolerade kontexter
+    Subagents help you:
+    - Preserve context by keeping exploration and implementation separate
+    - Handle complex multi-step tasks independently
+    - Execute commands or operations in isolated contexts
 
-    Tillgängliga underagenttyper:
-    - **general-purpose**: En kapabel agent för komplexa flerstegsuppgifter som kräver
-      både utforskning och handling. Använd när uppgiften kräver komplext resonemang,
-      flera beroende steg, eller skulle gynnas av isolerad kontext.
-    - **bash**: Kommandoexekveringsspecialist för bash-kommandon. Använd för
-      git-operationer, byggprocesser eller när kommandoutdata är utförlig.
+    Available subagent types:
+    - **general-purpose**: A capable agent for complex multi-step tasks requiring
+      both exploration and action. Use when the task requires complex reasoning,
+      multiple dependent steps, or would benefit from isolated context.
+    - **bash**: Command execution specialist for bash commands. Use for
+      git operations, build processes, or when command output is verbose.
 
-    När du ska använda detta verktyg:
-    - Komplexa uppgifter som kräver flera steg eller verktyg
-    - Uppgifter som producerar utförlig utdata
-    - När du vill isolera kontext från huvudkonversationen
-    - Parallella forsknings- eller utforskningsuppgifter
+    When to use this tool:
+    - Complex tasks requiring multiple steps or tools
+    - Tasks that produce verbose output
+    - When you want to isolate context from the main conversation
+    - Parallel research or exploration tasks
 
-    När du INTE ska använda detta verktyg:
-    - Enkla enstegoperationer (använd verktyg direkt)
-    - Uppgifter som kräver användarinteraktion eller förtydligande
+    When NOT to use this tool:
+    - Simple single-step operations (use tools directly)
+    - Tasks requiring user interaction or clarification
 
     Args:
-        description: En kort (3-5 ord) beskrivning av uppgiften för loggning/visning. ANGE ALLTID DENNA PARAMETER FÖRST.
-        prompt: Uppgiftsbeskrivningen för underagenten. Var specifik och tydlig om vad som behöver göras. Skriv på svenska. ANGE ALLTID DENNA PARAMETER SOM ANDRA.
-        subagent_type: Typ av underagent att använda. ANGE ALLTID DENNA PARAMETER SOM TREDJE.
-        max_turns: Valfritt maximalt antal agentomgångar. Standardvärde: underagentens konfigurerade max.
+        description: A short (3-5 word) description of the task for logging/display. ALWAYS SPECIFY THIS PARAMETER FIRST.
+        prompt: The task description for the subagent. Be specific and clear about what needs to be done. Write in Swedish. ALWAYS SPECIFY THIS PARAMETER SECOND.
+        subagent_type: Type of subagent to use. ALWAYS SPECIFY THIS PARAMETER THIRD.
+        max_turns: Optional maximum number of agent turns. Default: subagent's configured max.
     """
     # Get subagent configuration
     config = get_subagent_config(subagent_type)

@@ -27,7 +27,7 @@ class TitleConfig(BaseModel):
         description="Model name to use for title generation (None = use default model)",
     )
     prompt_template: str = Field(
-        default=("Generera en koncis titel på SVENSKA (max {max_words} ord) för denna konversation.\nAnvändare: {user_msg}\nAssistent: {assistant_msg}\n\nReturnera ENBART titeln på svenska, inga citattecken, ingen förklaring."),
+        default=("Generate a concise title in SWEDISH (max {max_words} words) for this conversation.\nUser: {user_msg}\nAssistant: {assistant_msg}\n\nReturn ONLY the title in Swedish, no quotes, no explanation."),
         description="Prompt template for title generation",
     )
 
