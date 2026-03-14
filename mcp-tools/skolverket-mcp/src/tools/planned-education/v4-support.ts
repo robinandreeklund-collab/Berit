@@ -6,6 +6,16 @@ import { z } from 'zod';
 import { plannedEducationApi } from '../../api/planned-education-client.js';
 import { cache, CacheTTL, withCache } from '../../utils/cache.js';
 
+/**
+ * Helper: extract the data array from a v4 API response.
+ * The v4 API wraps all responses in { status, message, body }.
+ * For support endpoints, body is typically an array.
+ */
+function extractBody(result: any): any[] {
+  const body = result?.body ?? result;
+  return Array.isArray(body) ? body : [];
+}
+
 // ===== SCHOOL TYPES V4 =====
 
 export const getSchoolTypesV4Schema = {};
@@ -16,15 +26,17 @@ export async function getSchoolTypesV4() {
       'school-types-v4',
       CacheTTL.SUPPORT_DATA,
       () => plannedEducationApi.getSchoolTypesV4()
-    );
+    ) as any;
+
+    const schoolTypes = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalSchoolTypes: result.schoolTypes.length,
-            schoolTypes: result.schoolTypes
+            totalSchoolTypes: schoolTypes.length,
+            schoolTypes
           }, null, 2)
         }
       ]
@@ -52,15 +64,18 @@ export async function getGeographicalAreasV4() {
       'geographical-areas-v4',
       CacheTTL.SUPPORT_DATA,
       () => plannedEducationApi.getGeographicalAreasV4()
-    );
+    ) as any;
+
+    const geographicalAreas = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalAreas: result.geographicalAreas.length,
-            geographicalAreas: result.geographicalAreas
+            totalAreas: geographicalAreas.length,
+            geographicalAreas: geographicalAreas.slice(0, 100),
+            note: geographicalAreas.length > 100 ? `Visar 100 av ${geographicalAreas.length} områden.` : undefined
           }, null, 2)
         }
       ]
@@ -84,15 +99,17 @@ export const getPrincipalOrganizerTypesV4Schema = {};
 
 export async function getPrincipalOrganizerTypesV4() {
   try {
-    const result = await plannedEducationApi.getPrincipalOrganizerTypesV4();
+    const result = await plannedEducationApi.getPrincipalOrganizerTypesV4() as any;
+
+    const principalOrganizerTypes = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalTypes: result.principalOrganizerTypes.length,
-            principalOrganizerTypes: result.principalOrganizerTypes
+            totalTypes: principalOrganizerTypes.length,
+            principalOrganizerTypes
           }, null, 2)
         }
       ]
@@ -116,15 +133,17 @@ export const getProgramsV4Schema = {};
 
 export async function getProgramsV4() {
   try {
-    const result = await plannedEducationApi.getProgramsV4();
+    const result = await plannedEducationApi.getProgramsV4() as any;
+
+    const programs = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalPrograms: result.programs.length,
-            programs: result.programs
+            totalPrograms: programs.length,
+            programs
           }, null, 2)
         }
       ]
@@ -148,15 +167,17 @@ export const getOrientationsV4Schema = {};
 
 export async function getOrientationsV4() {
   try {
-    const result = await plannedEducationApi.getOrientationsV4();
+    const result = await plannedEducationApi.getOrientationsV4() as any;
+
+    const orientations = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalOrientations: result.orientations.length,
-            orientations: result.orientations
+            totalOrientations: orientations.length,
+            orientations
           }, null, 2)
         }
       ]
@@ -180,15 +201,17 @@ export const getInstructionLanguagesV4Schema = {};
 
 export async function getInstructionLanguagesV4() {
   try {
-    const result = await plannedEducationApi.getInstructionLanguagesV4();
+    const result = await plannedEducationApi.getInstructionLanguagesV4() as any;
+
+    const instructionLanguages = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalLanguages: result.instructionLanguages.length,
-            instructionLanguages: result.instructionLanguages
+            totalLanguages: instructionLanguages.length,
+            instructionLanguages
           }, null, 2)
         }
       ]
@@ -212,15 +235,17 @@ export const getDistanceStudyTypesV4Schema = {};
 
 export async function getDistanceStudyTypesV4() {
   try {
-    const result = await plannedEducationApi.getDistanceStudyTypesV4();
+    const result = await plannedEducationApi.getDistanceStudyTypesV4() as any;
+
+    const distanceStudyTypes = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalTypes: result.distanceStudyTypes.length,
-            distanceStudyTypes: result.distanceStudyTypes
+            totalTypes: distanceStudyTypes.length,
+            distanceStudyTypes
           }, null, 2)
         }
       ]
@@ -244,15 +269,17 @@ export const getAdultTypeOfSchoolingV4Schema = {};
 
 export async function getAdultTypeOfSchoolingV4() {
   try {
-    const result = await plannedEducationApi.getAdultTypeOfSchoolingV4();
+    const result = await plannedEducationApi.getAdultTypeOfSchoolingV4() as any;
+
+    const adultTypeOfSchooling = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalTypes: result.adultTypeOfSchooling.length,
-            adultTypeOfSchooling: result.adultTypeOfSchooling
+            totalTypes: adultTypeOfSchooling.length,
+            adultTypeOfSchooling
           }, null, 2)
         }
       ]
@@ -276,15 +303,18 @@ export const getMunicipalitySchoolUnitsV4Schema = {};
 
 export async function getMunicipalitySchoolUnitsV4() {
   try {
-    const result = await plannedEducationApi.getMunicipalitySchoolUnitsV4();
+    const result = await plannedEducationApi.getMunicipalitySchoolUnitsV4() as any;
+
+    const municipalities = extractBody(result);
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            totalMunicipalities: result.municipalities.length,
-            municipalities: result.municipalities
+            totalMunicipalities: municipalities.length,
+            municipalities: municipalities.slice(0, 100),
+            note: municipalities.length > 100 ? `Visar 100 av ${municipalities.length} kommuner.` : undefined
           }, null, 2)
         }
       ]

@@ -210,46 +210,45 @@ export class PlannedEducationApiClient extends BaseApiClient {
   }
 
   async getSchoolUnitEducationEvents(code: string, params: EducationEventSearchParamsV4 = {}): Promise<EducationEventsV4Response> {
-    const searchParams = {
+    // Only forward params the v4 API accepts for per-school-unit education events
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
+      size: params.size ?? 20
     };
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<EducationEventsV4Response>(`/v4/school-units/${code}/education-events`, searchParams, {
+    return this.get<EducationEventsV4Response>(`/v4/school-units/${code}/education-events`, validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   async getSchoolUnitCompactEducationEvents(code: string, params: EducationEventSearchParamsV4 = {}): Promise<CompactEducationEventsV4Response> {
-    const searchParams = {
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
+      size: params.size ?? 20
     };
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<CompactEducationEventsV4Response>(`/v4/school-units/${code}/compact-education-events`, searchParams, {
+    return this.get<CompactEducationEventsV4Response>(`/v4/school-units/${code}/compact-education-events`, validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   async calculateDistanceFromSchoolUnit(code: string, latitude: number, longitude: number): Promise<DistanceCalculation> {
+    // The API requires coordinates in format: dd.dddd (at least 4 decimal places)
+    const lat = latitude.toFixed(6);
+    const lon = longitude.toFixed(6);
     return this.get<DistanceCalculation>(`/v4/school-units/${code}/distanceFrom`,
-      { latitude, longitude },
+      { latitude: lat, longitude: lon },
       {
         headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
       }
     );
   }
 
-  async getSchoolUnitDocuments(code: string, params: any = {}): Promise<DocumentsV4Response> {
-    const searchParams = {
-      page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
-    };
-
-    return this.get<DocumentsV4Response>(`/v4/school-units/${code}/documents`, searchParams, {
+  async getSchoolUnitDocuments(code: string, _params: any = {}): Promise<DocumentsV4Response> {
+    // The v4 documents endpoint does not accept page/size params
+    return this.get<DocumentsV4Response>(`/v4/school-units/${code}/documents`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -260,44 +259,50 @@ export class PlannedEducationApiClient extends BaseApiClient {
     });
   }
 
-  async getSchoolUnitStatisticsFSK(code: string, params: any = {}): Promise<any> {
-    return this.get<any>(`/v4/school-units/${code}/statistics/fsk`, params, {
+  // NOTE: Per-school statistics endpoints do NOT accept query parameters
+  async getSchoolUnitStatisticsFSK(code: string, _params: any = {}): Promise<any> {
+    return this.get<any>(`/v4/school-units/${code}/statistics/fsk`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitStatisticsGR(code: string, params: any = {}): Promise<any> {
-    return this.get<any>(`/v4/school-units/${code}/statistics/gr`, params, {
+  async getSchoolUnitStatisticsGR(code: string, _params: any = {}): Promise<any> {
+    return this.get<any>(`/v4/school-units/${code}/statistics/gr`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitStatisticsGRAN(code: string, params: any = {}): Promise<any> {
-    return this.get<any>(`/v4/school-units/${code}/statistics/gran`, params, {
+  async getSchoolUnitStatisticsGRAN(code: string, _params: any = {}): Promise<any> {
+    return this.get<any>(`/v4/school-units/${code}/statistics/gran`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitStatisticsGY(code: string, params: any = {}): Promise<any> {
-    return this.get<any>(`/v4/school-units/${code}/statistics/gy`, params, {
+  async getSchoolUnitStatisticsGY(code: string, _params: any = {}): Promise<any> {
+    return this.get<any>(`/v4/school-units/${code}/statistics/gy`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitStatisticsGYAN(code: string, params: any = {}): Promise<any> {
-    return this.get<any>(`/v4/school-units/${code}/statistics/gyan`, params, {
+  async getSchoolUnitStatisticsGYAN(code: string, _params: any = {}): Promise<any> {
+    return this.get<any>(`/v4/school-units/${code}/statistics/gyan`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitSurveyNested(code: string, params: any = {}): Promise<NestedSurveyResponse> {
-    return this.get<NestedSurveyResponse>(`/v4/school-units/${code}/surveys/nested`, params, {
+  async getSchoolUnitSurveyNested(code: string, params: any = {}): Promise<any> {
+    // The v4 API has no /surveys/nested endpoint.
+    // Instead, /surveys returns links to category-specific endpoints.
+    // Fetch the index to discover available survey categories.
+    return this.get<any>(`/v4/school-units/${code}/surveys`, params, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitSurveyFlat(code: string, params: any = {}): Promise<FlatSurveyResponse> {
-    return this.get<FlatSurveyResponse>(`/v4/school-units/${code}/surveys/flat`, params, {
+  async getSchoolUnitSurveyFlat(code: string, params: any = {}): Promise<any> {
+    // The v4 API has no /surveys/flat endpoint.
+    // Instead, /surveys returns links to category-specific endpoints.
+    return this.get<any>(`/v4/school-units/${code}/surveys`, params, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -307,33 +312,39 @@ export class PlannedEducationApiClient extends BaseApiClient {
    */
 
   async searchEducationEventsV4(params: EducationEventSearchParamsV4 = {}): Promise<EducationEventsV4Response> {
-    const searchParams = {
+    // Only forward params the v4 API actually accepts
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
+      size: params.size ?? 20
     };
+    if (params.geographicalAreaCode) validParams.geographicalAreaCode = params.geographicalAreaCode;
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<EducationEventsV4Response>('/v4/education-events', searchParams, {
+    return this.get<EducationEventsV4Response>('/v4/education-events', validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   async searchCompactEducationEventsV4(params: EducationEventSearchParamsV4 = {}): Promise<CompactEducationEventsV4Response> {
-    const searchParams = {
+    // Only forward params the v4 API actually accepts
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
+      size: params.size ?? 20
     };
+    if (params.geographicalAreaCode) validParams.geographicalAreaCode = params.geographicalAreaCode;
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<CompactEducationEventsV4Response>('/v4/compact-education-events', searchParams, {
+    return this.get<CompactEducationEventsV4Response>('/v4/compact-education-events', validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async countEducationEventsV4(params: EducationEventSearchParamsV4 = {}): Promise<EducationEventsCountResponse> {
-    return this.get<EducationEventsCountResponse>('/v4/education-events/count', params, {
-      headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
-    });
+  async countEducationEventsV4(_params: EducationEventSearchParamsV4 = {}): Promise<EducationEventsCountResponse> {
+    // NOTE: /v4/education-events/count does not exist in the Skolverket API
+    throw new Error(
+      'Räkning av utbildningstillfällen är inte tillgänglig som eget API-endpoint. ' +
+      'Använd search_education_events_v4 och läs totalElements från page-metadata.'
+    );
   }
 
   /**
@@ -350,20 +361,21 @@ export class PlannedEducationApiClient extends BaseApiClient {
    * V4 - Statistics
    */
 
-  async getNationalStatisticsFSK(params: any = {}): Promise<NationalStatisticsResponse> {
-    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/fsk', params, {
+  // NOTE: National statistics endpoints do NOT accept query parameters
+  async getNationalStatisticsFSK(_params: any = {}): Promise<NationalStatisticsResponse> {
+    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/fsk', undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getNationalStatisticsGR(params: any = {}): Promise<NationalStatisticsResponse> {
-    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gr', params, {
+  async getNationalStatisticsGR(_params: any = {}): Promise<NationalStatisticsResponse> {
+    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gr', undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getNationalStatisticsGRAN(params: any = {}): Promise<NationalStatisticsResponse> {
-    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gran', params, {
+  async getNationalStatisticsGRAN(_params: any = {}): Promise<NationalStatisticsResponse> {
+    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gran', undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -377,8 +389,8 @@ export class PlannedEducationApiClient extends BaseApiClient {
     );
   }
 
-  async getNationalStatisticsGYAN(params: any = {}): Promise<NationalStatisticsResponse> {
-    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gyan', params, {
+  async getNationalStatisticsGYAN(_params: any = {}): Promise<NationalStatisticsResponse> {
+    return this.get<NationalStatisticsResponse>('/v4/statistics/national-values/gyan', undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -534,14 +546,9 @@ export class PlannedEducationApiClient extends BaseApiClient {
   }
 
   // Document filtering by type of schooling
-  async getSchoolUnitDocumentsByType(code: string, typeOfSchooling: string, params: any = {}): Promise<DocumentsByTypeResponse> {
-    const searchParams = {
-      page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
-    };
-
-    return this.get<DocumentsByTypeResponse>(`/v4/school-units/${code}/documents/${typeOfSchooling}`, searchParams, {
+  async getSchoolUnitDocumentsByType(code: string, typeOfSchooling: string, _params: any = {}): Promise<DocumentsByTypeResponse> {
+    // The v4 documents endpoint does not accept page/size params
+    return this.get<DocumentsByTypeResponse>(`/v4/school-units/${code}/documents/${typeOfSchooling}`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -560,59 +567,60 @@ export class PlannedEducationApiClient extends BaseApiClient {
   }
 
   // Specialiserade survey-endpoints - Nested (vårdnadshavare)
-  async getSchoolUnitNestedSurveyCustodiansFSK(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansfsk`, params, {
+  // NOTE: Survey endpoints do NOT accept query parameters
+  async getSchoolUnitNestedSurveyCustodiansFSK(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansfsk`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitNestedSurveyCustodiansGR(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansgr`, params, {
+  async getSchoolUnitNestedSurveyCustodiansGR(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansgr`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitNestedSurveyCustodiansGRAN(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansgran`, params, {
+  async getSchoolUnitNestedSurveyCustodiansGRAN(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/custodiansgran`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   // Specialiserade survey-endpoints - Nested (elever)
-  async getSchoolUnitNestedSurveyPupilsGY(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/pupilsgy`, params, {
+  async getSchoolUnitNestedSurveyPupilsGY(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/nestedsurveys/pupilsgy`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   // Specialiserade survey-endpoints - Flat (vårdnadshavare)
-  async getSchoolUnitFlatSurveyCustodiansFSK(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansfsk`, params, {
+  async getSchoolUnitFlatSurveyCustodiansFSK(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansfsk`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitFlatSurveyCustodiansGR(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansgr`, params, {
+  async getSchoolUnitFlatSurveyCustodiansGR(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansgr`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitFlatSurveyCustodiansGRAN(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansgran`, params, {
+  async getSchoolUnitFlatSurveyCustodiansGRAN(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/custodiansgran`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
   // Specialiserade survey-endpoints - Flat (elever)
-  async getSchoolUnitFlatSurveyPupilsGR(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/pupilsgr`, params, {
+  async getSchoolUnitFlatSurveyPupilsGR(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/pupilsgr`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSchoolUnitFlatSurveyPupilsGY(code: string, params: any = {}): Promise<SurveyByCategoryResponse> {
-    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/pupilsgy`, params, {
+  async getSchoolUnitFlatSurveyPupilsGY(code: string, _params: any = {}): Promise<SurveyByCategoryResponse> {
+    return this.get<SurveyByCategoryResponse>(`/v4/school-units/${code}/surveys/pupilsgy`, undefined, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }

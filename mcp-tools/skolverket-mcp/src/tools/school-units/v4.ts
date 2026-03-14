@@ -556,13 +556,25 @@ export const getSchoolUnitSurveyNestedSchema = {
 export async function getSchoolUnitSurveyNested(params: { code: string; surveyYear?: string }) {
   try {
     const { code, ...queryParams } = params;
-    const result = await plannedEducationApi.getSchoolUnitSurveyNested(code, queryParams);
+    const result = await plannedEducationApi.getSchoolUnitSurveyNested(code, queryParams) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const links = body._links || {};
+
+    // List available survey categories from the links
+    const availableCategories = Object.keys(links).filter(k => k !== 'self');
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2)
+          text: JSON.stringify({
+            schoolUnitCode: code,
+            availableSurveyCategories: availableCategories,
+            note: 'Använd specifika enkätverktyg: get_school_unit_nested_survey_custodians_fsk, get_school_unit_flat_survey_pupils_gr, etc.',
+            _links: links
+          }, null, 2)
         }
       ]
     };
@@ -587,13 +599,25 @@ export const getSchoolUnitSurveyFlatSchema = {
 export async function getSchoolUnitSurveyFlat(params: { code: string; surveyYear?: string }) {
   try {
     const { code, ...queryParams } = params;
-    const result = await plannedEducationApi.getSchoolUnitSurveyFlat(code, queryParams);
+    const result = await plannedEducationApi.getSchoolUnitSurveyFlat(code, queryParams) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const links = body._links || {};
+
+    // List available survey categories from the links
+    const availableCategories = Object.keys(links).filter(k => k !== 'self');
 
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result, null, 2)
+          text: JSON.stringify({
+            schoolUnitCode: code,
+            availableSurveyCategories: availableCategories,
+            note: 'Använd specifika enkätverktyg: get_school_unit_flat_survey_custodians_fsk, get_school_unit_flat_survey_pupils_gr, etc.',
+            _links: links
+          }, null, 2)
         }
       ]
     };
