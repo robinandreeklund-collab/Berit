@@ -357,12 +357,14 @@ export class SCBApiClient {
     lang?: string;
   } = {}): Promise<TablesResponse> {
     const searchParams = new URLSearchParams();
-    searchParams.set('query', '*');
+    // Use subjectCode as query when available to avoid wildcard queries that can 500
+    searchParams.set('query', params.subjectCode || '*');
     if (params.pageSize) searchParams.set('pageSize', params.pageSize.toString());
     if (params.lang) searchParams.set('lang', params.lang);
 
     const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
 
+    // Further filter client-side for exact subject code prefix matching
     if (params.subjectCode) {
       const code = params.subjectCode.toUpperCase();
       result.tables = result.tables.filter(t =>

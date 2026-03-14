@@ -80,6 +80,28 @@
       "headers": {},
       "oauth": null,
       "description": "Skolverket — Sveriges utbildningsdata. Läroplaner (LGR22, GY25), skolenhetsregistret, vuxenutbildning (YH, SFI, Komvux), gymnasieprogram. 37 verktyg."
+    },
+    "trafikverket": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$TRAFIKVERKET_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Trafikverket — Realtids trafikdata. Störningar, tågförseningar, väglag, väder, kameror, prognoser. 22 verktyg."
+    },
+    "riksbank": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$RIKSBANK_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Riksbanken — Räntor, valutakurser, SWESTR, makroprognoser. 8 verktyg."
     }
   },
   "skills": {}

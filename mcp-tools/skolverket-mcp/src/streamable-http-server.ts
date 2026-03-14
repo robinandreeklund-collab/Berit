@@ -2429,8 +2429,8 @@ app.post('/mcp', async (req, res) => {
   try {
     // Create a new transport for this request
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined
-      // enableJsonResponse removed to allow SSE streaming
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true
     });
 
     // Close transport when response closes
@@ -2458,6 +2458,24 @@ app.post('/mcp', async (req, res) => {
       });
     }
   }
+});
+
+// GET /mcp — stateless mode, no SSE sessions
+app.get('/mcp', (req, res) => {
+  res.status(405).json({
+    jsonrpc: '2.0',
+    error: { code: -32601, message: 'SSE sessions not supported in stateless mode. Use POST.' },
+    id: null
+  });
+});
+
+// DELETE /mcp — stateless mode, no sessions to terminate
+app.delete('/mcp', (req, res) => {
+  res.status(405).json({
+    jsonrpc: '2.0',
+    error: { code: -32601, message: 'Session termination not supported in stateless mode.' },
+    id: null
+  });
 });
 
 // ==============================================

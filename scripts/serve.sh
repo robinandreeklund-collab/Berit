@@ -45,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
@@ -54,6 +54,10 @@ docker stop deer-flow-scb-mcp 2>/dev/null || true
 docker rm deer-flow-scb-mcp 2>/dev/null || true
 docker stop deer-flow-skolverket-mcp 2>/dev/null || true
 docker rm deer-flow-skolverket-mcp 2>/dev/null || true
+docker stop deer-flow-trafikverket-mcp 2>/dev/null || true
+docker rm deer-flow-trafikverket-mcp 2>/dev/null || true
+docker stop deer-flow-riksbank-mcp 2>/dev/null || true
+docker rm deer-flow-riksbank-mcp 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -83,6 +87,16 @@ if [ -z "${SKOLVERKET_MCP_URL:-}" ]; then
     echo "  → Skolverket MCP: Swedish Education (local)"
 else
     echo "  → Skolverket MCP: Swedish Education (remote)"
+fi
+if [ -z "${TRAFIKVERKET_MCP_URL:-}" ]; then
+    echo "  → Trafikverket MCP: Swedish Traffic (local)"
+else
+    echo "  → Trafikverket MCP: Swedish Traffic (remote)"
+fi
+if [ -z "${RIKSBANK_MCP_URL:-}" ]; then
+    echo "  → Riksbank MCP: Swedish Economy (local)"
+else
+    echo "  → Riksbank MCP: Swedish Economy (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -155,8 +169,16 @@ cleanup() {
     if [ -n "${SKOLVERKET_MCP_PID:-}" ] && kill -0 "$SKOLVERKET_MCP_PID" 2>/dev/null; then
         kill "$SKOLVERKET_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Trafikverket MCP Node.js process if running
+    if [ -n "${TRAFIKVERKET_MCP_PID:-}" ] && kill -0 "$TRAFIKVERKET_MCP_PID" 2>/dev/null; then
+        kill "$TRAFIKVERKET_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Riksbank MCP Node.js process if running
+    if [ -n "${RIKSBANK_MCP_PID:-}" ] && kill -0 "$RIKSBANK_MCP_PID" 2>/dev/null; then
+        kill "$RIKSBANK_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -166,6 +188,10 @@ cleanup() {
     docker rm deer-flow-scb-mcp 2>/dev/null || true
     docker stop deer-flow-skolverket-mcp 2>/dev/null || true
     docker rm deer-flow-skolverket-mcp 2>/dev/null || true
+    docker stop deer-flow-trafikverket-mcp 2>/dev/null || true
+    docker rm deer-flow-trafikverket-mcp 2>/dev/null || true
+    docker stop deer-flow-riksbank-mcp 2>/dev/null || true
+    docker rm deer-flow-riksbank-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -317,6 +343,128 @@ elif [ -z "${SKOLVERKET_MCP_URL:-}" ]; then
 fi
 export SKOLVERKET_MCP_URL="${SKOLVERKET_MCP_URL:-}"
 
+# Trafikverket MCP Server — Swedish traffic data
+TRAFIKVERKET_MCP_PORT="${TRAFIKVERKET_MCP_PORT:-3102}"
+TRAFIKVERKET_MCP_DIR="$REPO_ROOT/mcp-tools/trafikverket-mcp"
+if [ -n "${TRAFIKVERKET_MCP_URL:-}" ]; then
+    echo "✓ Trafikverket MCP using remote instance: ${TRAFIKVERKET_MCP_URL}"
+elif [ -z "${TRAFIKVERKET_MCP_URL:-}" ]; then
+    echo "Starting Trafikverket MCP server..."
+    TRAFIKVERKET_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $TRAFIKVERKET_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-trafikverket-mcp >/dev/null 2>&1; then
+            echo "  Building Trafikverket MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-trafikverket-mcp -f docker/trafikverket-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-trafikverket-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-trafikverket-mcp -p "${TRAFIKVERKET_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                -e TRAFIKVERKET_API_KEY="${TRAFIKVERKET_API_KEY:-}" \
+                --restart unless-stopped deer-flow-trafikverket-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$TRAFIKVERKET_MCP_PORT" 30 "Trafikverket MCP" || true
+            if docker ps --filter name=deer-flow-trafikverket-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export TRAFIKVERKET_MCP_URL="http://localhost:${TRAFIKVERKET_MCP_PORT}/mcp"
+                echo "✓ Trafikverket MCP started via Docker on localhost:${TRAFIKVERKET_MCP_PORT}"
+                TRAFIKVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $TRAFIKVERKET_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Trafikverket MCP with Node.js..."
+        if [ ! -f "$TRAFIKVERKET_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Trafikverket MCP from local source (first time)..."
+            (cd "$TRAFIKVERKET_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Trafikverket MCP build failed. Traffic tools will not be available."
+            }
+        fi
+        if [ -f "$TRAFIKVERKET_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$TRAFIKVERKET_MCP_PORT" TRAFIKVERKET_API_KEY="${TRAFIKVERKET_API_KEY:-}" \
+                node "$TRAFIKVERKET_MCP_DIR/dist/http-server.js" > logs/trafikverket-mcp.log 2>&1 &
+            TRAFIKVERKET_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$TRAFIKVERKET_MCP_PORT" 15 "Trafikverket MCP" || {
+                echo "  ⚠ Trafikverket MCP failed to start."
+                kill "$TRAFIKVERKET_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$TRAFIKVERKET_MCP_PID" 2>/dev/null; then
+                export TRAFIKVERKET_MCP_URL="http://localhost:${TRAFIKVERKET_MCP_PORT}/mcp"
+                echo "✓ Trafikverket MCP started via Node.js on localhost:${TRAFIKVERKET_MCP_PORT}"
+                TRAFIKVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $TRAFIKVERKET_MCP_STARTED; then
+        echo "  ⚠ Trafikverket MCP could not be started. Swedish traffic tools will not be available."
+        echo "  Install Docker or Node.js to enable Trafikverket MCP."
+    fi
+fi
+export TRAFIKVERKET_MCP_URL="${TRAFIKVERKET_MCP_URL:-}"
+
+# Riksbank MCP Server — Swedish economic data
+RIKSBANK_MCP_PORT="${RIKSBANK_MCP_PORT:-3103}"
+RIKSBANK_MCP_DIR="$REPO_ROOT/mcp-tools/riksbank-mcp"
+if [ -n "${RIKSBANK_MCP_URL:-}" ]; then
+    echo "✓ Riksbank MCP using remote instance: ${RIKSBANK_MCP_URL}"
+elif [ -z "${RIKSBANK_MCP_URL:-}" ]; then
+    echo "Starting Riksbank MCP server..."
+    RIKSBANK_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $RIKSBANK_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-riksbank-mcp >/dev/null 2>&1; then
+            echo "  Building Riksbank MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-riksbank-mcp -f docker/riksbank-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-riksbank-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-riksbank-mcp -p "${RIKSBANK_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                -e RIKSBANK_API_KEY="${RIKSBANK_API_KEY:-}" \
+                --restart unless-stopped deer-flow-riksbank-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$RIKSBANK_MCP_PORT" 30 "Riksbank MCP" || true
+            if docker ps --filter name=deer-flow-riksbank-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export RIKSBANK_MCP_URL="http://localhost:${RIKSBANK_MCP_PORT}/mcp"
+                echo "✓ Riksbank MCP started via Docker on localhost:${RIKSBANK_MCP_PORT}"
+                RIKSBANK_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $RIKSBANK_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Riksbank MCP with Node.js..."
+        if [ ! -f "$RIKSBANK_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Riksbank MCP from local source (first time)..."
+            (cd "$RIKSBANK_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Riksbank MCP build failed. Economy tools will not be available."
+            }
+        fi
+        if [ -f "$RIKSBANK_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$RIKSBANK_MCP_PORT" RIKSBANK_API_KEY="${RIKSBANK_API_KEY:-}" \
+                node "$RIKSBANK_MCP_DIR/dist/http-server.js" > logs/riksbank-mcp.log 2>&1 &
+            RIKSBANK_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$RIKSBANK_MCP_PORT" 15 "Riksbank MCP" || {
+                echo "  ⚠ Riksbank MCP failed to start."
+                kill "$RIKSBANK_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$RIKSBANK_MCP_PID" 2>/dev/null; then
+                export RIKSBANK_MCP_URL="http://localhost:${RIKSBANK_MCP_PORT}/mcp"
+                echo "✓ Riksbank MCP started via Node.js on localhost:${RIKSBANK_MCP_PORT}"
+                RIKSBANK_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $RIKSBANK_MCP_STARTED; then
+        echo "  ⚠ Riksbank MCP could not be started. Swedish economy tools will not be available."
+        echo "  Install Docker or Node.js to enable Riksbank MCP."
+    fi
+fi
+export RIKSBANK_MCP_URL="${RIKSBANK_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -396,6 +544,16 @@ if [ -n "${SKOLVERKET_MCP_URL:-}" ]; then
 else
     echo "  🎓 Skolverket:   (ej konfigurerad)"
 fi
+if [ -n "${TRAFIKVERKET_MCP_URL:-}" ]; then
+    echo "  🚦 Trafikverket: ${TRAFIKVERKET_MCP_URL}"
+else
+    echo "  🚦 Trafikverket: (ej konfigurerad)"
+fi
+if [ -n "${RIKSBANK_MCP_URL:-}" ]; then
+    echo "  💰 Riksbank:     ${RIKSBANK_MCP_URL}"
+else
+    echo "  💰 Riksbank:     (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -412,6 +570,16 @@ if [ -n "${SKOLVERKET_MCP_PID:-}" ]; then
     echo "     - Skolverket:  logs/skolverket-mcp.log"
 elif [ -z "${SKOLVERKET_MCP_URL:-}" ] || echo "${SKOLVERKET_MCP_URL}" | grep -q "localhost"; then
     echo "     - Skolverket:  docker logs deer-flow-skolverket-mcp"
+fi
+if [ -n "${TRAFIKVERKET_MCP_PID:-}" ]; then
+    echo "     - Trafikverket: logs/trafikverket-mcp.log"
+elif [ -z "${TRAFIKVERKET_MCP_URL:-}" ] || echo "${TRAFIKVERKET_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Trafikverket: docker logs deer-flow-trafikverket-mcp"
+fi
+if [ -n "${RIKSBANK_MCP_PID:-}" ]; then
+    echo "     - Riksbank:    logs/riksbank-mcp.log"
+elif [ -z "${RIKSBANK_MCP_URL:-}" ] || echo "${RIKSBANK_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Riksbank:    docker logs deer-flow-riksbank-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"
