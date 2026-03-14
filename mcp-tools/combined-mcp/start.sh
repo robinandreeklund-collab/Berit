@@ -9,6 +9,7 @@ echo "Port: $PORT"
 echo "SCB MCP:          internal :3001 → /"
 echo "Skolverket MCP:   internal :3002 → /skolverket/"
 echo "Trafikverket MCP: internal :3003 → /trafikverket/"
+echo "Riksbank MCP:     internal :3004 → /riksbank/"
 
 # Generate nginx config with actual PORT
 envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
@@ -28,12 +29,18 @@ echo "Starting Trafikverket MCP on :3003..."
 PORT=3003 node /app/trafikverket/dist/http-server.js &
 TRAFIKVERKET_PID=$!
 
+# Start Riksbank MCP on port 3004
+echo "Starting Riksbank MCP on :3004..."
+PORT=3004 node /app/riksbank/dist/http-server.js &
+RIKSBANK_PID=$!
+
 # Wait for all to be ready
 echo "Waiting for services..."
 for i in 1 2 3 4 5 6 7 8 9 10; do
     if wget -qO- http://127.0.0.1:3001/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3002/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3003/health >/dev/null 2>&1; then
+       wget -qO- http://127.0.0.1:3003/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3004/health >/dev/null 2>&1; then
         echo "All services healthy!"
         break
     fi
@@ -52,11 +59,13 @@ echo "  Skolverket MCP:   http://localhost:$PORT/skolverket/mcp"
 echo "  Skolverket health: http://localhost:$PORT/skolverket/health"
 echo "  Trafikverket MCP:  http://localhost:$PORT/trafikverket/mcp"
 echo "  Trafikverket health: http://localhost:$PORT/trafikverket/health"
+echo "  Riksbank MCP:      http://localhost:$PORT/riksbank/mcp"
+echo "  Riksbank health:   http://localhost:$PORT/riksbank/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $NGINX_PID 2>/dev/null || true
 exit 1

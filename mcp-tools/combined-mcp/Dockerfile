@@ -1,7 +1,8 @@
-# Combined MCP Server — SCB + Skolverket + Trafikverket on one instance
+# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank on one instance
 # SCB:          / (backwards compatible)
 # Skolverket:   /skolverket/
 # Trafikverket: /trafikverket/
+# Riksbank:     /riksbank/
 
 # ============ Stage 1: Build SCB ============
 FROM node:22-alpine AS build-scb
@@ -24,7 +25,14 @@ COPY trafikverket-mcp/package.json trafikverket-mcp/package-lock.json trafikverk
 COPY trafikverket-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 4: Production ============
+# ============ Stage 4: Build Riksbank ============
+FROM node:22-alpine AS build-riksbank
+WORKDIR /app
+COPY riksbank-mcp/package.json riksbank-mcp/package-lock.json riksbank-mcp/tsconfig.json ./
+COPY riksbank-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 5: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -49,6 +57,12 @@ COPY trafikverket-mcp/package.json trafikverket-mcp/package-lock.json /app/trafi
 RUN cd /app/trafikverket && npm ci --omit=dev --ignore-scripts
 COPY --from=build-trafikverket /app/dist /app/trafikverket/dist
 COPY trafikverket-mcp/README.md /app/trafikverket/README.md
+
+# Riksbank production install
+COPY riksbank-mcp/package.json riksbank-mcp/package-lock.json /app/riksbank/
+RUN cd /app/riksbank && npm ci --omit=dev --ignore-scripts
+COPY --from=build-riksbank /app/dist /app/riksbank/dist
+COPY riksbank-mcp/README.md /app/riksbank/README.md
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
