@@ -20,7 +20,6 @@ import {
 import { TOOL_DEFINITIONS, getToolById, type ToolDefinition } from './tools.js';
 import { getApiClient, type FilterClause, type QueryOptions } from './api-client.js';
 import { formatResponse } from './formatter.js';
-import { SWEDISH_COUNTIES } from './types.js';
 import { LLM_INSTRUCTIONS } from './instructions.js';
 import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
 import { resources, getResourceContent } from './resources.js';
@@ -113,64 +112,6 @@ function buildFilter(
   }
 }
 
-function getInputSchema(tool: ToolDefinition): Record<string, unknown> {
-  switch (tool.filterType) {
-    case 'location':
-      return {
-        type: 'object',
-        properties: {
-          plats: { type: 'string', description: 'Plats, ort eller vägnummer (t.ex. "Stockholm", "E4")' },
-          lan: { type: 'string', description: 'Länskod (t.ex. "01" för Stockholm)' },
-          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
-        },
-      };
-    case 'station':
-      return {
-        type: 'object',
-        properties: {
-          station: { type: 'string', description: 'Stationsnamn (t.ex. "Stockholm C", "Göteborg C")' },
-          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
-        },
-      };
-    case 'weather':
-      return {
-        type: 'object',
-        properties: {
-          plats: { type: 'string', description: 'Stationsnamn eller plats (t.ex. "E4 Hudiksvall")' },
-          lan: { type: 'string', description: 'Länskod' },
-          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
-        },
-      };
-    case 'camera':
-      return {
-        type: 'object',
-        properties: {
-          plats: { type: 'string', description: 'Plats eller väg (t.ex. "E4 Stockholm")' },
-          lan: { type: 'string', description: 'Länskod' },
-          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
-        },
-      };
-    case 'camera_id':
-      return {
-        type: 'object',
-        properties: {
-          id: { type: 'string', description: 'Kamera-ID' },
-        },
-        required: ['id'],
-      };
-    case 'county':
-      return {
-        type: 'object',
-        properties: {
-          plats: { type: 'string', description: 'Platsnamn att söka efter' },
-          lan: { type: 'string', description: 'Länskod (t.ex. "14" för Västra Götaland)' },
-          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
-        },
-      };
-    default:
-      return { type: 'object', properties: {} };
-  }
-}
 
 // ---------------------------------------------------------------------------
 // MCP Server class
@@ -187,7 +128,7 @@ export class TrafikverketMCPServer {
     return TOOL_DEFINITIONS.map((tool) => ({
       name: tool.id,
       description: tool.description,
-      inputSchema: getInputSchema(tool),
+      inputSchema: tool.inputSchema,
     }));
   }
 

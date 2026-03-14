@@ -16,6 +16,37 @@ describe('TOOL_DEFINITIONS', () => {
       expect(tool.schemaVersion).toBeTruthy();
       expect(tool.filterField).toBeTruthy();
       expect(tool.filterType).toBeTruthy();
+      expect(tool.inputSchema).toBeDefined();
+      expect(tool.inputSchema.type).toBe('object');
+      expect(tool.inputSchema.properties).toBeDefined();
+    }
+  });
+
+  it('all tools have descriptive inputSchema properties', () => {
+    for (const tool of TOOL_DEFINITIONS) {
+      const props = tool.inputSchema.properties as Record<string, Record<string, unknown>>;
+      for (const [key, prop] of Object.entries(props)) {
+        expect(prop.type).toBeTruthy();
+        expect(prop.description).toBeTruthy();
+      }
+    }
+  });
+
+  it('county tools have lan enum with all 21 county codes', () => {
+    const countyTools = TOOL_DEFINITIONS.filter((t) => t.filterType === 'county');
+    for (const tool of countyTools) {
+      const props = tool.inputSchema.properties as Record<string, Record<string, unknown>>;
+      expect(props.lan.enum).toBeDefined();
+      expect((props.lan.enum as string[]).length).toBe(21);
+    }
+  });
+
+  it('station tools requiring station have it in required', () => {
+    const requiredStationTools = ['trafikverket_tag_forseningar', 'trafikverket_tag_tidtabell', 'trafikverket_prognos_tag'];
+    for (const id of requiredStationTools) {
+      const tool = TOOL_DEFINITIONS.find((t) => t.id === id);
+      expect(tool).toBeDefined();
+      expect(tool!.inputSchema.required).toContain('station');
     }
   });
 

@@ -1,8 +1,35 @@
 /**
  * 22 tool definitions for the Trafikverket MCP server.
  *
- * Each tool maps to a Trafikverket API objecttype + filter combination.
+ * Each tool includes a full JSON Schema `inputSchema` so the LLM knows
+ * exactly which parameters to provide for successful API requests.
  */
+
+import { SWEDISH_COUNTIES } from './types.js';
+
+// ---------------------------------------------------------------------------
+// Shared schema fragments
+// ---------------------------------------------------------------------------
+
+const COUNTY_CODES = Object.keys(SWEDISH_COUNTIES);
+
+const COUNTY_ENUM_DESCRIPTION =
+  'Länskod (2 siffror). ' +
+  Object.entries(SWEDISH_COUNTIES)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(', ');
+
+const limitProperty = {
+  type: 'number' as const,
+  description: 'Max antal resultat (1–50, standard: 10)',
+  minimum: 1,
+  maximum: 50,
+  default: 10,
+};
+
+// ---------------------------------------------------------------------------
+// ToolDefinition interface
+// ---------------------------------------------------------------------------
 
 export interface ToolDefinition {
   id: string;
@@ -16,7 +43,12 @@ export interface ToolDefinition {
   filterType: 'location' | 'station' | 'weather' | 'camera' | 'camera_id' | 'county';
   include?: string[];
   orderBy?: string;
+  inputSchema: Record<string, unknown>;
 }
+
+// ---------------------------------------------------------------------------
+// 22 tool definitions
+// ---------------------------------------------------------------------------
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   // ── Trafikinfo (4) ──────────────────────────────────────────────────────
@@ -34,6 +66,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     namespace: 'road.trafficinfo',
     filterField: 'Deviation.LocationDescriptor',
     filterType: 'location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Stockholm", "E4", "Södertälje". Ange minst plats ELLER lan.',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_trafikinfo_olyckor',
@@ -49,6 +96,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     namespace: 'road.trafficinfo',
     filterField: 'Deviation.LocationDescriptor',
     filterType: 'location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Göteborg", "E6", "Kungsbacka". Ange minst plats ELLER lan.',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_trafikinfo_koer',
@@ -64,6 +126,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     namespace: 'road.trafficinfo',
     filterField: 'Deviation.LocationDescriptor',
     filterType: 'location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Göteborg", "E18", "Stockholm". Ange minst plats ELLER lan.',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_trafikinfo_vagarbeten',
@@ -79,6 +156,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     namespace: 'road.trafficinfo',
     filterField: 'Deviation.LocationDescriptor',
     filterType: 'location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "E4", "Helsingborg", "Skåne". Ange minst plats ELLER lan.',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
 
   // ── Tåg (4) ─────────────────────────────────────────────────────────────
@@ -96,6 +188,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     filterField: 'LocationSignature',
     filterType: 'station',
     orderBy: 'AdvertisedTimeAtLocation',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        station: {
+          type: 'string',
+          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C", "Malmö C", "Uppsala C", "Lund C".',
+        },
+        limit: limitProperty,
+      },
+      required: ['station'],
+    },
   },
   {
     id: 'trafikverket_tag_tidtabell',
@@ -111,6 +214,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     filterField: 'LocationSignature',
     filterType: 'station',
     orderBy: 'AdvertisedTimeAtLocation',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        station: {
+          type: 'string',
+          description: 'Stationsnamn (wildcard-sökning). Exempel: "Malmö C", "Stockholm C", "Uppsala C".',
+        },
+        limit: limitProperty,
+      },
+      required: ['station'],
+    },
   },
   {
     id: 'trafikverket_tag_stationer',
@@ -125,6 +239,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.4',
     filterField: 'AdvertisedLocationName',
     filterType: 'station',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        station: {
+          type: 'string',
+          description: 'Sök stationsnamn (wildcard). Exempel: "Stockholm", "Lund", "Göteborg". Utelämna för att lista alla.',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_tag_installda',
@@ -140,6 +264,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     filterField: 'LocationSignature',
     filterType: 'station',
     orderBy: 'AdvertisedTimeAtLocation',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        station: {
+          type: 'string',
+          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C". Utelämna för alla stationer.',
+        },
+        limit: limitProperty,
+      },
+    },
   },
 
   // ── Väg (4) ──────────────────────────────────────────────────────────────
@@ -156,6 +290,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.2',
     filterField: 'CountyNo',
     filterType: 'county',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        plats: {
+          type: 'string',
+          description: 'Platsnamn att söka i väglagsbeskrivning (t.ex. "E45", "Norrbotten").',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vag_underhall',
@@ -170,6 +319,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.2',
     filterField: 'CountyNo',
     filterType: 'county',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        plats: {
+          type: 'string',
+          description: 'Platsnamn att söka i beskrivning (t.ex. "E4", "Dalarna").',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vag_hastighet',
@@ -184,6 +348,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.2',
     filterField: 'CountyNo',
     filterType: 'county',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        plats: {
+          type: 'string',
+          description: 'Platsnamn att söka (t.ex. "E6", "Halland").',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vag_avstangningar',
@@ -199,6 +378,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     namespace: 'road.trafficinfo',
     filterField: 'Deviation.LocationDescriptor',
     filterType: 'location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "E4", "Stockholm". Ange minst plats ELLER lan.',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
 
   // ── Väder (4) ────────────────────────────────────────────────────────────
@@ -215,6 +409,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '2.1',
     filterField: 'Name',
     filterType: 'weather',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4", "Hudiksvall", "E6 Halland".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vader_halka',
@@ -229,6 +438,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '2.1',
     filterField: 'Name',
     filterType: 'weather',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4 Gävle", "Norrbotten".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vader_vind',
@@ -243,6 +467,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '2.1',
     filterField: 'Name',
     filterType: 'weather',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Stationsnamn eller väg (wildcard). Exempel: "Ölandsbron", "E6 Halland".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_vader_temperatur',
@@ -257,6 +496,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '2.1',
     filterField: 'Name',
     filterType: 'weather',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4 Hudiksvall", "Dalarna".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
 
   // ── Kameror (3) ──────────────────────────────────────────────────────────
@@ -273,6 +527,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1',
     filterField: 'Name',
     filterType: 'camera',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats eller väg (wildcard). Exempel: "E4 Stockholm", "E6 Malmö".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_kameror_snapshot',
@@ -281,12 +550,22 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta senaste bilden från en specifik trafikkamera.\n\n' +
       '**Användningsfall:** Visa aktuell kamerabild.\n' +
       '**Returnerar:** Kamera-ID, bild-URL, tidpunkt.\n' +
-      '**Exempel:** "Kamerabild E4 Södertälje"',
+      '**Tips:** Använd trafikverket_kameror_lista först för att hitta kamera-ID.',
     category: 'kameror',
     objecttype: 'Camera',
     schemaVersion: '1',
     filterField: 'Id',
     filterType: 'camera_id',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'Kamera-ID (hämta via trafikverket_kameror_lista först). Exempel: "bc47fc2c46ab467185fea5db0921b961".',
+        },
+      },
+      required: ['id'],
+    },
   },
   {
     id: 'trafikverket_kameror_status',
@@ -301,6 +580,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1',
     filterField: 'Name',
     filterType: 'camera',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        plats: {
+          type: 'string',
+          description: 'Plats eller väg (wildcard). Exempel: "E6", "Göteborg".',
+        },
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        limit: limitProperty,
+      },
+    },
   },
 
   // ── Prognos (3) ──────────────────────────────────────────────────────────
@@ -317,6 +611,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.4',
     filterField: 'CountyNo',
     filterType: 'county',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        plats: {
+          type: 'string',
+          description: 'Platsnamn att söka (t.ex. "E4", "Uppsala").',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_prognos_vag',
@@ -331,6 +640,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     schemaVersion: '1.2',
     filterField: 'CountyNo',
     filterType: 'county',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lan: {
+          type: 'string',
+          enum: COUNTY_CODES,
+          description: COUNTY_ENUM_DESCRIPTION,
+        },
+        plats: {
+          type: 'string',
+          description: 'Platsnamn att söka (t.ex. "E45", "Dalarna").',
+        },
+        limit: limitProperty,
+      },
+    },
   },
   {
     id: 'trafikverket_prognos_tag',
@@ -346,6 +670,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     filterField: 'LocationSignature',
     filterType: 'station',
     orderBy: 'AdvertisedTimeAtLocation',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        station: {
+          type: 'string',
+          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C".',
+        },
+        limit: limitProperty,
+      },
+      required: ['station'],
+    },
   },
 ];
 
