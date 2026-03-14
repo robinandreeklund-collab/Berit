@@ -5,6 +5,7 @@ import {
   formatCrossRate,
   formatSwestr,
   formatForecasts,
+  formatForecastsUnavailable,
   formatIndicators,
   markdownTable,
 } from '../src/formatter.js';
@@ -94,6 +95,17 @@ describe('formatForecasts', () => {
     expect(result.count).toBe(2);
     expect(result.markdown).toContain('Prognos');
     expect(result.markdown).toContain('Utfall');
+  });
+});
+
+describe('formatForecastsUnavailable', () => {
+  it('returns a helpful message with category and indicator', () => {
+    const result = formatForecastsUnavailable('inflation', 'CPIF');
+    expect(result.count).toBe(0);
+    expect(result.markdown).toContain('otillgängligt');
+    expect(result.markdown).toContain('inflation');
+    expect(result.markdown).toContain('CPIF');
+    expect(result.markdown).toContain('riksbank_ranta_styrranta');
   });
 });
 

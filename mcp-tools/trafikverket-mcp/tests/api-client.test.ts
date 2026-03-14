@@ -22,13 +22,13 @@ describe('buildQueryXml', () => {
   it('builds basic query XML', () => {
     const xml = buildQueryXml('test-key', {
       objecttype: 'Situation',
-      schemaVersion: '1.5',
+      schemaVersion: '1.6',
       limit: 10,
     });
 
     expect(xml).toContain('<LOGIN authenticationkey="test-key"');
     expect(xml).toContain('objecttype="Situation"');
-    expect(xml).toContain('schemaversion="1.5"');
+    expect(xml).toContain('schemaversion="1.6"');
     expect(xml).toContain('limit="10"');
     expect(xml).toContain('<REQUEST>');
     expect(xml).toContain('</QUERY>');

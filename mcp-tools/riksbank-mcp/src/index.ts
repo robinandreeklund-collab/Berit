@@ -25,6 +25,7 @@ import {
   formatCrossRate,
   formatSwestr,
   formatForecasts,
+  formatForecastsUnavailable,
   formatIndicators,
 } from './formatter.js';
 import { SERIES_IDS, CURRENCY_SERIES, GROUP_IDS } from './types.js';
@@ -281,29 +282,41 @@ export class RiksbankMCPServer {
 
         case 'riksbank_prognos_inflation': {
           const indikator = (params.indikator as string) || 'CPIF';
-          const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
-          const forecastData = data as Record<string, unknown>;
-          result = formatForecasts(forecastData.values || data);
+          try {
+            const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
+            const forecastData = data as Record<string, unknown>;
+            result = formatForecasts(forecastData.values || data);
+          } catch {
+            result = formatForecastsUnavailable('inflation', indikator);
+          }
           break;
         }
 
         case 'riksbank_prognos_bnp': {
           const indikator = (params.indikator as string) || 'GDP';
-          const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
-          const forecastData = data as Record<string, unknown>;
-          result = formatForecasts(forecastData.values || data);
+          try {
+            const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
+            const forecastData = data as Record<string, unknown>;
+            result = formatForecasts(forecastData.values || data);
+          } catch {
+            result = formatForecastsUnavailable('BNP', indikator);
+          }
           break;
         }
 
         case 'riksbank_prognos_ovrigt': {
           const indikator = params.indikator as string;
-          if (indikator) {
-            const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
-            const forecastData = data as Record<string, unknown>;
-            result = formatForecasts(forecastData.values || data);
-          } else {
-            const { data } = await client.forecasts('/indicators');
-            result = formatIndicators(data);
+          try {
+            if (indikator) {
+              const { data } = await client.forecasts(`/forecasts?indicator=${indikator}`);
+              const forecastData = data as Record<string, unknown>;
+              result = formatForecasts(forecastData.values || data);
+            } else {
+              const { data } = await client.forecasts('/indicators');
+              result = formatIndicators(data);
+            }
+          } catch {
+            result = formatForecastsUnavailable('makroprognos', indikator || 'alla');
           }
           break;
         }

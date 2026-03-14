@@ -171,4 +171,22 @@ export function formatIndicators(
   return { markdown: markdownTable(headers, rows), count: items.length, raw: items };
 }
 
+/** Format a helpful message when the forecasts API is unavailable. */
+export function formatForecastsUnavailable(
+  category: string,
+  indicator: string,
+): { markdown: string; count: number; raw: unknown[] } {
+  const markdown =
+    `⚠️ **Riksbankens prognos-API (forecasts/v1) är för närvarande otillgängligt.**\n\n` +
+    `Begärd kategori: **${category}** (indikator: ${indicator})\n\n` +
+    `Riksbankens Forecasts API returnerar 404 på alla endpoints sedan en tid tillbaka. ` +
+    `SWEA (räntor/valutor) och SWESTR fungerar fortfarande.\n\n` +
+    `**Alternativ:**\n` +
+    `- Använd \`riksbank_ranta_styrranta\` för aktuell styrränta\n` +
+    `- Använd \`riksbank_ranta_marknadsrantor\` för marknadsräntor\n` +
+    `- Besök [riksbank.se/prognoser](https://www.riksbank.se/sv/statistik/makroindikatorer/prognoser-och-utfall/) för manuell data`;
+
+  return { markdown, count: 0, raw: [] };
+}
+
 export { formatDate, formatNumber, markdownTable };
