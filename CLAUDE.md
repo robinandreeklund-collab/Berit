@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Frontend** (port 3000): Next.js web interface
 - **LM Studio** (port 8000, external): Local LLM inference via OpenAI-compatible API
 - **Lightpanda** (port 9222): High-performance headless browser for web fetching with JS rendering
+- **Lightpanda MCP v1.0** (port 3000, Docker sidecar): Webbsurfning, sökning och datautvinning via Lightpanda headless browser. 12 verktyg.
 - **SCB MCP v3.0** (port 3000, Docker sidecar): Swedish official statistics via PxWebAPI 2.0 — 7-tool pipeline with caching, auto-complete, and markdown output
 - **Skolverket MCP v2.7.0** (port 3000, Docker sidecar): Swedish education data — läroplaner, skolenheter, vuxenutbildning, gymnasieprogram, statistik, enkäter, SALSA. 87 verktyg.
 - **Trafikverket MCP v1.0** (port 3000, Docker sidecar): Swedish traffic data — störningar, tåg, väg, väder, kameror, prognoser. 22 verktyg.
@@ -55,12 +56,14 @@ Berit/
 │   ├── skolverket-mcp/        # Skolverket MCP v2.7.0 (forked from isakskogstad/Skolverket-MCP)
 │   ├── trafikverket-mcp/      # Trafikverket MCP v1.0 — 22 verktyg för realtids trafikdata
 │   ├── riksbank-mcp/         # Riksbank MCP v1.0 — 8 verktyg för ekonomisk data
-│   └── smhi-mcp/             # SMHI MCP v1.0 — 10 verktyg för väder, hydrologi, oceanografi, brandrisk
+│   ├── smhi-mcp/             # SMHI MCP v1.0 — 10 verktyg för väder, hydrologi, oceanografi, brandrisk
+│   └── lightpanda-mcp/       # Lightpanda MCP v1.0 — 12 verktyg för webbsurfning, sökning, datautvinning
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
 │   ├── riksbank-mcp/         # Riksbank MCP server Dockerfile
-│   └── smhi-mcp/             # SMHI MCP server Dockerfile
+│   ├── smhi-mcp/             # SMHI MCP server Dockerfile
+│   └── lightpanda-mcp/       # Lightpanda MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 
@@ -72,7 +75,7 @@ Berit/
 | Frontend | Next.js 16, React 19, TypeScript 5.8, Tailwind CSS 4 |
 | Package Managers | uv (Python), pnpm 10.26.2 (Node.js) |
 | Linting/Formatting | Ruff (Python), ESLint + Prettier (TypeScript) |
-| Browser Engine | Lightpanda (headless, CDP, 14 MCP tools via gomcp) |
+| Browser Engine | Lightpanda (headless, CDP, 12 MCP tools via lightpanda-mcp) |
 | Infrastructure | Nginx, Docker & Docker Compose |
 | Database | SQLite (checkpointing) |
 

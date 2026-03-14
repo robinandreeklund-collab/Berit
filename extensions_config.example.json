@@ -2,16 +2,14 @@
   "mcpServers": {
     "lightpanda": {
       "enabled": true,
-      "type": "stdio",
-      "command": "../scripts/run-gomcp.sh",
+      "type": "http",
+      "command": null,
       "args": [],
-      "env": {
-        "LIGHTPANDA_CDP_URL": "$LIGHTPANDA_CDP_URL"
-      },
-      "url": null,
+      "env": {},
+      "url": "$LIGHTPANDA_MCP_URL",
       "headers": {},
       "oauth": null,
-      "description": "Lightpanda headless browser — 14 tools: goto, search, markdown, links, click, screenshot, execute_js, fill_form, extract_data, fetch_api, save_pdf, wait_for, get_text, over"
+      "description": "Lightpanda headless browser — webbsurfning, sökning och datautvinning med full JS-rendering. 12 verktyg."
     },
     "filesystem": {
       "enabled": false,

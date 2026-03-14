@@ -45,11 +45,13 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
+docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
+docker rm deer-flow-lightpanda-mcp 2>/dev/null || true
 docker stop deer-flow-scb-mcp 2>/dev/null || true
 docker rm deer-flow-scb-mcp 2>/dev/null || true
 docker stop deer-flow-skolverket-mcp 2>/dev/null || true
@@ -104,6 +106,11 @@ if [ -z "${SMHI_MCP_URL:-}" ]; then
     echo "  → SMHI MCP: Swedish Weather (local)"
 else
     echo "  → SMHI MCP: Swedish Weather (remote)"
+fi
+if [ -z "${LIGHTPANDA_MCP_URL:-}" ]; then
+    echo "  → Lightpanda MCP: Web Browsing (local)"
+else
+    echo "  → Lightpanda MCP: Web Browsing (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -188,13 +195,19 @@ cleanup() {
     if [ -n "${SMHI_MCP_PID:-}" ] && kill -0 "$SMHI_MCP_PID" 2>/dev/null; then
         kill "$SMHI_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Lightpanda MCP Node.js process if running
+    if [ -n "${LIGHTPANDA_MCP_PID:-}" ] && kill -0 "$LIGHTPANDA_MCP_PID" 2>/dev/null; then
+        kill "$LIGHTPANDA_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
     docker stop deer-flow-lightpanda 2>/dev/null || true
     docker rm deer-flow-lightpanda 2>/dev/null || true
+    docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
+    docker rm deer-flow-lightpanda-mcp 2>/dev/null || true
     docker stop deer-flow-scb-mcp 2>/dev/null || true
     docker rm deer-flow-scb-mcp 2>/dev/null || true
     docker stop deer-flow-skolverket-mcp 2>/dev/null || true
@@ -538,6 +551,69 @@ elif [ -z "${SMHI_MCP_URL:-}" ]; then
 fi
 export SMHI_MCP_URL="${SMHI_MCP_URL:-}"
 
+# Lightpanda MCP Server — web browsing, search and data extraction
+LIGHTPANDA_MCP_PORT="${LIGHTPANDA_MCP_PORT:-3105}"
+LIGHTPANDA_MCP_DIR="$REPO_ROOT/mcp-tools/lightpanda-mcp"
+if [ -n "${LIGHTPANDA_MCP_URL:-}" ]; then
+    echo "✓ Lightpanda MCP using remote instance: ${LIGHTPANDA_MCP_URL}"
+elif [ -z "${LIGHTPANDA_MCP_URL:-}" ]; then
+    echo "Starting Lightpanda MCP server..."
+    LIGHTPANDA_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $LIGHTPANDA_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-lightpanda-mcp >/dev/null 2>&1; then
+            echo "  Building Lightpanda MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-lightpanda-mcp -f docker/lightpanda-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-lightpanda-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-lightpanda-mcp -p "${LIGHTPANDA_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                -e LIGHTPANDA_URL="${LIGHTPANDA_URL:-http://host.docker.internal:${LIGHTPANDA_PORT:-9222}}" \
+                -e LIGHTPANDA_CDP_URL="${LIGHTPANDA_CDP_URL:-ws://host.docker.internal:${LIGHTPANDA_PORT:-9222}}" \
+                --add-host=host.docker.internal:host-gateway \
+                --restart unless-stopped deer-flow-lightpanda-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$LIGHTPANDA_MCP_PORT" 30 "Lightpanda MCP" || true
+            if docker ps --filter name=deer-flow-lightpanda-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export LIGHTPANDA_MCP_URL="http://localhost:${LIGHTPANDA_MCP_PORT}/mcp"
+                echo "✓ Lightpanda MCP started via Docker on localhost:${LIGHTPANDA_MCP_PORT}"
+                LIGHTPANDA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $LIGHTPANDA_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Lightpanda MCP with Node.js..."
+        if [ ! -f "$LIGHTPANDA_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Lightpanda MCP from local source (first time)..."
+            (cd "$LIGHTPANDA_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Lightpanda MCP build failed. Web browsing MCP tools will not be available."
+            }
+        fi
+        if [ -f "$LIGHTPANDA_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$LIGHTPANDA_MCP_PORT" \
+                node "$LIGHTPANDA_MCP_DIR/dist/http-server.js" > logs/lightpanda-mcp.log 2>&1 &
+            LIGHTPANDA_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$LIGHTPANDA_MCP_PORT" 15 "Lightpanda MCP" || {
+                echo "  ⚠ Lightpanda MCP failed to start."
+                kill "$LIGHTPANDA_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$LIGHTPANDA_MCP_PID" 2>/dev/null; then
+                export LIGHTPANDA_MCP_URL="http://localhost:${LIGHTPANDA_MCP_PORT}/mcp"
+                echo "✓ Lightpanda MCP started via Node.js on localhost:${LIGHTPANDA_MCP_PORT}"
+                LIGHTPANDA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $LIGHTPANDA_MCP_STARTED; then
+        echo "  ⚠ Lightpanda MCP could not be started. Web browsing MCP tools will not be available."
+        echo "  Install Docker or Node.js to enable Lightpanda MCP."
+    fi
+fi
+export LIGHTPANDA_MCP_URL="${LIGHTPANDA_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -632,6 +708,11 @@ if [ -n "${SMHI_MCP_URL:-}" ]; then
 else
     echo "  🌤️ SMHI:         (ej konfigurerad)"
 fi
+if [ -n "${LIGHTPANDA_MCP_URL:-}" ]; then
+    echo "  🌐 Lightpanda:   ${LIGHTPANDA_MCP_URL}"
+else
+    echo "  🌐 Lightpanda:   (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -663,6 +744,11 @@ if [ -n "${SMHI_MCP_PID:-}" ]; then
     echo "     - SMHI:        logs/smhi-mcp.log"
 elif [ -z "${SMHI_MCP_URL:-}" ] || echo "${SMHI_MCP_URL}" | grep -q "localhost"; then
     echo "     - SMHI:        docker logs deer-flow-smhi-mcp"
+fi
+if [ -n "${LIGHTPANDA_MCP_PID:-}" ]; then
+    echo "     - Lightpanda:  logs/lightpanda-mcp.log"
+elif [ -z "${LIGHTPANDA_MCP_URL:-}" ] || echo "${LIGHTPANDA_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Lightpanda:  docker logs deer-flow-lightpanda-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"
