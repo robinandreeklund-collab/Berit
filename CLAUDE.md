@@ -21,6 +21,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SMHI MCP v1.0** (port 3000, Docker sidecar): Swedish weather, hydrology, oceanography, fire risk — väderprognoser, analyser, observationer, vattenstånd, havsdata, brandrisk. 10 verktyg.
 - **Elpris MCP v1.0** (port 3000, Docker sidecar): Swedish electricity prices — spotpriser, historik, zonjämförelse via elprisetjustnu.se. 4 verktyg.
 - **Bolagsverket MCP v1.0** (port 3000, Docker sidecar): Swedish company data — organisationsuppslag, grunddata, styrelse, registrering, dokument via Värdefulla datamängder API. 6 verktyg.
+- **Google Maps MCP v1.0** (port 3000, Docker sidecar): Geocoding, platssökning, vägbeskrivningar, avstånd, elevation, tidszon via Google Maps API. 13 verktyg.
+- **Avanza MCP v1.0** (port 3000, Docker sidecar): Svenska aktier, fonder, ETF:er, certifikat, warranter, terminer — kurser, analyser, utdelning, orderbok via Avanza publikt API. 34 verktyg.
+- **Blocket/Tradera MCP v1.0** (port 3000, Docker sidecar): Svenska marknadsplatser — sök begagnat, prisjämförelse, bilar, båtar, MC, auktioner. 10 verktyg.
 
 ## Project Structure
 
@@ -61,7 +64,10 @@ Berit/
 │   ├── smhi-mcp/             # SMHI MCP v1.0 — 10 verktyg för väder, hydrologi, oceanografi, brandrisk
 │   ├── lightpanda-mcp/       # Lightpanda MCP v1.0 — 12 verktyg för webbsurfning, sökning, datautvinning
 │   ├── elpris-mcp/           # Elpris MCP v1.0 — 4 verktyg för svenska elpriser (spotpriser)
-│   └── bolagsverket-mcp/     # Bolagsverket MCP v1.0 — 6 verktyg för svensk företagsinformation
+│   ├── bolagsverket-mcp/     # Bolagsverket MCP v1.0 — 6 verktyg för svensk företagsinformation
+│   ├── google-maps-mcp/      # Google Maps MCP v1.0 — 13 verktyg för geocoding, platser, navigation
+│   ├── avanza-mcp/           # Avanza MCP v1.0 — 34 verktyg för aktier, fonder, ETF:er (Python/FastMCP)
+│   └── blocket-tradera-mcp/  # Blocket/Tradera MCP v1.0 — 10 verktyg för begagnatmarknaden
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
@@ -69,7 +75,10 @@ Berit/
 │   ├── smhi-mcp/             # SMHI MCP server Dockerfile
 │   ├── lightpanda-mcp/       # Lightpanda MCP server Dockerfile
 │   ├── elpris-mcp/           # Elpris MCP server Dockerfile
-│   └── bolagsverket-mcp/     # Bolagsverket MCP server Dockerfile
+│   ├── bolagsverket-mcp/     # Bolagsverket MCP server Dockerfile
+│   ├── google-maps-mcp/      # Google Maps MCP server Dockerfile
+│   ├── avanza-mcp/           # Avanza MCP server Dockerfile
+│   └── blocket-tradera-mcp/  # Blocket/Tradera MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 

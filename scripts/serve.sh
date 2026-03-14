@@ -45,9 +45,15 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
+docker stop deer-flow-google-maps-mcp 2>/dev/null || true
+docker rm deer-flow-google-maps-mcp 2>/dev/null || true
+docker stop deer-flow-avanza-mcp 2>/dev/null || true
+docker rm deer-flow-avanza-mcp 2>/dev/null || true
+docker stop deer-flow-blocket-tradera-mcp 2>/dev/null || true
+docker rm deer-flow-blocket-tradera-mcp 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
@@ -66,6 +72,12 @@ docker stop deer-flow-elpris-mcp 2>/dev/null || true
 docker rm deer-flow-elpris-mcp 2>/dev/null || true
 docker stop deer-flow-bolagsverket-mcp 2>/dev/null || true
 docker rm deer-flow-bolagsverket-mcp 2>/dev/null || true
+docker stop deer-flow-google-maps-mcp 2>/dev/null || true
+docker rm deer-flow-google-maps-mcp 2>/dev/null || true
+docker stop deer-flow-avanza-mcp 2>/dev/null || true
+docker rm deer-flow-avanza-mcp 2>/dev/null || true
+docker stop deer-flow-blocket-tradera-mcp 2>/dev/null || true
+docker rm deer-flow-blocket-tradera-mcp 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -125,6 +137,21 @@ if [ -z "${BOLAGSVERKET_MCP_URL:-}" ]; then
     echo "  → Bolagsverket MCP: Swedish Companies (local)"
 else
     echo "  → Bolagsverket MCP: Swedish Companies (remote)"
+fi
+if [ -z "${GOOGLE_MAPS_MCP_URL:-}" ]; then
+    echo "  → Google Maps MCP: Geocoding & Places (local)"
+else
+    echo "  → Google Maps MCP: Geocoding & Places (remote)"
+fi
+if [ -z "${AVANZA_MCP_URL:-}" ]; then
+    echo "  → Avanza MCP: Swedish Stocks & Funds (local)"
+else
+    echo "  → Avanza MCP: Swedish Stocks & Funds (remote)"
+fi
+if [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
+    echo "  → Blocket/Tradera MCP: Swedish Marketplaces (local)"
+else
+    echo "  → Blocket/Tradera MCP: Swedish Marketplaces (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -221,8 +248,20 @@ cleanup() {
     if [ -n "${BOLAGSVERKET_MCP_PID:-}" ] && kill -0 "$BOLAGSVERKET_MCP_PID" 2>/dev/null; then
         kill "$BOLAGSVERKET_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Google Maps MCP process if running
+    if [ -n "${GOOGLE_MAPS_MCP_PID:-}" ] && kill -0 "$GOOGLE_MAPS_MCP_PID" 2>/dev/null; then
+        kill "$GOOGLE_MAPS_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Avanza MCP process if running
+    if [ -n "${AVANZA_MCP_PID:-}" ] && kill -0 "$AVANZA_MCP_PID" 2>/dev/null; then
+        kill "$AVANZA_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Blocket/Tradera MCP process if running
+    if [ -n "${BLOCKET_TRADERA_MCP_PID:-}" ] && kill -0 "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null; then
+        kill "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -244,6 +283,12 @@ cleanup() {
     docker rm deer-flow-elpris-mcp 2>/dev/null || true
     docker stop deer-flow-bolagsverket-mcp 2>/dev/null || true
     docker rm deer-flow-bolagsverket-mcp 2>/dev/null || true
+    docker stop deer-flow-google-maps-mcp 2>/dev/null || true
+    docker rm deer-flow-google-maps-mcp 2>/dev/null || true
+    docker stop deer-flow-avanza-mcp 2>/dev/null || true
+    docker rm deer-flow-avanza-mcp 2>/dev/null || true
+    docker stop deer-flow-blocket-tradera-mcp 2>/dev/null || true
+    docker rm deer-flow-blocket-tradera-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -764,6 +809,185 @@ elif [ -z "${BOLAGSVERKET_MCP_URL:-}" ]; then
 fi
 export BOLAGSVERKET_MCP_URL="${BOLAGSVERKET_MCP_URL:-}"
 
+# Google Maps MCP Server — geocoding, places, directions
+GOOGLE_MAPS_MCP_PORT="${GOOGLE_MAPS_MCP_PORT:-3108}"
+GOOGLE_MAPS_MCP_DIR="$REPO_ROOT/mcp-tools/google-maps-mcp"
+if [ -n "${GOOGLE_MAPS_MCP_URL:-}" ]; then
+    echo "✓ Google Maps MCP using remote instance: ${GOOGLE_MAPS_MCP_URL}"
+elif [ -z "${GOOGLE_MAPS_MCP_URL:-}" ]; then
+    echo "Starting Google Maps MCP server..."
+    GOOGLE_MAPS_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $GOOGLE_MAPS_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-google-maps-mcp >/dev/null 2>&1; then
+            echo "  Building Google Maps MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-google-maps-mcp -f docker/google-maps-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-google-maps-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-google-maps-mcp -p "${GOOGLE_MAPS_MCP_PORT}:3000" \
+                -e MCP_SERVER_PORT=3000 -e PORT=3000 \
+                -e GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}" \
+                --restart unless-stopped deer-flow-google-maps-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$GOOGLE_MAPS_MCP_PORT" 30 "Google Maps MCP" || true
+            if docker ps --filter name=deer-flow-google-maps-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export GOOGLE_MAPS_MCP_URL="http://localhost:${GOOGLE_MAPS_MCP_PORT}/mcp"
+                echo "✓ Google Maps MCP started via Docker on localhost:${GOOGLE_MAPS_MCP_PORT}"
+                GOOGLE_MAPS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $GOOGLE_MAPS_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Google Maps MCP with Node.js..."
+        if [ ! -f "$GOOGLE_MAPS_MCP_DIR/dist/cli.js" ]; then
+            echo "  Building Google Maps MCP from local source (first time)..."
+            (cd "$GOOGLE_MAPS_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Google Maps MCP build failed. Maps tools will not be available."
+            }
+        fi
+        if [ -f "$GOOGLE_MAPS_MCP_DIR/dist/cli.js" ]; then
+            MCP_SERVER_PORT="$GOOGLE_MAPS_MCP_PORT" GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}" \
+                node "$GOOGLE_MAPS_MCP_DIR/dist/cli.js" > logs/google-maps-mcp.log 2>&1 &
+            GOOGLE_MAPS_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$GOOGLE_MAPS_MCP_PORT" 15 "Google Maps MCP" || {
+                echo "  ⚠ Google Maps MCP failed to start."
+                kill "$GOOGLE_MAPS_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$GOOGLE_MAPS_MCP_PID" 2>/dev/null; then
+                export GOOGLE_MAPS_MCP_URL="http://localhost:${GOOGLE_MAPS_MCP_PORT}/mcp"
+                echo "✓ Google Maps MCP started via Node.js on localhost:${GOOGLE_MAPS_MCP_PORT}"
+                GOOGLE_MAPS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $GOOGLE_MAPS_MCP_STARTED; then
+        echo "  ⚠ Google Maps MCP could not be started. Maps tools will not be available."
+        echo "  Install Docker or Node.js to enable Google Maps MCP."
+    fi
+fi
+export GOOGLE_MAPS_MCP_URL="${GOOGLE_MAPS_MCP_URL:-}"
+
+# Avanza MCP Server — Swedish stocks, funds, ETFs
+AVANZA_MCP_PORT="${AVANZA_MCP_PORT:-3109}"
+AVANZA_MCP_DIR="$REPO_ROOT/mcp-tools/avanza-mcp"
+if [ -n "${AVANZA_MCP_URL:-}" ]; then
+    echo "✓ Avanza MCP using remote instance: ${AVANZA_MCP_URL}"
+elif [ -z "${AVANZA_MCP_URL:-}" ]; then
+    echo "Starting Avanza MCP server..."
+    AVANZA_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $AVANZA_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-avanza-mcp >/dev/null 2>&1; then
+            echo "  Building Avanza MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-avanza-mcp -f docker/avanza-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-avanza-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-avanza-mcp -p "${AVANZA_MCP_PORT}:3000" \
+                -e PORT=3000 \
+                --restart unless-stopped deer-flow-avanza-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$AVANZA_MCP_PORT" 30 "Avanza MCP" || true
+            if docker ps --filter name=deer-flow-avanza-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export AVANZA_MCP_URL="http://localhost:${AVANZA_MCP_PORT}/mcp"
+                echo "✓ Avanza MCP started via Docker on localhost:${AVANZA_MCP_PORT}"
+                AVANZA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Python (fallback when Docker unavailable)
+    if ! $AVANZA_MCP_STARTED && command -v python3 >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Avanza MCP with Python..."
+        if [ -f "$AVANZA_MCP_DIR/http_server.py" ]; then
+            (cd "$AVANZA_MCP_DIR" && pip install -e . > /dev/null 2>&1) || true
+            PORT="$AVANZA_MCP_PORT" python3 "$AVANZA_MCP_DIR/http_server.py" > logs/avanza-mcp.log 2>&1 &
+            AVANZA_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$AVANZA_MCP_PORT" 30 "Avanza MCP" || {
+                echo "  ⚠ Avanza MCP failed to start."
+                kill "$AVANZA_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$AVANZA_MCP_PID" 2>/dev/null; then
+                export AVANZA_MCP_URL="http://localhost:${AVANZA_MCP_PORT}/mcp"
+                echo "✓ Avanza MCP started via Python on localhost:${AVANZA_MCP_PORT}"
+                AVANZA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $AVANZA_MCP_STARTED; then
+        echo "  ⚠ Avanza MCP could not be started. Stock/fund tools will not be available."
+        echo "  Install Docker or Python to enable Avanza MCP."
+    fi
+fi
+export AVANZA_MCP_URL="${AVANZA_MCP_URL:-}"
+
+# Blocket/Tradera MCP Server — Swedish marketplaces
+BLOCKET_TRADERA_MCP_PORT="${BLOCKET_TRADERA_MCP_PORT:-3110}"
+BLOCKET_TRADERA_MCP_DIR="$REPO_ROOT/mcp-tools/blocket-tradera-mcp"
+if [ -n "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
+    echo "✓ Blocket/Tradera MCP using remote instance: ${BLOCKET_TRADERA_MCP_URL}"
+elif [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
+    echo "Starting Blocket/Tradera MCP server..."
+    BLOCKET_TRADERA_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $BLOCKET_TRADERA_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-blocket-tradera-mcp >/dev/null 2>&1; then
+            echo "  Building Blocket/Tradera MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-blocket-tradera-mcp -f docker/blocket-tradera-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-blocket-tradera-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-blocket-tradera-mcp -p "${BLOCKET_TRADERA_MCP_PORT}:3000" \
+                -e PORT=3000 \
+                -e TRADERA_APP_ID="${TRADERA_APP_ID:-}" \
+                -e TRADERA_APP_KEY="${TRADERA_APP_KEY:-}" \
+                --restart unless-stopped deer-flow-blocket-tradera-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$BLOCKET_TRADERA_MCP_PORT" 30 "Blocket/Tradera MCP" || true
+            if docker ps --filter name=deer-flow-blocket-tradera-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export BLOCKET_TRADERA_MCP_URL="http://localhost:${BLOCKET_TRADERA_MCP_PORT}/mcp"
+                echo "✓ Blocket/Tradera MCP started via Docker on localhost:${BLOCKET_TRADERA_MCP_PORT}"
+                BLOCKET_TRADERA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $BLOCKET_TRADERA_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Blocket/Tradera MCP with Node.js..."
+        if [ ! -f "$BLOCKET_TRADERA_MCP_DIR/build/http-server.js" ]; then
+            echo "  Building Blocket/Tradera MCP from local source (first time)..."
+            (cd "$BLOCKET_TRADERA_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Blocket/Tradera MCP build failed. Marketplace tools will not be available."
+            }
+        fi
+        if [ -f "$BLOCKET_TRADERA_MCP_DIR/build/http-server.js" ]; then
+            PORT="$BLOCKET_TRADERA_MCP_PORT" \
+                TRADERA_APP_ID="${TRADERA_APP_ID:-}" \
+                TRADERA_APP_KEY="${TRADERA_APP_KEY:-}" \
+                node "$BLOCKET_TRADERA_MCP_DIR/build/http-server.js" > logs/blocket-tradera-mcp.log 2>&1 &
+            BLOCKET_TRADERA_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$BLOCKET_TRADERA_MCP_PORT" 15 "Blocket/Tradera MCP" || {
+                echo "  ⚠ Blocket/Tradera MCP failed to start."
+                kill "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null; then
+                export BLOCKET_TRADERA_MCP_URL="http://localhost:${BLOCKET_TRADERA_MCP_PORT}/mcp"
+                echo "✓ Blocket/Tradera MCP started via Node.js on localhost:${BLOCKET_TRADERA_MCP_PORT}"
+                BLOCKET_TRADERA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $BLOCKET_TRADERA_MCP_STARTED; then
+        echo "  ⚠ Blocket/Tradera MCP could not be started. Marketplace tools will not be available."
+        echo "  Install Docker or Node.js to enable Blocket/Tradera MCP."
+    fi
+fi
+export BLOCKET_TRADERA_MCP_URL="${BLOCKET_TRADERA_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -873,6 +1097,21 @@ if [ -n "${BOLAGSVERKET_MCP_URL:-}" ]; then
 else
     echo "  🏢 Bolagsverket: (ej konfigurerad)"
 fi
+if [ -n "${GOOGLE_MAPS_MCP_URL:-}" ]; then
+    echo "  🗺️ Google Maps: ${GOOGLE_MAPS_MCP_URL}"
+else
+    echo "  🗺️ Google Maps: (ej konfigurerad)"
+fi
+if [ -n "${AVANZA_MCP_URL:-}" ]; then
+    echo "  📈 Avanza:       ${AVANZA_MCP_URL}"
+else
+    echo "  📈 Avanza:       (ej konfigurerad)"
+fi
+if [ -n "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
+    echo "  🛒 Blocket:      ${BLOCKET_TRADERA_MCP_URL}"
+else
+    echo "  🛒 Blocket:      (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -919,6 +1158,21 @@ if [ -n "${BOLAGSVERKET_MCP_PID:-}" ]; then
     echo "     - Bolagsverket: logs/bolagsverket-mcp.log"
 elif [ -z "${BOLAGSVERKET_MCP_URL:-}" ] || echo "${BOLAGSVERKET_MCP_URL}" | grep -q "localhost"; then
     echo "     - Bolagsverket: docker logs deer-flow-bolagsverket-mcp"
+fi
+if [ -n "${GOOGLE_MAPS_MCP_PID:-}" ]; then
+    echo "     - Google Maps: logs/google-maps-mcp.log"
+elif [ -z "${GOOGLE_MAPS_MCP_URL:-}" ] || echo "${GOOGLE_MAPS_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Google Maps: docker logs deer-flow-google-maps-mcp"
+fi
+if [ -n "${AVANZA_MCP_PID:-}" ]; then
+    echo "     - Avanza:      logs/avanza-mcp.log"
+elif [ -z "${AVANZA_MCP_URL:-}" ] || echo "${AVANZA_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Avanza:      docker logs deer-flow-avanza-mcp"
+fi
+if [ -n "${BLOCKET_TRADERA_MCP_PID:-}" ]; then
+    echo "     - Blocket:     logs/blocket-tradera-mcp.log"
+elif [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ] || echo "${BLOCKET_TRADERA_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Blocket:     docker logs deer-flow-blocket-tradera-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"

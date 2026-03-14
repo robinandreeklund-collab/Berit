@@ -86,6 +86,9 @@ services:
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
       - ELPRIS_MCP_URL=http://elpris-mcp:3000/mcp
       - BOLAGSVERKET_MCP_URL=http://bolagsverket-mcp:3000/mcp
+      - GOOGLE_MAPS_MCP_URL=http://google-maps-mcp:3000/mcp
+      - AVANZA_MCP_URL=http://avanza-mcp:3000/mcp
+      - BLOCKET_TRADERA_MCP_URL=http://blocket-tradera-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -128,6 +131,9 @@ services:
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
       - ELPRIS_MCP_URL=http://elpris-mcp:3000/mcp
       - BOLAGSVERKET_MCP_URL=http://bolagsverket-mcp:3000/mcp
+      - GOOGLE_MAPS_MCP_URL=http://google-maps-mcp:3000/mcp
+      - AVANZA_MCP_URL=http://avanza-mcp:3000/mcp
+      - BLOCKET_TRADERA_MCP_URL=http://blocket-tradera-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -270,6 +276,61 @@ services:
     container_name: deer-flow-smhi-mcp
     environment:
       - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Google Maps MCP Server (geocoding, places, directions) ──────────────
+  google-maps-mcp:
+    build:
+      context: ../
+      dockerfile: docker/google-maps-mcp/Dockerfile
+    container_name: deer-flow-google-maps-mcp
+    environment:
+      - MCP_SERVER_PORT=3000
+      - PORT=3000
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Avanza MCP Server (Swedish stocks, funds, ETFs) ────────────────────
+  avanza-mcp:
+    build:
+      context: ../
+      dockerfile: docker/avanza-mcp/Dockerfile
+    container_name: deer-flow-avanza-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Blocket & Tradera MCP Server (Swedish marketplaces) ────────────────
+  blocket-tradera-mcp:
+    build:
+      context: ../
+      dockerfile: docker/blocket-tradera-mcp/Dockerfile
+    container_name: deer-flow-blocket-tradera-mcp
+    environment:
+      - PORT=3000
+      - TRADERA_APP_ID=${TRADERA_APP_ID:-}
+      - TRADERA_APP_KEY=${TRADERA_APP_KEY:-}
     networks:
       - deer-flow
     restart: unless-stopped
