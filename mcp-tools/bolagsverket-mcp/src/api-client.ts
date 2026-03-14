@@ -95,7 +95,7 @@ export class BolagsverketApiClient {
       );
     }
 
-    const tokenUrl = process.env.BOLAGSVERKET_TOKEN_URL || 'https://gw.api.bolagsverket.se/oauth2/token';
+    const tokenUrl = process.env.BOLAGSVERKET_TOKEN_URL || 'https://portal.api.bolagsverket.se/oauth2/token';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
