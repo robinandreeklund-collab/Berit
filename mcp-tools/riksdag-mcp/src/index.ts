@@ -316,12 +316,18 @@ export class RiksdagMCPServer {
         case 'riksdag_kalender': {
           const from = (params.from as string) || today();
           const to = (params.to as string) || daysFromNow(7);
+          // The Riksdag calendar API does not support JSON output.
+          // Use dokumentlista with date range as a workaround to show recent activity.
           const qp = new URLSearchParams();
           qp.set('from', from);
           qp.set('tom', to);
+          qp.set('sort', 'datum');
+          qp.set('sortorder', 'desc');
+          qp.set('sz', '20');
           qp.set('utformat', 'json');
-          const { data } = await client.riksdagen(`/kalenderlista/?${qp.toString()}`);
-          result = formatKalender(data);
+          if (params.org) qp.set('org', String(params.org));
+          const { data } = await client.riksdagen(`/dokumentlista/?${qp.toString()}`);
+          result = formatDokumentLista(data);
           break;
         }
 
