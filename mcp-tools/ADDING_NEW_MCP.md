@@ -5,7 +5,7 @@ Guiden använder `{name}` som platshållare — ersätt med ditt servernamn (t.e
 
 ---
 
-## Översikt — 13 filer att skapa/ändra
+## Översikt — filer att skapa/ändra
 
 | # | Fil | Typ | Beskrivning |
 |---|-----|-----|-------------|
@@ -22,8 +22,9 @@ Guiden använder `{name}` som platshållare — ersätt med ditt servernamn (t.e
 | 11 | `extensions_config.example.json` | **Ändra** | Registrera MCP-servern |
 | 12 | `docker/docker-compose.yaml` | **Ändra** | Docker Compose-service + env-vars |
 | 13 | `scripts/serve.sh` | **Ändra** | Banner, startup, cleanup, ready-banner, loggar |
-| 14 | `.env.example` | **Ändra** | URL-exempel |
-| 15 | `CLAUDE.md` | **Ändra** | Arkitekturdokumentation |
+| 14 | `render.yaml` | **Ändra** | Render-deploy env-vars (API-nycklar) |
+| 15 | `.env.example` | **Ändra** | URL-exempel |
+| 16 | `CLAUDE.md` | **Ändra** | Arkitekturdokumentation |
 
 ---
 
@@ -446,11 +447,65 @@ Lägg till i `mcpServers`-objektet:
 
 ---
 
-## Steg 7 — Utvecklingsserver (`scripts/serve.sh`)
+## Steg 7 — Render-deploy (`render.yaml`)
+
+Alla MCP-servrar körs på **samma Render-instans** via combined-mcp. Filen `render.yaml` i projektets rot styr Render-deployen (Infrastructure as Code).
+
+### 7.1 Nuvarande `render.yaml`
+
+```yaml
+services:
+  - type: web
+    name: scb-mcp
+    runtime: docker
+    dockerfilePath: ./mcp-tools/combined-mcp/Dockerfile
+    dockerContext: ./mcp-tools
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: TRAFIKVERKET_API_KEY
+        sync: false
+      - key: RIKSBANK_API_KEY
+        sync: false
+```
+
+### 7.2 Lägg till env-vars
+
+Om din MCP-server behöver en API-nyckel, lägg till den i `envVars`-listan:
+
+```yaml
+      - key: {NAME}_API_KEY
+        sync: false
+```
+
+`sync: false` innebär att värdet sätts manuellt i Render Dashboard (inte versionshanterat).
+
+### 7.3 Viktiga detaljer
+
+- **Inget nytt service-block behövs** — alla MCP-servrar körs i samma container via combined-mcp
+- **`dockerfilePath`** pekar redan på `./mcp-tools/combined-mcp/Dockerfile` — din nya MCP byggs automatiskt om du lagt till den i combined-mcp Dockerfile (steg 4)
+- **`dockerContext`** är `./mcp-tools` — alla `COPY`-kommandon i Dockerfile utgår från denna mapp
+- **`healthCheckPath: /health`** — Render pingar root-serverns health. Nginx vidarebefordrar till SCB (default upstream). Övriga MCP-servrar nås via `/{name}/health`
+- **Port 10000** — Render kräver att appen lyssnar på `$PORT` (10000). Nginx i combined-mcp hanterar detta
+
+### 7.4 Efter push till Render
+
+1. Pusha dina ändringar till den branch som Render bevakar
+2. Om ny API-nyckel behövs: gå till **Render Dashboard → Environment → Add Environment Variable**
+3. Render bygger automatiskt och deployer
+4. Verifiera: `curl https://scb-mcp-tjuk.onrender.com/{name}/health`
+
+---
+
+## Steg 8 — Utvecklingsserver (`scripts/serve.sh`)
 
 Serve.sh har **6 platser** som måste uppdateras:
 
-### 7.1 Portlista (rad ~48)
+### 8.1 Portlista (rad ~48)
 
 Lägg till `{LOCAL_PORT}` i for-loopen:
 ```bash
@@ -467,14 +522,14 @@ Porttilldelning (lokal utveckling):
 | 3104 | SMHI |
 | **3105** | **Nästa lediga** |
 
-### 7.2 Docker container cleanup (rad ~51-61)
+### 8.2 Docker container cleanup (rad ~51-61)
 
 ```bash
 docker stop deer-flow-{name}-mcp 2>/dev/null || true
 docker rm deer-flow-{name}-mcp 2>/dev/null || true
 ```
 
-### 7.3 Banner (rad ~81-104)
+### 8.3 Banner (rad ~81-104)
 
 ```bash
 if [ -z "${{NAME}_MCP_URL:-}" ]; then
@@ -484,7 +539,7 @@ else
 fi
 ```
 
-### 7.4 Cleanup trap (rad ~136-198)
+### 8.4 Cleanup trap (rad ~136-198)
 
 ```bash
 # Kill {Name} MCP Node.js process if running
@@ -499,7 +554,7 @@ docker stop deer-flow-{name}-mcp 2>/dev/null || true
 docker rm deer-flow-{name}-mcp 2>/dev/null || true
 ```
 
-### 7.5 Startup-logik (rad ~407-466)
+### 8.5 Startup-logik (rad ~407-466)
 
 Kopiera hela blocket från en befintlig MCP-server (t.ex. Riksbank) och ersätt:
 - `RIKSBANK` → `{NAME}` (versaler)
@@ -528,7 +583,7 @@ fi
 export {NAME}_MCP_URL="${{{NAME}_MCP_URL:-}}"
 ```
 
-### 7.6 Ready-banner (rad ~522-586)
+### 8.6 Ready-banner (rad ~522-586)
 
 Lägg till URL:
 ```bash
@@ -550,9 +605,9 @@ fi
 
 ---
 
-## Steg 8 — Miljövariabler
+## Steg 9 — Miljövariabler
 
-### 8.1 `.env.example`
+### 9.1 `.env.example`
 
 ```bash
 # {Name} MCP Server URL ({beskrivning})
@@ -568,9 +623,9 @@ Om API-nyckel behövs:
 
 ---
 
-## Steg 9 — Dokumentation
+## Steg 10 — Dokumentation
 
-### 9.1 `CLAUDE.md`
+### 10.1 `CLAUDE.md`
 
 Uppdatera projektöversikten (Architecture-sektionen) med:
 ```
@@ -584,9 +639,9 @@ Uppdatera projektstrukturens `mcp-tools/`-sektion:
 
 ---
 
-## Steg 10 — Testa
+## Steg 11 — Testa
 
-### 10.1 Lokal test
+### 11.1 Lokal test
 
 ```bash
 cd mcp-tools/{name}-mcp
@@ -598,7 +653,7 @@ curl -X POST localhost:3000/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-### 10.2 Test av varje verktyg
+### 11.2 Test av varje verktyg
 
 ```bash
 curl -s localhost:3000/mcp -X POST \
@@ -609,7 +664,7 @@ curl -s localhost:3000/mcp -X POST \
   }'
 ```
 
-### 10.3 Test på Render (combined)
+### 11.3 Test på Render (combined)
 
 ```bash
 # Health
@@ -626,7 +681,7 @@ curl -X POST https://scb-mcp.onrender.com/{name}/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{...}}'
 ```
 
-### 10.4 Full integration
+### 11.4 Full integration
 
 ```bash
 make dev   # Verifiera att {Name} syns i bannern
@@ -646,6 +701,7 @@ make dev   # Verifiera att {Name} syns i bannern
 - [ ] `extensions_config.example.json` — MCP-serverregistrering
 - [ ] `docker/docker-compose.yaml` — Service + env-vars i gateway/langgraph
 - [ ] `scripts/serve.sh` — Banner, startup, cleanup, ready-banner, loggar (6 platser)
+- [ ] `render.yaml` — Env-vars för Render-deploy (API-nycklar)
 - [ ] `.env.example` — URL + ev. API-nyckel
 - [ ] `CLAUDE.md` — Arkitekturbeskrivning
 - [ ] Alla tester passerar (`npm test`)
