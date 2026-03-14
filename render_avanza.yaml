@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: avanza-mcp
+    runtime: docker
+    dockerfilePath: ./docker/avanza-mcp/Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000

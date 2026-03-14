@@ -14,6 +14,8 @@ echo "SMHI MCP:         internal :3005 → /smhi/"
 echo "Lightpanda MCP:   internal :3006 → /lightpanda/"
 echo "Elpris MCP:       internal :3007 → /elpris/"
 echo "Bolagsverket MCP: internal :3008 → /bolagsverket/"
+echo "Google Maps MCP:  internal :3009 → /google-maps/"
+echo "Blocket/Tradera:  internal :3010 → /blocket-tradera/"
 
 # Generate nginx config with actual PORT
 envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
@@ -60,6 +62,16 @@ echo "Starting Bolagsverket MCP on :3008..."
 PORT=3008 node /app/bolagsverket/dist/http-server.js &
 BOLAGSVERKET_PID=$!
 
+# Start Google Maps MCP on port 3009
+echo "Starting Google Maps MCP on :3009..."
+MCP_SERVER_PORT=3009 PORT=3009 node /app/google-maps/dist/cli.js &
+GOOGLE_MAPS_PID=$!
+
+# Start Blocket/Tradera MCP on port 3010
+echo "Starting Blocket/Tradera MCP on :3010..."
+PORT=3010 node /app/blocket-tradera/build/http-server.js &
+BLOCKET_TRADERA_PID=$!
+
 # Wait for all to be ready
 echo "Waiting for services..."
 for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -70,7 +82,9 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
        wget -qO- http://127.0.0.1:3005/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3006/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3007/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3008/health >/dev/null 2>&1; then
+       wget -qO- http://127.0.0.1:3008/health >/dev/null 2>&1 && \
+       nc -z 127.0.0.1 3009 2>/dev/null && \
+       wget -qO- http://127.0.0.1:3010/health >/dev/null 2>&1; then
         echo "All services healthy!"
         break
     fi
@@ -99,11 +113,14 @@ echo "  Elpris MCP:        http://localhost:$PORT/elpris/mcp"
 echo "  Elpris health:     http://localhost:$PORT/elpris/health"
 echo "  Bolagsverket MCP:  http://localhost:$PORT/bolagsverket/mcp"
 echo "  Bolagsverket health: http://localhost:$PORT/bolagsverket/health"
+echo "  Google Maps MCP:   http://localhost:$PORT/google-maps/mcp"
+echo "  Blocket/Tradera MCP: http://localhost:$PORT/blocket-tradera/mcp"
+echo "  Blocket/Tradera health: http://localhost:$PORT/blocket-tradera/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $NGINX_PID 2>/dev/null || true
 exit 1

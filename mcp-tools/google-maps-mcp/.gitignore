@@ -1,0 +1,7 @@
+dist/
+node_modules/
+credentials.json
+.env
+.agents/*
+.mcpregistry_*
+.mcp.json

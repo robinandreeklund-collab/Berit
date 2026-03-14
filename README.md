@@ -232,6 +232,40 @@ TypeScript MCP server providing web browsing, search and data extraction via the
 LIGHTPANDA_MCP_URL=https://scb-mcp.onrender.com/lightpanda/mcp
 ```
 
+##### Google Maps MCP v1.0 (Geocoding & Places)
+
+Fork of [mcp-google-map](https://github.com/cablate/mcp-google-map) providing geocoding, place search, directions, distance calculations, elevation and timezone data via Google Maps API. Source in `mcp-tools/google-maps-mcp/`. 13 tools: search_nearby, search_places, place_details, geocode, reverse_geocode, directions, distance_matrix, elevation, timezone, weather, explore_area, plan_route, compare_places.
+
+**Docker (default):** Runs as a sidecar container (`google-maps-mcp`) in Docker Compose. Requires `GOOGLE_MAPS_API_KEY` in `.env`.
+
+**Without Docker:** Override by setting `GOOGLE_MAPS_MCP_URL` in `.env`:
+```bash
+GOOGLE_MAPS_MCP_URL=https://scb-mcp.onrender.com/google-maps/mcp
+GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+```
+
+##### Avanza MCP v1.0 (Swedish Stocks & Funds)
+
+Fork of [avanza-mcp](https://github.com/AnteWall/avanza-mcp) providing access to Avanza's public market data API for Swedish stocks, funds, ETFs, certificates, warrants, and futures. Source in `mcp-tools/avanza-mcp/`. 34 tools including search, stock info/quotes/analysis, fund info/holdings, ETF/certificate/warrant filtering, and more. No API key required.
+
+**Docker (default):** Runs as a sidecar container (`avanza-mcp`) in Docker Compose. No configuration needed.
+
+**Without Docker:** Override by setting `AVANZA_MCP_URL` in `.env`:
+```bash
+AVANZA_MCP_URL=http://avanza-mcp:3000/mcp
+```
+
+##### Blocket/Tradera MCP v1.0 (Swedish Marketplaces)
+
+Fork of [blocket-tradera-mcp](https://github.com/isakskogstad/blocket-tradera-mcp) providing search and price comparison across Sweden's two largest marketplaces. Source in `mcp-tools/blocket-tradera-mcp/`. 10 tools: marketplace_search, blocket_search, blocket_search_cars/boats/mc, tradera_search, get_listing_details, compare_prices, get_categories, get_regions.
+
+**Docker (default):** Runs as a sidecar container (`blocket-tradera-mcp`) in Docker Compose. Optional: set `TRADERA_APP_ID` and `TRADERA_APP_KEY` in `.env` for Tradera access.
+
+**Without Docker:** Override by setting `BLOCKET_TRADERA_MCP_URL` in `.env`:
+```bash
+BLOCKET_TRADERA_MCP_URL=https://scb-mcp.onrender.com/blocket-tradera/mcp
+```
+
 #### IM Channels
 
 DeerFlow supports receiving tasks from messaging apps. Channels auto-start when configured — no public IP required for any of them.

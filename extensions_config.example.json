@@ -133,6 +133,39 @@
       "headers": {},
       "oauth": null,
       "description": "Bolagsverket — Svensk företagsinformation. Organisationsuppslag, grunddata, styrelse, registrering, dokument. 6 verktyg."
+    },
+    "google-maps": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$GOOGLE_MAPS_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Google Maps — Geocoding, platssökning, vägbeskrivningar, avstånd, elevation, tidszon. 13 verktyg."
+    },
+    "avanza": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$AVANZA_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Avanza — Svenska aktier, fonder, ETF:er, certifikat, warranter, terminer. Kurser, analyser, utdelning, orderbok. 34 verktyg."
+    },
+    "blocket-tradera": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$BLOCKET_TRADERA_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Blocket & Tradera — Sök begagnat, prisjämförelse, bilar, båtar, MC, auktioner. 10 verktyg."
     }
   },
   "skills": {}

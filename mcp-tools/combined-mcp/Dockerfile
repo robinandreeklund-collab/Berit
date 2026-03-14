@@ -62,7 +62,21 @@ COPY bolagsverket-mcp/package.json bolagsverket-mcp/tsconfig.json ./
 COPY bolagsverket-mcp/src ./src
 RUN npm install && npm run build
 
-# ============ Stage 9: Production ============
+# ============ Stage 9: Build Google Maps ============
+FROM node:22-alpine AS build-google-maps
+WORKDIR /app
+COPY google-maps-mcp/package.json google-maps-mcp/package-lock.json google-maps-mcp/tsconfig.json google-maps-mcp/tsup.config.ts ./
+COPY google-maps-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 10: Build Blocket/Tradera ============
+FROM node:22-alpine AS build-blocket-tradera
+WORKDIR /app
+COPY blocket-tradera-mcp/package.json blocket-tradera-mcp/package-lock.json blocket-tradera-mcp/tsconfig.json ./
+COPY blocket-tradera-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 11: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -113,6 +127,16 @@ COPY --from=build-elpris /app/dist /app/elpris/dist
 COPY bolagsverket-mcp/package.json /app/bolagsverket/
 RUN cd /app/bolagsverket && npm install --omit=dev --ignore-scripts
 COPY --from=build-bolagsverket /app/dist /app/bolagsverket/dist
+
+# Google Maps production install
+COPY google-maps-mcp/package.json google-maps-mcp/package-lock.json /app/google-maps/
+RUN cd /app/google-maps && npm ci --omit=dev --ignore-scripts
+COPY --from=build-google-maps /app/dist /app/google-maps/dist
+
+# Blocket/Tradera production install
+COPY blocket-tradera-mcp/package.json blocket-tradera-mcp/package-lock.json /app/blocket-tradera/
+RUN cd /app/blocket-tradera && npm ci --omit=dev --ignore-scripts
+COPY --from=build-blocket-tradera /app/build /app/blocket-tradera/build
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template

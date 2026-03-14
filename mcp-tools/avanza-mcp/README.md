@@ -1,0 +1,204 @@
+# Avanza MCP Server
+![PyPI - Version](https://img.shields.io/pypi/v/avanza-mcp)
+[![CI](https://github.com/AnteWall/avanza-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/AnteWall/avanza-mcp/actions/workflows/ci.yml)
+
+A Model Context Protocol (MCP) server providing access to Avanza's public API. Get real-time Swedish stock quotes, fund information, charts, and comprehensive market data.
+
+## 🚀 Features
+
+- Fetch instrument info (stocks, ETFs, funds)  
+- Real-time price quotes & order book depth  
+- Historical price charts & financial ratios  
+- Fund performance & ESG metrics  
+- Screening and comparison prompts
+
+## Installation for MCP Clients
+<details>
+<summary>Claude Desktop</summary>
+
+Add the following to your Claude Desktop MCP configuration file:
+
+```json
+{
+  "mcpServers": {
+    "avanza": {
+      "command": "uvx",
+      "args": ["--prerelease=allow", "avanza-mcp"]
+    }
+  }
+}
+```
+Restart Claude Desktop after saving the configuration.
+</details>
+
+
+<details>
+<summary>Cursor</summary>
+
+Cursor supports MCP servers via its settings.
+
+1. Open **Cursor Settings**
+2. Navigate to **AI → MCP Servers**
+3. Add a new MCP server with the following configuration:
+
+```json
+{
+  "name": "avanza",
+  "command": "uvx",
+  "args": ["--prerelease=allow", "avanza-mcp"]
+}
+```
+
+Once added, Cursor can query Avanza market data directly in chat and inline prompts.
+</details>
+
+<details>
+<summary>Visual Studio Code</summary>
+
+VS Code can use Avanza MCP Server through MCP-compatible extensions or custom AI tooling.
+
+1. Ensure you have **Python 3.10+** installed
+2. Ensure `uv` is installed: https://docs.astral.sh/uv/
+3. Add the following MCP server configuration to your MCP-enabled extension or tool:
+
+```json
+{
+  "mcpServers": {
+    "avanza": {
+      "command": "uvx",
+      "args": ["--prerelease=allow", "avanza-mcp"]
+    }
+  }
+}
+```
+
+Reload the VS Code window after updating the configuration.
+</details>
+
+
+> **Note:** MCP support depends on the specific extension you are using. Refer to your extension’s documentation for MCP setup details.
+
+  
+## ⚠️ Disclaimer
+
+This is an unofficial API client/MCP Server. Not affiliated with Avanza Bank AB. The underlying API can be taken down or changed without warning at any point in time.
+
+The author of this software is not responsible for any indirect damages (foreseeable or unforeseeable), such as, if necessary, loss or alteration of or fraudulent access to data, accidental transmission of viruses or of any other harmful element, loss of profits or opportunities, the cost of replacement goods and services or the attitude and behavior of a third party.
+
+## 🛠️ MCP Tools
+
+### Search & Discovery
+| Tool | Description |
+|------|-------------|
+| `search_instruments` | Find stocks, funds, ETFs by name or symbol |
+| `get_instrument_by_order_book_id` | Look up instruments by order book ID |
+
+### Stock Analysis
+| Tool | Description |
+|------|-------------|
+| `get_stock_info` | Complete stock information with fundamentals |
+| `get_stock_quote` | Real-time price and volume data |
+| `get_stock_analysis` | Financial ratios by year and quarter |
+| `get_stock_chart` | Historical OHLC price data |
+| `get_orderbook` | Order book depth with bid/ask levels |
+| `get_marketplace_info` | Trading hours and market status |
+| `get_recent_trades` | Latest executed trades |
+| `get_broker_trade_summary` | Broker buy/sell activity |
+| `get_dividends` | Historical dividend data |
+| `get_company_financials` | Annual and quarterly financial statements |
+
+### Fund Analysis
+| Tool | Description |
+|------|-------------|
+| `get_fund_info` | Complete fund information with performance |
+| `get_fund_sustainability` | ESG scores and sustainability metrics |
+| `get_fund_chart` | Historical performance charts |
+| `get_fund_chart_periods` | Performance across all time periods |
+| `get_fund_description` | Detailed fund description |
+| `get_fund_holdings` | Portfolio allocation (country, sector, top holdings) |
+
+### Certificates
+| Tool | Description |
+|------|-------------|
+| `filter_certificates` | Search and filter certificates with pagination |
+| `get_certificate_info` | Get detailed certificate information |
+| `get_certificate_details` | Get extended certificate details |
+
+### Warrants
+| Tool | Description |
+|------|-------------|
+| `filter_warrants` | Search and filter warrants (turbos, minis) |
+| `get_warrant_info` | Get detailed warrant information |
+| `get_warrant_details` | Get extended warrant details |
+
+### ETFs
+| Tool | Description |
+|------|-------------|
+| `filter_etfs` | Search and filter exchange-traded funds |
+| `get_etf_info` | Get detailed ETF information |
+| `get_etf_details` | Get extended ETF details |
+
+### Futures/Forwards
+| Tool | Description |
+|------|-------------|
+| `list_futures_forwards` | List available futures and forwards |
+| `get_future_forward_filter_options` | Get available filter options |
+| `get_future_forward_info` | Get contract information |
+| `get_future_forward_details` | Get extended contract details |
+
+### Additional Data
+| Tool | Description |
+|------|-------------|
+| `get_number_of_owners` | Get owner count for any instrument |
+| `get_short_selling` | Get short selling data for instruments |
+| `get_marketmaker_chart` | Get OHLC price chart data for traded products (certificates, warrants, ETFs) |
+
+## 💡 MCP Prompts
+
+### Analysis Prompts
+- `analyze_stock` - Comprehensive stock analysis workflow
+- `compare_funds` - Multi-fund comparison template
+- `screen_dividend_stocks` - Dividend stock screening
+
+### Workflow Prompts (Teach AI Efficient Data Fetching)
+- `search_and_analyze_instrument` - Guide for finding and analyzing instruments efficiently
+- `filter_instruments_efficiently` - Guide for filtering large datasets with pagination
+- `compare_multiple_instruments` - Guide for comparing instruments efficiently
+- `explore_market_segment` - Guide for exploring market segments
+- `get_historical_analysis` - Guide for analyzing historical data
+- `screen_by_criteria` - Guide for screening by custom criteria
+
+## 📚 MCP Resources
+
+### Documentation Resources
+- `avanza://docs/usage` - Comprehensive usage guide for AI assistants
+- `avanza://docs/quick-start` - Quick reference for common tasks
+
+### Instrument Resources
+- `avanza://stock/{instrument_id}` - Get stock information as markdown
+- `avanza://fund/{instrument_id}` - Get fund information as markdown
+
+
+
+
+> **Note:** The `--prerelease=allow` flag is required because this package depends on fastmcp 3.0 (currently in beta). This will no longer be needed once fastmcp 3.0 stable is released.
+
+### Usage in Claude Desktop
+
+Once configured, you can ask Claude:
+
+- "Search for Volvo stock on Avanza"
+- "Get the latest stock quote for Ericsson"
+- "Show me sustainable Swedish funds"
+- "What's in the order book for H&M?"
+- "Compare the performance of these three funds"
+- "What dividends has SEB paid over the years?"
+- "Show me the portfolio holdings for Avanza Global fund"
+
+## 📄 License
+
+MIT License - See [LICENSE.md](LICENSE.md) for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
