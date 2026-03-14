@@ -1,4 +1,4 @@
-# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda + Elpris + Bolagsverket on one instance
+# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda + Elpris + Bolagsverket + Riksdag + NVV + Kolada on one instance
 # SCB:            / (backwards compatible)
 # Skolverket:     /skolverket/
 # Trafikverket:   /trafikverket/
@@ -76,7 +76,28 @@ COPY blocket-tradera-mcp/package.json blocket-tradera-mcp/package-lock.json bloc
 COPY blocket-tradera-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 11: Production ============
+# ============ Stage 11: Build Riksdag ============
+FROM node:22-alpine AS build-riksdag
+WORKDIR /app
+COPY riksdag-mcp/package.json riksdag-mcp/package-lock.json riksdag-mcp/tsconfig.json ./
+COPY riksdag-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 12: Build NVV ============
+FROM node:22-alpine AS build-nvv
+WORKDIR /app
+COPY nvv-mcp/package.json nvv-mcp/package-lock.json nvv-mcp/tsconfig.json ./
+COPY nvv-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 13: Build Kolada ============
+FROM node:22-alpine AS build-kolada
+WORKDIR /app
+COPY kolada-mcp/package.json kolada-mcp/package-lock.json kolada-mcp/tsconfig.json ./
+COPY kolada-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 14: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -137,6 +158,21 @@ COPY --from=build-google-maps /app/dist /app/google-maps/dist
 COPY blocket-tradera-mcp/package.json blocket-tradera-mcp/package-lock.json /app/blocket-tradera/
 RUN cd /app/blocket-tradera && npm ci --omit=dev --ignore-scripts
 COPY --from=build-blocket-tradera /app/build /app/blocket-tradera/build
+
+# Riksdag production install
+COPY riksdag-mcp/package.json riksdag-mcp/package-lock.json /app/riksdag/
+RUN cd /app/riksdag && npm ci --omit=dev --ignore-scripts
+COPY --from=build-riksdag /app/dist /app/riksdag/dist
+
+# NVV production install
+COPY nvv-mcp/package.json nvv-mcp/package-lock.json /app/nvv/
+RUN cd /app/nvv && npm ci --omit=dev --ignore-scripts
+COPY --from=build-nvv /app/dist /app/nvv/dist
+
+# Kolada production install
+COPY kolada-mcp/package.json kolada-mcp/package-lock.json /app/kolada/
+RUN cd /app/kolada && npm ci --omit=dev --ignore-scripts
+COPY --from=build-kolada /app/dist /app/kolada/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template

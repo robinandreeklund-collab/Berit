@@ -89,6 +89,9 @@ services:
       - GOOGLE_MAPS_MCP_URL=http://google-maps-mcp:3000/mcp
       - AVANZA_MCP_URL=http://avanza-mcp:3000/mcp
       - BLOCKET_TRADERA_MCP_URL=http://blocket-tradera-mcp:3000/mcp
+      - RIKSDAG_MCP_URL=http://riksdag-mcp:3000/mcp
+      - NVV_MCP_URL=http://nvv-mcp:3000/mcp
+      - KOLADA_MCP_URL=http://kolada-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -134,6 +137,9 @@ services:
       - GOOGLE_MAPS_MCP_URL=http://google-maps-mcp:3000/mcp
       - AVANZA_MCP_URL=http://avanza-mcp:3000/mcp
       - BLOCKET_TRADERA_MCP_URL=http://blocket-tradera-mcp:3000/mcp
+      - RIKSDAG_MCP_URL=http://riksdag-mcp:3000/mcp
+      - NVV_MCP_URL=http://nvv-mcp:3000/mcp
+      - KOLADA_MCP_URL=http://kolada-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -331,6 +337,57 @@ services:
       - PORT=3000
       - TRADERA_APP_ID=${TRADERA_APP_ID:-}
       - TRADERA_APP_KEY=${TRADERA_APP_KEY:-}
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Riksdag MCP Server (Swedish parliament & government data) ──────────
+  riksdag-mcp:
+    build:
+      context: ../
+      dockerfile: docker/riksdag-mcp/Dockerfile
+    container_name: deer-flow-riksdag-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── NVV MCP Server (Swedish protected nature areas) ───────────────────
+  nvv-mcp:
+    build:
+      context: ../
+      dockerfile: docker/nvv-mcp/Dockerfile
+    container_name: deer-flow-nvv-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Kolada MCP Server (Swedish municipality statistics) ───────────────
+  kolada-mcp:
+    build:
+      context: ../
+      dockerfile: docker/kolada-mcp/Dockerfile
+    container_name: deer-flow-kolada-mcp
+    environment:
+      - PORT=3000
     networks:
       - deer-flow
     restart: unless-stopped

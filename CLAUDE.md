@@ -24,6 +24,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Google Maps MCP v1.0** (port 3000, Docker sidecar): Geocoding, platssökning, vägbeskrivningar, avstånd, elevation, tidszon via Google Maps API. 13 verktyg.
 - **Avanza MCP v1.0** (port 3000, Docker sidecar): Svenska aktier, fonder, ETF:er, certifikat, warranter, terminer — kurser, analyser, utdelning, orderbok via Avanza publikt API. 34 verktyg.
 - **Blocket/Tradera MCP v1.0** (port 3000, Docker sidecar): Svenska marknadsplatser — sök begagnat, prisjämförelse, bilar, båtar, MC, auktioner. 10 verktyg.
+- **Riksdag MCP v1.0** (port 3000, Docker sidecar): Sveriges riksdag och regering — dokument, ledamöter, voteringar, anföranden, regeringsdokument. 15 verktyg.
+- **NVV MCP v1.0** (port 3000, Docker sidecar): Naturvårdsverket — skyddade naturområden, nationalparker, naturreservat, Natura 2000, Ramsar, arter. 8 verktyg.
+- **Kolada MCP v1.0** (port 3000, Docker sidecar): Kommunal och regional statistik — nyckeltal, kommunjämförelse, skolresultat, ekonomi, omsorg. 10 verktyg.
 
 ## Project Structure
 
@@ -67,7 +70,10 @@ Berit/
 │   ├── bolagsverket-mcp/     # Bolagsverket MCP v1.0 — 6 verktyg för svensk företagsinformation
 │   ├── google-maps-mcp/      # Google Maps MCP v1.0 — 13 verktyg för geocoding, platser, navigation
 │   ├── avanza-mcp/           # Avanza MCP v1.0 — 34 verktyg för aktier, fonder, ETF:er (Python/FastMCP)
-│   └── blocket-tradera-mcp/  # Blocket/Tradera MCP v1.0 — 10 verktyg för begagnatmarknaden
+│   ├── blocket-tradera-mcp/  # Blocket/Tradera MCP v1.0 — 10 verktyg för begagnatmarknaden
+│   ├── riksdag-mcp/          # Riksdag MCP v1.0 — 15 verktyg för riksdag och regering
+│   ├── nvv-mcp/              # NVV MCP v1.0 — 8 verktyg för skyddade naturområden
+│   └── kolada-mcp/           # Kolada MCP v1.0 — 10 verktyg för kommunal statistik
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
@@ -78,7 +84,10 @@ Berit/
 │   ├── bolagsverket-mcp/     # Bolagsverket MCP server Dockerfile
 │   ├── google-maps-mcp/      # Google Maps MCP server Dockerfile
 │   ├── avanza-mcp/           # Avanza MCP server Dockerfile
-│   └── blocket-tradera-mcp/  # Blocket/Tradera MCP server Dockerfile
+│   ├── blocket-tradera-mcp/  # Blocket/Tradera MCP server Dockerfile
+│   ├── riksdag-mcp/         # Riksdag MCP server Dockerfile
+│   ├── nvv-mcp/             # NVV MCP server Dockerfile
+│   └── kolada-mcp/          # Kolada MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 
