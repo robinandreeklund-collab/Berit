@@ -7,7 +7,7 @@
 FROM python:3.12-alpine AS build
 WORKDIR /app
 RUN pip install --no-cache-dir uv
-COPY mcp-tools/avanza-mcp/pyproject.toml mcp-tools/avanza-mcp/uv.lock ./
+COPY mcp-tools/avanza-mcp/pyproject.toml mcp-tools/avanza-mcp/uv.lock mcp-tools/avanza-mcp/README.md ./
 COPY mcp-tools/avanza-mcp/src ./src
 COPY mcp-tools/avanza-mcp/http_server.py ./
 RUN uv sync --frozen --no-dev
@@ -17,6 +17,7 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /app/src ./src
 COPY --from=build /app/pyproject.toml ./
+COPY mcp-tools/avanza-mcp/README.md ./
 COPY mcp-tools/avanza-mcp/http_server.py ./
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PORT=3000
