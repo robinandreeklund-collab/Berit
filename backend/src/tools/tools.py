@@ -57,6 +57,7 @@ def get_available_tools(
             if extensions_config.get_enabled_mcp_servers():
                 mcp_tools = get_cached_mcp_tools()
                 if mcp_tools:
+                    mcp_tools = _sanitize_tool_schemas(mcp_tools)
                     logger.info(f"Using {len(mcp_tools)} cached MCP tool(s)")
         except ImportError:
             logger.warning("MCP module not available. Install 'langchain-mcp-adapters' package to enable MCP tools.")
@@ -82,3 +83,34 @@ def get_available_tools(
         logger.info(f"Including view_image_tool for model '{model_name}' (supports_vision=True)")
 
     return loaded_tools + builtin_tools + mcp_tools
+
+
+def _sanitize_tool_schemas(tools: list[BaseTool]) -> list[BaseTool]:
+    """Ensure all tool schemas have non-null descriptions on every parameter.
+
+    LM Studio's JavaScript Jinja engine crashes with
+    "Cannot read properties of null (reading 'description')" when a tool
+    parameter lacks a description field. This patches the Pydantic model
+    fields so the generated JSON schema always includes descriptions.
+    """
+    for tool in tools:
+        schema_cls = getattr(tool, "args_schema", None)
+        if schema_cls is None:
+            continue
+        # Pydantic v2 (model_fields)
+        model_fields = getattr(schema_cls, "model_fields", None)
+        if isinstance(model_fields, dict):
+            for field_name, field_info in model_fields.items():
+                if getattr(field_info, "description", None) is None:
+                    field_info.description = field_name
+                    logger.debug(f"Sanitized missing description for parameter '{field_name}' in tool '{tool.name}'")
+            continue
+        # Pydantic v1 (__fields__)
+        v1_fields = getattr(schema_cls, "__fields__", None)
+        if isinstance(v1_fields, dict):
+            for field_name, field_obj in v1_fields.items():
+                fi = getattr(field_obj, "field_info", None)
+                if fi is not None and getattr(fi, "description", None) is None:
+                    fi.description = field_name
+                    logger.debug(f"Sanitized missing description for parameter '{field_name}' in tool '{tool.name}'")
+    return tools
