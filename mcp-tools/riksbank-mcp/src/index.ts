@@ -78,69 +78,6 @@ class CallTracker {
 // Input schema generators
 // ---------------------------------------------------------------------------
 
-function getInputSchema(toolId: string): Record<string, unknown> {
-  switch (toolId) {
-    case 'riksbank_ranta_styrranta':
-      return {
-        type: 'object',
-        properties: {
-          fromDate: { type: 'string', description: 'Startdatum (YYYY-MM-DD, standard: 1 år sedan)' },
-          toDate: { type: 'string', description: 'Slutdatum (YYYY-MM-DD, standard: idag)' },
-        },
-      };
-    case 'riksbank_ranta_marknadsrantor':
-      return {
-        type: 'object',
-        properties: {
-          groupId: { type: 'string', description: 'Grupp-ID (standard: "3" för STIBOR). Andra: "2" styrräntor.' },
-        },
-      };
-    case 'riksbank_valuta_kurser':
-      return {
-        type: 'object',
-        properties: {
-          valuta: { type: 'string', description: 'Valutakod att filtrera (t.ex. "EUR", "USD"). Utelämna för alla.' },
-          fromDate: { type: 'string', description: 'Startdatum (YYYY-MM-DD) för historik' },
-          toDate: { type: 'string', description: 'Slutdatum (YYYY-MM-DD)' },
-        },
-      };
-    case 'riksbank_valuta_korskurser':
-      return {
-        type: 'object',
-        properties: {
-          valuta1: { type: 'string', description: 'Första valutakod (t.ex. "EUR")' },
-          valuta2: { type: 'string', description: 'Andra valutakod (t.ex. "USD")' },
-          datum: { type: 'string', description: 'Datum (YYYY-MM-DD, standard: senaste)' },
-        },
-        required: ['valuta1', 'valuta2'],
-      };
-    case 'riksbank_swestr':
-      return {
-        type: 'object',
-        properties: {
-          fromDate: { type: 'string', description: 'Startdatum (YYYY-MM-DD) för historik' },
-          toDate: { type: 'string', description: 'Slutdatum (YYYY-MM-DD)' },
-        },
-      };
-    case 'riksbank_prognos_inflation':
-    case 'riksbank_prognos_bnp':
-      return {
-        type: 'object',
-        properties: {
-          indikator: { type: 'string', description: 'Indikator-ID (t.ex. "CPI", "CPIF", "GDP")' },
-        },
-      };
-    case 'riksbank_prognos_ovrigt':
-      return {
-        type: 'object',
-        properties: {
-          indikator: { type: 'string', description: 'Indikator-ID att hämta. Utelämna för att lista alla indikatorer.' },
-        },
-      };
-    default:
-      return { type: 'object', properties: {} };
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -171,7 +108,7 @@ export class RiksbankMCPServer {
     return TOOL_DEFINITIONS.map((tool) => ({
       name: tool.id,
       description: tool.description,
-      inputSchema: getInputSchema(tool.id),
+      inputSchema: tool.inputSchema,
     }));
   }
 
