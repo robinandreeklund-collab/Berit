@@ -32,7 +32,14 @@ COPY riksbank-mcp/package.json riksbank-mcp/package-lock.json riksbank-mcp/tscon
 COPY riksbank-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 5: Production ============
+# ============ Stage 5: Build SMHI ============
+FROM node:22-alpine AS build-smhi
+WORKDIR /app
+COPY smhi-mcp/package.json smhi-mcp/tsconfig.json ./
+COPY smhi-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 6: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -63,6 +70,11 @@ COPY riksbank-mcp/package.json riksbank-mcp/package-lock.json /app/riksbank/
 RUN cd /app/riksbank && npm ci --omit=dev --ignore-scripts
 COPY --from=build-riksbank /app/dist /app/riksbank/dist
 COPY riksbank-mcp/README.md /app/riksbank/README.md
+
+# SMHI production install
+COPY smhi-mcp/package.json /app/smhi/
+RUN cd /app/smhi && npm ci --omit=dev --ignore-scripts
+COPY --from=build-smhi /app/dist /app/smhi/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
