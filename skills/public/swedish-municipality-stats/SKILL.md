@@ -5,57 +5,16 @@ description: Använd denna färdighet när användaren frågar om kommunstatisti
 
 # Kolada MCP (v1.0)
 
-## Översikt
-Ger tillgång till Kolada — Sveriges databas för kommunal och regional nyckeltalsjämförelse (RKA). 10 verktyg för att söka, hämta och jämföra över 6000 nyckeltal för alla Sveriges kommuner och regioner.
+## KRITISKT: Anti-loop-regler
 
-## Tillgängliga MCP-verktyg
+1. **Max 4 verktygsanrop per fråga** — stoppa därefter och presentera vad du har
+2. **ALDRIG samma verktyg 2 gånger med samma parametrar**
+3. **Om ett verktyg misslyckas — STOPPA och förklara felet** — försök INTE igen
+4. **Använd kända ID:n direkt** — sök INTE efter ID:n som redan finns i listan nedan
 
-### Sök (3)
-| Verktyg | Beskrivning |
-|---------|-------------|
-| `kolada_sok_nyckeltal` | Sök nyckeltal (KPI) efter titel/nyckelord |
-| `kolada_sok_kommun` | Sök kommuner efter namn |
-| `kolada_sok_enhet` | Sök organisationsenheter (skolor, vårdcentraler, etc.) |
+## Snabbstart: Kända ID:n (sök INTE efter dessa!)
 
-### Hämta data (4)
-| Verktyg | Beskrivning |
-|---------|-------------|
-| `kolada_data_kommun` | Hämta nyckeltalsvärden för en specifik kommun |
-| `kolada_data_alla_kommuner` | Hämta nyckeltalsvärden för alla kommuner ett visst år |
-| `kolada_data_enhet` | Hämta nyckeltalsvärden per organisationsenhet |
-| `kolada_nyckeltal_detalj` | Hämta detaljerad metadata om ett nyckeltal |
-
-### Jämförelse (2)
-| Verktyg | Beskrivning |
-|---------|-------------|
-| `kolada_jamfor_kommuner` | Jämför nyckeltal mellan flera kommuner |
-| `kolada_trend` | Visa trend för ett nyckeltal i en kommun över tid |
-
-### Referens (1)
-| Verktyg | Beskrivning |
-|---------|-------------|
-| `kolada_kommungrupper` | Lista kommungrupper (klassificeringar) |
-
-## Arbetsflöde
-
-### Jämföra kommuner
-1. Sök nyckeltalet med `kolada_sok_nyckeltal` (t.ex. "invånare" eller "skolresultat")
-2. Sök kommuner med `kolada_sok_kommun` för att få ID:n
-3. Använd `kolada_jamfor_kommuner` med KPI-ID och kommun-ID:n
-
-### Analysera en kommun
-1. Sök kommunen med `kolada_sok_kommun`
-2. Sök relevanta nyckeltal med `kolada_sok_nyckeltal`
-3. Hämta data med `kolada_data_kommun`
-4. Visa trend med `kolada_trend`
-
-### Hitta bäst/sämst i riket
-1. Sök nyckeltalet med `kolada_sok_nyckeltal`
-2. Hämta data för alla kommuner med `kolada_data_alla_kommuner`
-3. Rangordna och presentera topp/botten
-
-## Vanliga nyckeltal
-
+### Nyckeltal
 | KPI-ID | Beskrivning |
 |--------|-------------|
 | N00945 | Invånare totalt |
@@ -63,15 +22,60 @@ Ger tillgång till Kolada — Sveriges databas för kommunal och regional nyckel
 | N01951 | Nettokostnadsavvikelse, kr/inv |
 | U09400 | Elever åk 9 som uppnått kunskapskrav i alla ämnen |
 | N07900 | Resultat av medborgarundersökning |
+| N15033 | Kostnad per elev i grundskola |
+| N28040 | Andel nöjda brukare i hemtjänst |
+| N20049 | Skattesats, kommun |
 
-## KRITISKA REGLER
-1. **Max 4 verktygsanrop per fråga**
-2. **Om ett verktyg misslyckas — försök INTE igen**
-3. **Presentera data överskådligt** — använd tabeller
-4. **Ange källa**: "Källa: Kolada (kolada.se)"
-5. **Kön-filter**: Data finns ofta uppdelat på T=Totalt, M=Män, K=Kvinnor — visa Totalt som standard
+### Kommuner
+| ID | Kommun | | ID | Kommun |
+|----|--------|-|----|--------|
+| 0180 | Stockholm | | 1480 | Göteborg |
+| 1280 | Malmö | | 0380 | Uppsala |
+| 0580 | Linköping | | 0680 | Jönköping |
+| 1880 | Örebro | | 1980 | Västerås |
+| 2480 | Umeå | | 2580 | Luleå |
+| 1281 | Lund | | 0480 | Norrköping |
+| 2180 | Gävle | | 0780 | Växjö |
+| 0980 | Gotland | | 1380 | Halmstad |
 
-## Felsökning
-- **Tom lista**: Kontrollera KPI-ID (börjar med bokstav + siffror, t.ex. "N00945")
-- **Inga data**: Alla nyckeltal har inte data för alla år — prova ett tidigare år
-- **Timeout**: Begränsa med `limit`-parametern
+## Arbetsflöde
+
+### Steg 1: Har du redan ID:n?
+Om KPI-ID och kommun-ID finns i listorna ovan → hoppa direkt till steg 3.
+
+### Steg 2: Sök BARA det du saknar (max 1 anrop)
+- `kolada_sok_nyckeltal` — hitta KPI-ID
+- `kolada_sok_kommun` — hitta kommun-ID
+
+### Steg 3: Hämta data (ETT anrop)
+- `kolada_data_kommun` — värden för en kommun (kpi_id + kommun_id + from_year + to_year)
+- `kolada_trend` — trend över tid (kpi_id + kommun_id + years)
+- `kolada_jamfor_kommuner` — jämför kommuner (kpi_id + kommun_ids kommaseparerade)
+
+### Steg 4: Presentera i tabell
+Ange källa: "Källa: Kolada (kolada.se)"
+
+## Exempel
+
+**Fråga:** "Visa nettokostnadsavvikelsen per invånare för Örebro 2020–2024"
+**Svar:** Örebro = 1880, Nettokostnadsavvikelse = N01951 (kända ID:n!)
+→ 1 anrop: `kolada_data_kommun(kpi_id="N01951", kommun_id="1880", from_year=2020, to_year=2024)`
+
+**Fråga:** "Jämför skolresultat mellan Malmö och Lund"
+**Svar:** Malmö = 1280, Lund = 1281, Skolresultat = U09400 (kända ID:n!)
+→ 1 anrop: `kolada_jamfor_kommuner(kpi_id="U09400", kommun_ids="1280,1281")`
+
+## Alla verktyg
+
+| Verktyg | Beskrivning |
+|---------|-------------|
+| `kolada_sok_nyckeltal` | Sök nyckeltal efter titel/nyckelord |
+| `kolada_sok_kommun` | Sök kommuner efter namn |
+| `kolada_sok_enhet` | Sök enheter (skolor, vårdcentraler) |
+| `kolada_data_kommun` | Hämta KPI-data för en kommun |
+| `kolada_data_alla_kommuner` | KPI-data för alla kommuner (ett år) |
+| `kolada_data_enhet` | KPI-data per enhet |
+| `kolada_nyckeltal_detalj` | Detaljerad metadata om ett KPI |
+| `kolada_jamfor_kommuner` | Jämför KPI mellan kommuner |
+| `kolada_trend` | Visa KPI-trend i en kommun |
+| `kolada_kommungrupper` | Lista kommungrupper |

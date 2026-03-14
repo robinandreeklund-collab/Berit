@@ -140,7 +140,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Invånarantal i Stockholm", "Skolresultat i Malmö 2020-2024"',
     category: 'data',
     api: 'kolada',
-    endpoint: '/kpi/{kpi_id}/municipality/{kommun_id}',
+    endpoint: '/data/municipality/{kommun_id}/kpi/{kpi_id}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -250,7 +250,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Jämför invånarantal Stockholm, Malmö, Göteborg"',
     category: 'jamforelse',
     api: 'kolada',
-    endpoint: '/kpi/{kpi_id}/municipality/{kommun_ids}',
+    endpoint: '/data/municipality/{kommun_ids}/kpi/{kpi_id}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -280,7 +280,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Befolkningsutveckling Stockholm senaste 5 åren"',
     category: 'jamforelse',
     api: 'kolada',
-    endpoint: '/kpi/{kpi_id}/municipality/{kommun_id}',
+    endpoint: '/data/municipality/{kommun_id}/kpi/{kpi_id}',
     inputSchema: {
       type: 'object',
       properties: {
