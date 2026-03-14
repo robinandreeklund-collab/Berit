@@ -45,7 +45,7 @@ export async function searchCurriculums(params: {
               version: c.version,
               validFrom: c.validFrom,
               validTo: c.validTo,
-              description: c.description?.substring(0, 200) + (c.description && c.description.length > 200 ? '...' : '')
+              description: c.description ? c.description.substring(0, 200) + (c.description.length > 200 ? '...' : '') : undefined
             }))
           }, null, 2)
         }

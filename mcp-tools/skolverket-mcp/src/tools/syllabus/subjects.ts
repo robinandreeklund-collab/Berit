@@ -55,7 +55,7 @@ export async function searchSubjects(params: {
               schoolType: s.schoolType,
               typeOfSyllabus: s.typeOfSyllabus,
               version: s.version,
-              description: s.description?.substring(0, 150) + (s.description && s.description.length > 150 ? '...' : '')
+              description: s.description ? s.description.substring(0, 150) + (s.description.length > 150 ? '...' : '') : undefined
             }))
           }, null, 2)
         }

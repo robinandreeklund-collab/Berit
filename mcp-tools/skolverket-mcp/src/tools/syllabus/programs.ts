@@ -57,7 +57,7 @@ export async function searchPrograms(params: {
               version: p.version,
               orientations: p.orientations?.map(o => o.name),
               profiles: p.profiles?.map(pr => pr.name),
-              description: p.description?.substring(0, 150) + (p.description && p.description.length > 150 ? '...' : '')
+              description: p.description ? p.description.substring(0, 150) + (p.description.length > 150 ? '...' : '') : undefined
             }))
           }, null, 2)
         }

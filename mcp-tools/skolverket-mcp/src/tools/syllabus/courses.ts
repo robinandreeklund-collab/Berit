@@ -56,7 +56,7 @@ export async function searchCourses(params: {
               schoolType: c.schoolType,
               points: c.points,
               version: c.version,
-              description: c.description?.substring(0, 150) + (c.description && c.description.length > 150 ? '...' : '')
+              description: c.description ? c.description.substring(0, 150) + (c.description.length > 150 ? '...' : '') : undefined
             }))
           }, null, 2)
         }
