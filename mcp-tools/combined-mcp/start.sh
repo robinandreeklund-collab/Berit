@@ -12,6 +12,8 @@ echo "Trafikverket MCP: internal :3003 → /trafikverket/"
 echo "Riksbank MCP:     internal :3004 → /riksbank/"
 echo "SMHI MCP:         internal :3005 → /smhi/"
 echo "Lightpanda MCP:   internal :3006 → /lightpanda/"
+echo "Elpris MCP:       internal :3007 → /elpris/"
+echo "Bolagsverket MCP: internal :3008 → /bolagsverket/"
 
 # Generate nginx config with actual PORT
 envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
@@ -48,6 +50,16 @@ echo "Starting Lightpanda MCP on :3006..."
 PORT=3006 node /app/lightpanda/dist/http-server.js &
 LIGHTPANDA_PID=$!
 
+# Start Elpris MCP on port 3007
+echo "Starting Elpris MCP on :3007..."
+PORT=3007 node /app/elpris/dist/http-server.js &
+ELPRIS_PID=$!
+
+# Start Bolagsverket MCP on port 3008
+echo "Starting Bolagsverket MCP on :3008..."
+PORT=3008 node /app/bolagsverket/dist/http-server.js &
+BOLAGSVERKET_PID=$!
+
 # Wait for all to be ready
 echo "Waiting for services..."
 for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -56,7 +68,9 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
        wget -qO- http://127.0.0.1:3003/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3004/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3005/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3006/health >/dev/null 2>&1; then
+       wget -qO- http://127.0.0.1:3006/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3007/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3008/health >/dev/null 2>&1; then
         echo "All services healthy!"
         break
     fi
@@ -81,11 +95,15 @@ echo "  SMHI MCP:          http://localhost:$PORT/smhi/mcp"
 echo "  SMHI health:       http://localhost:$PORT/smhi/health"
 echo "  Lightpanda MCP:    http://localhost:$PORT/lightpanda/mcp"
 echo "  Lightpanda health: http://localhost:$PORT/lightpanda/health"
+echo "  Elpris MCP:        http://localhost:$PORT/elpris/mcp"
+echo "  Elpris health:     http://localhost:$PORT/elpris/health"
+echo "  Bolagsverket MCP:  http://localhost:$PORT/bolagsverket/mcp"
+echo "  Bolagsverket health: http://localhost:$PORT/bolagsverket/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $NGINX_PID 2>/dev/null || true
 exit 1

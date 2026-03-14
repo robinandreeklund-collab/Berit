@@ -45,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-lightpanda 2>/dev/null || true
@@ -62,6 +62,10 @@ docker stop deer-flow-riksbank-mcp 2>/dev/null || true
 docker rm deer-flow-riksbank-mcp 2>/dev/null || true
 docker stop deer-flow-smhi-mcp 2>/dev/null || true
 docker rm deer-flow-smhi-mcp 2>/dev/null || true
+docker stop deer-flow-elpris-mcp 2>/dev/null || true
+docker rm deer-flow-elpris-mcp 2>/dev/null || true
+docker stop deer-flow-bolagsverket-mcp 2>/dev/null || true
+docker rm deer-flow-bolagsverket-mcp 2>/dev/null || true
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -111,6 +115,16 @@ if [ -z "${LIGHTPANDA_MCP_URL:-}" ]; then
     echo "  → Lightpanda MCP: Web Browsing (local)"
 else
     echo "  → Lightpanda MCP: Web Browsing (remote)"
+fi
+if [ -z "${ELPRIS_MCP_URL:-}" ]; then
+    echo "  → Elpris MCP: Swedish Electricity Prices (local)"
+else
+    echo "  → Elpris MCP: Swedish Electricity Prices (remote)"
+fi
+if [ -z "${BOLAGSVERKET_MCP_URL:-}" ]; then
+    echo "  → Bolagsverket MCP: Swedish Companies (local)"
+else
+    echo "  → Bolagsverket MCP: Swedish Companies (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -199,8 +213,16 @@ cleanup() {
     if [ -n "${LIGHTPANDA_MCP_PID:-}" ] && kill -0 "$LIGHTPANDA_MCP_PID" 2>/dev/null; then
         kill "$LIGHTPANDA_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Elpris MCP Node.js process if running
+    if [ -n "${ELPRIS_MCP_PID:-}" ] && kill -0 "$ELPRIS_MCP_PID" 2>/dev/null; then
+        kill "$ELPRIS_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Bolagsverket MCP Node.js process if running
+    if [ -n "${BOLAGSVERKET_MCP_PID:-}" ] && kill -0 "$BOLAGSVERKET_MCP_PID" 2>/dev/null; then
+        kill "$BOLAGSVERKET_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -218,6 +240,10 @@ cleanup() {
     docker rm deer-flow-riksbank-mcp 2>/dev/null || true
     docker stop deer-flow-smhi-mcp 2>/dev/null || true
     docker rm deer-flow-smhi-mcp 2>/dev/null || true
+    docker stop deer-flow-elpris-mcp 2>/dev/null || true
+    docker rm deer-flow-elpris-mcp 2>/dev/null || true
+    docker stop deer-flow-bolagsverket-mcp 2>/dev/null || true
+    docker rm deer-flow-bolagsverket-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -614,6 +640,130 @@ elif [ -z "${LIGHTPANDA_MCP_URL:-}" ]; then
 fi
 export LIGHTPANDA_MCP_URL="${LIGHTPANDA_MCP_URL:-}"
 
+# Elpris MCP Server — Swedish electricity prices
+ELPRIS_MCP_PORT="${ELPRIS_MCP_PORT:-3106}"
+ELPRIS_MCP_DIR="$REPO_ROOT/mcp-tools/elpris-mcp"
+if [ -n "${ELPRIS_MCP_URL:-}" ]; then
+    echo "✓ Elpris MCP using remote instance: ${ELPRIS_MCP_URL}"
+elif [ -z "${ELPRIS_MCP_URL:-}" ]; then
+    echo "Starting Elpris MCP server..."
+    ELPRIS_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $ELPRIS_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-elpris-mcp >/dev/null 2>&1; then
+            echo "  Building Elpris MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-elpris-mcp -f docker/elpris-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-elpris-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-elpris-mcp -p "${ELPRIS_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-elpris-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$ELPRIS_MCP_PORT" 30 "Elpris MCP" || true
+            if docker ps --filter name=deer-flow-elpris-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export ELPRIS_MCP_URL="http://localhost:${ELPRIS_MCP_PORT}/mcp"
+                echo "✓ Elpris MCP started via Docker on localhost:${ELPRIS_MCP_PORT}"
+                ELPRIS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $ELPRIS_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Elpris MCP with Node.js..."
+        if [ ! -f "$ELPRIS_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Elpris MCP from local source (first time)..."
+            (cd "$ELPRIS_MCP_DIR" && npm install > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Elpris MCP build failed. Electricity price tools will not be available."
+            }
+        fi
+        if [ -f "$ELPRIS_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$ELPRIS_MCP_PORT" \
+                node "$ELPRIS_MCP_DIR/dist/http-server.js" > logs/elpris-mcp.log 2>&1 &
+            ELPRIS_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$ELPRIS_MCP_PORT" 15 "Elpris MCP" || {
+                echo "  ⚠ Elpris MCP failed to start."
+                kill "$ELPRIS_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$ELPRIS_MCP_PID" 2>/dev/null; then
+                export ELPRIS_MCP_URL="http://localhost:${ELPRIS_MCP_PORT}/mcp"
+                echo "✓ Elpris MCP started via Node.js on localhost:${ELPRIS_MCP_PORT}"
+                ELPRIS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $ELPRIS_MCP_STARTED; then
+        echo "  ⚠ Elpris MCP could not be started. Electricity price tools will not be available."
+        echo "  Install Docker or Node.js to enable Elpris MCP."
+    fi
+fi
+export ELPRIS_MCP_URL="${ELPRIS_MCP_URL:-}"
+
+# Bolagsverket MCP Server — Swedish company data
+BOLAGSVERKET_MCP_PORT="${BOLAGSVERKET_MCP_PORT:-3107}"
+BOLAGSVERKET_MCP_DIR="$REPO_ROOT/mcp-tools/bolagsverket-mcp"
+if [ -n "${BOLAGSVERKET_MCP_URL:-}" ]; then
+    echo "✓ Bolagsverket MCP using remote instance: ${BOLAGSVERKET_MCP_URL}"
+elif [ -z "${BOLAGSVERKET_MCP_URL:-}" ]; then
+    echo "Starting Bolagsverket MCP server..."
+    BOLAGSVERKET_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $BOLAGSVERKET_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-bolagsverket-mcp >/dev/null 2>&1; then
+            echo "  Building Bolagsverket MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-bolagsverket-mcp -f docker/bolagsverket-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-bolagsverket-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-bolagsverket-mcp -p "${BOLAGSVERKET_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                -e BOLAGSVERKET_CLIENT_ID="${BOLAGSVERKET_CLIENT_ID:-}" \
+                -e BOLAGSVERKET_CLIENT_SECRET="${BOLAGSVERKET_CLIENT_SECRET:-}" \
+                --restart unless-stopped deer-flow-bolagsverket-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$BOLAGSVERKET_MCP_PORT" 30 "Bolagsverket MCP" || true
+            if docker ps --filter name=deer-flow-bolagsverket-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export BOLAGSVERKET_MCP_URL="http://localhost:${BOLAGSVERKET_MCP_PORT}/mcp"
+                echo "✓ Bolagsverket MCP started via Docker on localhost:${BOLAGSVERKET_MCP_PORT}"
+                BOLAGSVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $BOLAGSVERKET_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Bolagsverket MCP with Node.js..."
+        if [ ! -f "$BOLAGSVERKET_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Bolagsverket MCP from local source (first time)..."
+            (cd "$BOLAGSVERKET_MCP_DIR" && npm install > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Bolagsverket MCP build failed. Company data tools will not be available."
+            }
+        fi
+        if [ -f "$BOLAGSVERKET_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$BOLAGSVERKET_MCP_PORT" \
+                BOLAGSVERKET_CLIENT_ID="${BOLAGSVERKET_CLIENT_ID:-}" \
+                BOLAGSVERKET_CLIENT_SECRET="${BOLAGSVERKET_CLIENT_SECRET:-}" \
+                node "$BOLAGSVERKET_MCP_DIR/dist/http-server.js" > logs/bolagsverket-mcp.log 2>&1 &
+            BOLAGSVERKET_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$BOLAGSVERKET_MCP_PORT" 15 "Bolagsverket MCP" || {
+                echo "  ⚠ Bolagsverket MCP failed to start."
+                kill "$BOLAGSVERKET_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$BOLAGSVERKET_MCP_PID" 2>/dev/null; then
+                export BOLAGSVERKET_MCP_URL="http://localhost:${BOLAGSVERKET_MCP_PORT}/mcp"
+                echo "✓ Bolagsverket MCP started via Node.js on localhost:${BOLAGSVERKET_MCP_PORT}"
+                BOLAGSVERKET_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $BOLAGSVERKET_MCP_STARTED; then
+        echo "  ⚠ Bolagsverket MCP could not be started. Company data tools will not be available."
+        echo "  Install Docker or Node.js to enable Bolagsverket MCP."
+    fi
+fi
+export BOLAGSVERKET_MCP_URL="${BOLAGSVERKET_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -713,6 +863,16 @@ if [ -n "${LIGHTPANDA_MCP_URL:-}" ]; then
 else
     echo "  🌐 Lightpanda:   (ej konfigurerad)"
 fi
+if [ -n "${ELPRIS_MCP_URL:-}" ]; then
+    echo "  ⚡ Elpris:       ${ELPRIS_MCP_URL}"
+else
+    echo "  ⚡ Elpris:       (ej konfigurerad)"
+fi
+if [ -n "${BOLAGSVERKET_MCP_URL:-}" ]; then
+    echo "  🏢 Bolagsverket: ${BOLAGSVERKET_MCP_URL}"
+else
+    echo "  🏢 Bolagsverket: (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -749,6 +909,16 @@ if [ -n "${LIGHTPANDA_MCP_PID:-}" ]; then
     echo "     - Lightpanda:  logs/lightpanda-mcp.log"
 elif [ -z "${LIGHTPANDA_MCP_URL:-}" ] || echo "${LIGHTPANDA_MCP_URL}" | grep -q "localhost"; then
     echo "     - Lightpanda:  docker logs deer-flow-lightpanda-mcp"
+fi
+if [ -n "${ELPRIS_MCP_PID:-}" ]; then
+    echo "     - Elpris:      logs/elpris-mcp.log"
+elif [ -z "${ELPRIS_MCP_URL:-}" ] || echo "${ELPRIS_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Elpris:      docker logs deer-flow-elpris-mcp"
+fi
+if [ -n "${BOLAGSVERKET_MCP_PID:-}" ]; then
+    echo "     - Bolagsverket: logs/bolagsverket-mcp.log"
+elif [ -z "${BOLAGSVERKET_MCP_URL:-}" ] || echo "${BOLAGSVERKET_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Bolagsverket: docker logs deer-flow-bolagsverket-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"
