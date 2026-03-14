@@ -5,6 +5,8 @@
  *
  * HTTP server implementation using StreamableHTTPServerTransport
  * for compatibility with OpenAI ChatGPT and other HTTP-based MCP clients.
+ *
+ * 87 verktyg totalt — fullständig paritet med stdio-transporten (index.ts).
  */
 
 import express from 'express';
@@ -34,24 +36,36 @@ import {
   searchSubjects,
   getSubjectDetails,
   getSubjectVersions,
+  searchSubjectsSchema,
+  getSubjectDetailsSchema,
+  getSubjectVersionsSchema,
 } from './tools/syllabus/subjects.js';
 
 import {
   searchCourses,
   getCourseDetails,
   getCourseVersions,
+  searchCoursesSchema,
+  getCourseDetailsSchema,
+  getCourseVersionsSchema,
 } from './tools/syllabus/courses.js';
 
 import {
   searchPrograms,
   getProgramDetails,
   getProgramVersions,
+  searchProgramsSchema,
+  getProgramDetailsSchema,
+  getProgramVersionsSchema,
 } from './tools/syllabus/programs.js';
 
 import {
   searchCurriculums,
   getCurriculumDetails,
   getCurriculumVersions,
+  searchCurriculumsSchema,
+  getCurriculumDetailsSchema,
+  getCurriculumVersionsSchema,
 } from './tools/syllabus/curriculums.js';
 
 import {
@@ -60,6 +74,8 @@ import {
   getSubjectAndCourseCodes,
   getStudyPathCodes,
   getApiInfo,
+  getSchoolTypesSchema,
+  getStudyPathCodesSchema,
 } from './tools/syllabus/valuestore.js';
 
 // Importera skolenhetsverktyg (School Units API)
@@ -68,6 +84,10 @@ import {
   getSchoolUnitDetails,
   getSchoolUnitsByStatus,
   searchSchoolUnitsByName,
+  searchSchoolUnitsSchema,
+  getSchoolUnitDetailsSchema,
+  getSchoolUnitsByStatusSchema,
+  searchSchoolUnitsByNameSchema,
 } from './tools/school-units/search.js';
 
 // Importera planned education verktyg
@@ -76,39 +96,172 @@ import {
   getAdultEducationDetails,
   filterAdultEducationByDistance,
   filterAdultEducationByPace,
+  searchAdultEducationSchema,
+  getAdultEducationDetailsSchema,
+  filterAdultEducationByDistanceSchema,
+  filterAdultEducationByPaceSchema,
 } from './tools/planned-education/adult-education.js';
 
 import {
   getEducationAreas,
   getDirections,
+  getEducationAreasSchema,
+  getDirectionsSchema,
 } from './tools/planned-education/support-data.js';
 
-// Importera NYA planned education verktyg (Fas 1, 2, 3)
+// V4 School Units verktyg
 import {
-  searchEducationEvents,
-  countEducationEvents,
-  countAdultEducationEvents,
-  getAdultEducationAreasV4,
   searchSchoolUnitsV4,
+  getSchoolUnitDetailsV4,
   getSchoolUnitEducationEvents,
-} from './tools/planned-education/core-tools.js';
+  getSchoolUnitCompactEducationEvents,
+  calculateDistanceFromSchoolUnit,
+  getSchoolUnitDocuments,
+  getSchoolUnitStatisticsLinks,
+  getSchoolUnitStatisticsFSK,
+  getSchoolUnitStatisticsGR,
+  getSchoolUnitStatisticsGRAN,
+  getSchoolUnitStatisticsGY,
+  getSchoolUnitStatisticsGYAN,
+  getSchoolUnitSurveyNested,
+  getSchoolUnitSurveyFlat,
+  searchSchoolUnitsV4Schema,
+  getSchoolUnitDetailsV4Schema,
+  getSchoolUnitEducationEventsSchema,
+  getSchoolUnitCompactEducationEventsSchema,
+  calculateDistanceFromSchoolUnitSchema,
+  getSchoolUnitDocumentsSchema,
+  getSchoolUnitStatisticsLinksSchema,
+  getSchoolUnitStatisticsFSKSchema,
+  getSchoolUnitStatisticsGRSchema,
+  getSchoolUnitStatisticsGRANSchema,
+  getSchoolUnitStatisticsGYSchema,
+  getSchoolUnitStatisticsGYANSchema,
+  getSchoolUnitSurveyNestedSchema,
+  getSchoolUnitSurveyFlatSchema,
+} from './tools/school-units/v4.js';
 
+// V4 Education Events verktyg
+import {
+  searchEducationEventsV4,
+  searchCompactEducationEventsV4,
+  countEducationEventsV4,
+  countAdultEducationEventsV4,
+  searchEducationEventsV4Schema,
+  searchCompactEducationEventsV4Schema,
+  countEducationEventsV4Schema,
+  countAdultEducationEventsV4Schema,
+} from './tools/planned-education/v4-education-events.js';
+
+// V4 Statistics verktyg
+import {
+  getNationalStatisticsFSK,
+  getNationalStatisticsGR,
+  getNationalStatisticsGRAN,
+  getNationalStatisticsGY,
+  getNationalStatisticsGYAN,
+  getSALSAStatisticsGR,
+  getSALSAStatisticsGRAN,
+  getProgramStatisticsGY,
+  getProgramStatisticsGYAN,
+  getNationalStatisticsFSKSchema,
+  getNationalStatisticsGRSchema,
+  getNationalStatisticsGRANSchema,
+  getNationalStatisticsGYSchema,
+  getNationalStatisticsGYANSchema,
+  getSALSAStatisticsGRSchema,
+  getSALSAStatisticsGRANSchema,
+  getProgramStatisticsGYSchema,
+  getProgramStatisticsGYANSchema,
+} from './tools/planned-education/v4-statistics.js';
+
+// V4 Support Data verktyg
 import {
   getSchoolTypesV4,
   getGeographicalAreasV4,
+  getPrincipalOrganizerTypesV4,
   getProgramsV4,
-} from './tools/planned-education/support-tools.js';
+  getOrientationsV4,
+  getInstructionLanguagesV4,
+  getDistanceStudyTypesV4,
+  getAdultTypeOfSchoolingV4,
+  getMunicipalitySchoolUnitsV4,
+  getSchoolTypesV4Schema,
+  getGeographicalAreasV4Schema,
+  getPrincipalOrganizerTypesV4Schema,
+  getProgramsV4Schema,
+  getOrientationsV4Schema,
+  getInstructionLanguagesV4Schema,
+  getDistanceStudyTypesV4Schema,
+  getAdultTypeOfSchoolingV4Schema,
+  getMunicipalitySchoolUnitsV4Schema,
+} from './tools/planned-education/v4-support.js';
+
+// V4 Nya endpoints
+import {
+  getAdultEducationAreasV4,
+  getApiInfoV4,
+  searchCompactSchoolUnitsV4,
+  getSecondarySchoolUnitsV4,
+  getAllSchoolsSALSAStatistics,
+  getSchoolUnitSALSAStatistics,
+  getSchoolUnitDocumentsByType,
+  getSchoolUnitEducationEventsByStudyPath,
+  getAdultEducationAreasV4Schema,
+  getApiInfoV4Schema,
+  searchCompactSchoolUnitsV4Schema,
+  getSecondarySchoolUnitsV4Schema,
+  getAllSchoolsSALSAStatisticsSchema,
+  getSchoolUnitSALSAStatisticsSchema,
+  getSchoolUnitDocumentsByTypeSchema,
+  getSchoolUnitEducationEventsByStudyPathSchema,
+} from './tools/planned-education/v4-new-endpoints.js';
+
+// V4 Survey endpoints
+import {
+  getSchoolUnitNestedSurveyCustodiansFSK,
+  getSchoolUnitNestedSurveyCustodiansGR,
+  getSchoolUnitNestedSurveyCustodiansGRAN,
+  getSchoolUnitNestedSurveyPupilsGY,
+  getSchoolUnitFlatSurveyCustodiansFSK,
+  getSchoolUnitFlatSurveyCustodiansGR,
+  getSchoolUnitFlatSurveyCustodiansGRAN,
+  getSchoolUnitFlatSurveyPupilsGR,
+  getSchoolUnitFlatSurveyPupilsGY,
+  getSchoolUnitNestedSurveyCustodiansFSKSchema,
+  getSchoolUnitNestedSurveyCustodiansGRSchema,
+  getSchoolUnitNestedSurveyCustodiansGRANSchema,
+  getSchoolUnitNestedSurveyPupilsGYSchema,
+  getSchoolUnitFlatSurveyCustodiansFSKSchema,
+  getSchoolUnitFlatSurveyCustodiansGRSchema,
+  getSchoolUnitFlatSurveyCustodiansGRANSchema,
+  getSchoolUnitFlatSurveyPupilsGRSchema,
+  getSchoolUnitFlatSurveyPupilsGYSchema,
+} from './tools/planned-education/v4-survey-endpoints.js';
+
+// Meta-verktyg för konsolidering
+import {
+  getNationalStatistics,
+  getSALSAStatistics,
+  getProgramStatistics,
+  searchEducationEvents,
+  getNationalStatisticsSchema,
+  getSALSAStatisticsSchema,
+  getProgramStatisticsSchema,
+  searchEducationEventsSchema,
+} from './tools/planned-education/meta-statistics.js';
 
 import {
-  getSchoolUnitDocuments,
   getSchoolUnitStatistics,
-  getNationalStatistics,
-  getProgramStatistics,
-} from './tools/planned-education/advanced-tools.js';
+  getSchoolUnitSurvey,
+  getSchoolUnitStatisticsSchema,
+  getSchoolUnitSurveySchema,
+} from './tools/school-units/meta-tools.js';
 
 // Health check verktyg
 import {
   healthCheck,
+  healthCheckSchema,
 } from './tools/health.js';
 
 // Skapa servern med uppdaterade capabilities
@@ -279,6 +432,33 @@ mcpServer.setRequestHandler(ListPromptsRequestSchema, async () => {
             required: false
           }
         ]
+      },
+      {
+        name: 'plan_study_path',
+        description: 'Hjälp elev planera studieväg på gymnasiet',
+        arguments: [
+          {
+            name: 'interests',
+            description: 'Elevens intressen (t.ex. "teknik", "naturvetenskap")',
+            required: true
+          }
+        ]
+      },
+      {
+        name: 'teacher_course_planning',
+        description: 'Hjälp lärare planera en kurs',
+        arguments: [
+          {
+            name: 'course_code',
+            description: 'Kurskod att planera',
+            required: true
+          },
+          {
+            name: 'focus_areas',
+            description: 'Fokusområden (valfritt)',
+            required: false
+          }
+        ]
       }
     ]
   };
@@ -385,6 +565,72 @@ Börja med att söka efter utbildningar.`
       };
     }
 
+    case 'plan_study_path': {
+      const interests = args?.interests as string;
+      if (!interests) {
+        throw new Error('interests krävs');
+      }
+
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `Hjälp en elev som är intresserad av "${interests}" att planera sin studieväg:
+
+1. Använd search_programs för att hitta relevanta gymnasieprogram
+2. För varje relevant program, använd get_program_details för att se:
+   - Inriktningar
+   - Profiler
+   - Yrkesutfall
+   - Kurser som ingår
+3. Jämför programmen utifrån elevens intressen
+4. Ge konkreta rekommendationer för:
+   - Vilket program som passar bäst
+   - Vilka inriktningar/profiler att överväga
+   - Vilka framtida karriärvägar som öppnas
+
+Börja med att söka efter lämpliga program.`
+            }
+          }
+        ]
+      };
+    }
+
+    case 'teacher_course_planning': {
+      const courseCode = args?.course_code as string;
+      const focusAreas = args?.focus_areas as string | undefined;
+
+      if (!courseCode) {
+        throw new Error('course_code krävs');
+      }
+
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `Hjälp lärare planera kursen ${courseCode}${focusAreas ? ` med fokus på ${focusAreas}` : ''}:
+
+1. Hämta kursens detaljer med get_course_details
+2. Analysera det centrala innehållet
+3. Granska kunskapskraven
+4. Föreslå:
+   - Tematisk upplägg
+   - Lärandeaktiviteter för varje del
+   - Bedömningspunkter
+   - Hur man arbetar mot olika betygsnivåer (E, C, A)
+5. Skapa en övergripande kursplan med tidsestimat
+
+Börja med att hämta kursdata.`
+            }
+          }
+        ]
+      };
+    }
+
       default:
         throw new Error(`Okänd prompt: ${name}`);
     }
@@ -395,7 +641,7 @@ Börja med att söka efter utbildningar.`
 });
 
 // ==============================================
-// TOOLS - Med förbättrade beskrivningar
+// TOOLS - Med förbättrade beskrivningar (87 verktyg)
 // ==============================================
 
 mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -403,475 +649,136 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
 
   return {
     tools: [
-      // Ämnesverktyg
-      {
-        name: 'search_subjects',
-        description: 'Sök efter ämnen i Skolverkets läroplan. Returnerar lista över ämnen med kod, namn, beskrivning och version.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schooltype: { type: 'string', description: 'Skoltyp (t.ex. GR, GY, VUX)' },
-            timespan: { type: 'string', description: 'Tidsperiod: LATEST (gällande), FUTURE (framtida), EXPIRED (utgångna), MODIFIED (ändrade)' }
-          }
-        }
-      },
-      {
-        name: 'get_subject_details',
-        description: 'Hämta detaljerad information om ett specifikt ämne.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Ämneskod' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_subject_versions',
-        description: 'Hämta alla tillgängliga versioner av ett ämne.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Ämneskod' }
-          },
-          required: ['code']
-        }
-      },
+      // ==============================================
+      // LÄROPLAN API VERKTYG (Syllabus API) — 17 verktyg
+      // ==============================================
+      { name: 'search_subjects', description: 'Sök efter ämnen i Skolverkets läroplan.', inputSchema: { type: 'object', properties: searchSubjectsSchema } },
+      { name: 'get_subject_details', description: 'Hämta detaljerad information om ett specifikt ämne.', inputSchema: { type: 'object', properties: getSubjectDetailsSchema, required: ['code'] } },
+      { name: 'get_subject_versions', description: 'Hämta alla tillgängliga versioner av ett ämne.', inputSchema: { type: 'object', properties: getSubjectVersionsSchema, required: ['code'] } },
+      { name: 'search_courses', description: 'Sök efter kurser i Skolverkets läroplan.', inputSchema: { type: 'object', properties: searchCoursesSchema } },
+      { name: 'get_course_details', description: 'Hämta detaljerad information om en specifik kurs inkl. centralt innehåll och kunskapskrav.', inputSchema: { type: 'object', properties: getCourseDetailsSchema, required: ['code'] } },
+      { name: 'get_course_versions', description: 'Hämta alla versioner av en kurs.', inputSchema: { type: 'object', properties: getCourseVersionsSchema, required: ['code'] } },
+      { name: 'search_programs', description: 'Sök efter gymnasieprogram och studievägar.', inputSchema: { type: 'object', properties: searchProgramsSchema } },
+      { name: 'get_program_details', description: 'Hämta detaljerad information om ett specifikt program inkl. inriktningar.', inputSchema: { type: 'object', properties: getProgramDetailsSchema, required: ['code'] } },
+      { name: 'get_program_versions', description: 'Hämta versionshistorik för ett program.', inputSchema: { type: 'object', properties: getProgramVersionsSchema, required: ['code'] } },
+      { name: 'search_curriculums', description: 'Sök efter läroplaner (t.ex. LGR11, GY11).', inputSchema: { type: 'object', properties: searchCurriculumsSchema } },
+      { name: 'get_curriculum_details', description: 'Hämta komplett läroplan med alla avsnitt.', inputSchema: { type: 'object', properties: getCurriculumDetailsSchema, required: ['code'] } },
+      { name: 'get_curriculum_versions', description: 'Hämta versionshistorik för en läroplan.', inputSchema: { type: 'object', properties: getCurriculumVersionsSchema, required: ['code'] } },
+      { name: 'get_school_types', description: 'Hämta lista över alla skoltyper (GR, GY, VUX, etc.).', inputSchema: { type: 'object', properties: getSchoolTypesSchema } },
+      { name: 'get_types_of_syllabus', description: 'Hämta alla typer av läroplaner.', inputSchema: { type: 'object', properties: {} } },
+      { name: 'get_subject_and_course_codes', description: 'Hämta alla tillgängliga ämnes- och kurskoder.', inputSchema: { type: 'object', properties: {} } },
+      { name: 'get_study_path_codes', description: 'Hämta studievägskodar (programkoder).', inputSchema: { type: 'object', properties: getStudyPathCodesSchema } },
+      { name: 'get_api_info', description: 'Hämta information om Skolverkets Läroplan API.', inputSchema: { type: 'object', properties: {} } },
 
-      // Kursverktyg
-      {
-        name: 'search_courses',
-        description: 'Sök efter kurser i Skolverkets läroplan.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schooltype: { type: 'string', description: 'Skoltyp' },
-            subjectCode: { type: 'string', description: 'Ämneskod för filtrering' },
-            timespan: { type: 'string', description: 'Tidsperiod: LATEST, FUTURE, EXPIRED, MODIFIED' }
-          }
-        }
-      },
-      {
-        name: 'get_course_details',
-        description: 'Hämta detaljerad information om en specifik kurs inkl. centralt innehåll och kunskapskrav.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Kurskod (t.ex. MATMAT01c)' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_course_versions',
-        description: 'Hämta alla versioner av en kurs.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Kurskod' }
-          },
-          required: ['code']
-        }
-      },
+      // ==============================================
+      // SKOLENHETSREGISTRET API VERKTYG — 4 verktyg
+      // ==============================================
+      { name: 'search_school_units', description: 'Sök efter skolenheter med filter.', inputSchema: { type: 'object', properties: searchSchoolUnitsSchema } },
+      { name: 'get_school_unit_details', description: 'Hämta detaljer om en specifik skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitDetailsSchema, required: ['code'] } },
+      { name: 'get_school_units_by_status', description: 'Filtrera skolenheter efter status.', inputSchema: { type: 'object', properties: getSchoolUnitsByStatusSchema, required: ['status'] } },
+      { name: 'search_school_units_by_name', description: 'Sök skolenheter efter namn.', inputSchema: { type: 'object', properties: searchSchoolUnitsByNameSchema, required: ['name'] } },
 
-      // Programverktyg
-      {
-        name: 'search_programs',
-        description: 'Sök efter gymnasieprogram och studievägar.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schooltype: { type: 'string', description: 'Skoltyp (normalt GY för gymnasium)' },
-            timespan: { type: 'string', description: 'Tidsperiod: LATEST, FUTURE, EXPIRED, MODIFIED' }
-          }
-        }
-      },
-      {
-        name: 'get_program_details',
-        description: 'Hämta detaljerad information om ett specifikt program inkl. inriktningar.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Programkod (t.ex. NA, TE)' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_program_versions',
-        description: 'Hämta versionshistorik för ett program.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Programkod' }
-          },
-          required: ['code']
-        }
-      },
+      // ==============================================
+      // PLANNED EDUCATIONS API VERKTYG — 6 verktyg
+      // ==============================================
+      { name: 'search_adult_education', description: 'Sök vuxenutbildningar (YH, SFI, Komvux) med omfattande filter.', inputSchema: { type: 'object', properties: searchAdultEducationSchema } },
+      { name: 'get_adult_education_details', description: 'Hämta detaljerad information om ett utbildningstillfälle.', inputSchema: { type: 'object', properties: getAdultEducationDetailsSchema, required: ['id'] } },
+      { name: 'filter_adult_education_by_distance', description: 'Filtrera utbildningar på distans eller campus.', inputSchema: { type: 'object', properties: filterAdultEducationByDistanceSchema, required: ['distance'] } },
+      { name: 'filter_adult_education_by_pace', description: 'Filtrera utbildningar efter studietakt.', inputSchema: { type: 'object', properties: filterAdultEducationByPaceSchema, required: ['paceOfStudy'] } },
+      { name: 'get_education_areas', description: 'Hämta alla utbildningsområden för vuxenutbildning.', inputSchema: { type: 'object', properties: getEducationAreasSchema } },
+      { name: 'get_directions', description: 'Hämta alla inriktningar för utbildningar.', inputSchema: { type: 'object', properties: getDirectionsSchema } },
 
-      // Läroplansverktyg
-      {
-        name: 'search_curriculums',
-        description: 'Sök efter läroplaner (t.ex. LGR11, GY11).',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            timespan: { type: 'string', description: 'Tidsperiod: LATEST, FUTURE, EXPIRED, MODIFIED' }
-          }
-        }
-      },
-      {
-        name: 'get_curriculum_details',
-        description: 'Hämta komplett läroplan med alla avsnitt.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Läroplanskod (t.ex. LGR11)' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_curriculum_versions',
-        description: 'Hämta versionshistorik för en läroplan.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Läroplanskod' }
-          },
-          required: ['code']
-        }
-      },
+      // ==============================================
+      // V4 SCHOOL UNITS — 14 verktyg
+      // ==============================================
+      { name: 'search_school_units_v4', description: 'Sök skolenheter med utökade v4-funktioner (kommun, län, huvudman, status).', inputSchema: { type: 'object', properties: searchSchoolUnitsV4Schema } },
+      { name: 'get_school_unit_details_v4', description: 'Hämta fullständig information om en specifik skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitDetailsV4Schema, required: ['code'] } },
+      { name: 'get_school_unit_education_events', description: 'Hämta utbildningstillfällen som erbjuds av en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitEducationEventsSchema, required: ['code'] } },
+      { name: 'get_school_unit_compact_education_events', description: 'Hämta utbildningstillfällen i kompakt format (snabbare respons).', inputSchema: { type: 'object', properties: getSchoolUnitCompactEducationEventsSchema, required: ['code'] } },
+      { name: 'calculate_distance_from_school_unit', description: 'Beräkna avstånd från en skolenhet till en GPS-koordinat.', inputSchema: { type: 'object', properties: calculateDistanceFromSchoolUnitSchema, required: ['code', 'latitude', 'longitude'] } },
+      { name: 'get_school_unit_documents', description: 'Hämta dokument kopplade till en skolenhet (t.ex. inspektionsrapporter).', inputSchema: { type: 'object', properties: getSchoolUnitDocumentsSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_links', description: 'Hämta länkar till tillgänglig statistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsLinksSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_fsk', description: 'Hämta förskolans kvalitetsstatistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsFSKSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_gr', description: 'Hämta grundskolestatistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsGRSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_gran', description: 'Hämta grundsärskolans statistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsGRANSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_gy', description: 'Hämta gymnasiestatistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsGYSchema, required: ['code'] } },
+      { name: 'get_school_unit_statistics_gyan', description: 'Hämta gymnasiesärskolans statistik för en skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsGYANSchema, required: ['code'] } },
+      { name: 'get_school_unit_survey_nested', description: 'Hämta skolenkätdata i nested (hierarkisk) struktur.', inputSchema: { type: 'object', properties: getSchoolUnitSurveyNestedSchema, required: ['code'] } },
+      { name: 'get_school_unit_survey_flat', description: 'Hämta skolenkätdata i flat (platt) struktur.', inputSchema: { type: 'object', properties: getSchoolUnitSurveyFlatSchema, required: ['code'] } },
 
-      // Värdesamlingsverktyg
-      {
-        name: 'get_school_types',
-        description: 'Hämta lista över alla skoltyper (GR, GY, VUX, etc.).',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_types_of_syllabus',
-        description: 'Hämta alla typer av läroplaner.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_subject_and_course_codes',
-        description: 'Hämta alla tillgängliga ämnes- och kurskoder.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_study_path_codes',
-        description: 'Hämta studievägskodar (programkoder).',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            type: { type: 'string', description: 'Typ av studieväg' }
-          }
-        }
-      },
-      {
-        name: 'get_api_info',
-        description: 'Hämta information om Skolverkets Läroplan API.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
+      // ==============================================
+      // V4 EDUCATION EVENTS — 4 verktyg
+      // ==============================================
+      { name: 'search_education_events_v4', description: 'Sök utbildningstillfällen över hela Sverige med omfattande filter.', inputSchema: { type: 'object', properties: searchEducationEventsV4Schema } },
+      { name: 'search_compact_education_events_v4', description: 'Sök utbildningstillfällen i kompakt format för snabbare respons.', inputSchema: { type: 'object', properties: searchCompactEducationEventsV4Schema } },
+      { name: 'count_education_events_v4', description: 'Räkna antal utbildningstillfällen som matchar dina filter.', inputSchema: { type: 'object', properties: countEducationEventsV4Schema } },
+      { name: 'count_adult_education_events_v4', description: 'Räkna antal vuxenutbildningstillfällen som matchar filter.', inputSchema: { type: 'object', properties: countAdultEducationEventsV4Schema } },
 
-      // Skolenhetsverktyg
-      {
-        name: 'search_school_units',
-        description: 'Sök efter skolenheter med filter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', description: 'Status (AKTIV, UPPHORT, VILANDE)' }
-          }
-        }
-      },
-      {
-        name: 'get_school_unit_details',
-        description: 'Hämta detaljer om en specifik skolenhet.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Skolenhetskod (8 siffror)' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_school_units_by_status',
-        description: 'Filtrera skolenheter efter status.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            status: { type: 'string', description: 'Status (AKTIV, UPPHORT, VILANDE)' }
-          },
-          required: ['status']
-        }
-      },
-      {
-        name: 'search_school_units_by_name',
-        description: 'Sök skolenheter efter namn.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            name: { type: 'string', description: 'Skolnamn eller del av namn' }
-          },
-          required: ['name']
-        }
-      },
+      // ==============================================
+      // V4 STATISTICS — 9 verktyg
+      // ==============================================
+      { name: 'get_national_statistics_fsk', description: 'Hämta riksgenomsnittlig statistik för förskolor.', inputSchema: { type: 'object', properties: getNationalStatisticsFSKSchema } },
+      { name: 'get_national_statistics_gr', description: 'Hämta riksgenomsnittlig statistik för grundskolor.', inputSchema: { type: 'object', properties: getNationalStatisticsGRSchema } },
+      { name: 'get_national_statistics_gran', description: 'Hämta riksgenomsnittlig statistik för grundsärskolor.', inputSchema: { type: 'object', properties: getNationalStatisticsGRANSchema } },
+      { name: 'get_national_statistics_gy', description: 'Hämta riksgenomsnittlig statistik för gymnasieskolor.', inputSchema: { type: 'object', properties: getNationalStatisticsGYSchema } },
+      { name: 'get_national_statistics_gyan', description: 'Hämta riksgenomsnittlig statistik för gymnasiesärskolor.', inputSchema: { type: 'object', properties: getNationalStatisticsGYANSchema } },
+      { name: 'get_salsa_statistics_gr', description: 'Hämta SALSA-statistik (bedömningsstöd) för grundskolan nationellt.', inputSchema: { type: 'object', properties: getSALSAStatisticsGRSchema } },
+      { name: 'get_salsa_statistics_gran', description: 'Hämta SALSA-statistik (bedömningsstöd) för grundsärskolan nationellt.', inputSchema: { type: 'object', properties: getSALSAStatisticsGRANSchema } },
+      { name: 'get_program_statistics_gy', description: 'Hämta programspecifik statistik för gymnasiet nationellt.', inputSchema: { type: 'object', properties: getProgramStatisticsGYSchema } },
+      { name: 'get_program_statistics_gyan', description: 'Hämta programspecifik statistik för gymnasiesärskolan nationellt.', inputSchema: { type: 'object', properties: getProgramStatisticsGYANSchema } },
 
-      // Vuxenutbildningsverktyg
-      {
-        name: 'search_adult_education',
-        description: 'Sök vuxenutbildningar (YH, SFI, Komvux) med omfattande filter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            searchTerm: { type: 'string', description: 'Sökord' },
-            town: { type: 'string', description: 'Stad' },
-            typeOfSchool: { type: 'string', description: 'Typ: yh, sfi, komvuxgycourses' },
-            distance: { type: 'string', description: 'true eller false för distans' },
-            paceOfStudy: { type: 'string', description: 'Studietakt: 100, 50, etc.' }
-          }
-        }
-      },
-      {
-        name: 'get_adult_education_details',
-        description: 'Hämta detaljerad information om ett utbildningstillfälle.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', description: 'Utbildnings-ID' }
-          },
-          required: ['id']
-        }
-      },
-      {
-        name: 'filter_adult_education_by_distance',
-        description: 'Filtrera utbildningar på distans eller campus.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            distance: { type: 'boolean', description: 'true för endast distans' }
-          },
-          required: ['distance']
-        }
-      },
-      {
-        name: 'filter_adult_education_by_pace',
-        description: 'Filtrera utbildningar efter studietakt.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            paceOfStudy: { type: 'string', description: 'Studietakt: 100, 50, 25, etc.' }
-          },
-          required: ['paceOfStudy']
-        }
-      },
+      // ==============================================
+      // V4 SUPPORT DATA — 9 verktyg
+      // ==============================================
+      { name: 'get_school_types_v4', description: 'Hämta alla tillgängliga skoltyper (referensdata).', inputSchema: { type: 'object', properties: getSchoolTypesV4Schema } },
+      { name: 'get_geographical_areas_v4', description: 'Hämta alla geografiska områden (län och kommuner).', inputSchema: { type: 'object', properties: getGeographicalAreasV4Schema } },
+      { name: 'get_principal_organizer_types_v4', description: 'Hämta alla huvudmanstyper (skolägarkategorier).', inputSchema: { type: 'object', properties: getPrincipalOrganizerTypesV4Schema } },
+      { name: 'get_programs_v4', description: 'Hämta alla gymnasieprogram med inriktningar.', inputSchema: { type: 'object', properties: getProgramsV4Schema } },
+      { name: 'get_orientations_v4', description: 'Hämta alla programinriktningar.', inputSchema: { type: 'object', properties: getOrientationsV4Schema } },
+      { name: 'get_instruction_languages_v4', description: 'Hämta alla tillgängliga undervisningsspråk.', inputSchema: { type: 'object', properties: getInstructionLanguagesV4Schema } },
+      { name: 'get_distance_study_types_v4', description: 'Hämta alla typer av distansstudier.', inputSchema: { type: 'object', properties: getDistanceStudyTypesV4Schema } },
+      { name: 'get_adult_type_of_schooling_v4', description: 'Hämta alla typer av vuxenutbildning.', inputSchema: { type: 'object', properties: getAdultTypeOfSchoolingV4Schema } },
+      { name: 'get_municipality_school_units_v4', description: 'Hämta mappning mellan kommuner och deras skolenheter.', inputSchema: { type: 'object', properties: getMunicipalitySchoolUnitsV4Schema } },
 
-      // Stöddata
-      {
-        name: 'get_education_areas',
-        description: 'Hämta alla utbildningsområden för vuxenutbildning.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_directions',
-        description: 'Hämta alla inriktningar för utbildningar.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
+      // ==============================================
+      // V4 NYA ENDPOINTS — 8 verktyg
+      // ==============================================
+      { name: 'get_adult_education_areas_v4', description: 'Hämta alla utbildningsområden och inriktningar för vuxenutbildning.', inputSchema: { type: 'object', properties: getAdultEducationAreasV4Schema } },
+      { name: 'get_api_info_v4', description: 'Hämta metadata om Planned Educations API v4.', inputSchema: { type: 'object', properties: getApiInfoV4Schema } },
+      { name: 'search_compact_school_units_v4', description: 'Sök efter skolenheter i kompakt format med koordinater.', inputSchema: { type: 'object', properties: searchCompactSchoolUnitsV4Schema } },
+      { name: 'get_secondary_school_units_v4', description: 'Hämta sekundära skolenheter (filialer).', inputSchema: { type: 'object', properties: getSecondarySchoolUnitsV4Schema } },
+      { name: 'get_all_schools_salsa_statistics', description: 'SALSA-statistik för alla skolor i Sverige.', inputSchema: { type: 'object', properties: getAllSchoolsSALSAStatisticsSchema } },
+      { name: 'get_school_unit_salsa_statistics', description: 'SALSA-statistik för specifik skolenhet.', inputSchema: { type: 'object', properties: getSchoolUnitSALSAStatisticsSchema } },
+      { name: 'get_school_unit_documents_by_type', description: 'Dokument filtrerat på skolform.', inputSchema: { type: 'object', properties: getSchoolUnitDocumentsByTypeSchema } },
+      { name: 'get_school_unit_education_events_by_study_path', description: 'Utbildningstillfällen för specifik studieväg.', inputSchema: { type: 'object', properties: getSchoolUnitEducationEventsByStudyPathSchema } },
 
-      // FAS 1: Core Expansion - Gymnasieutbildningar
-      {
-        name: 'search_education_events',
-        description: 'Sök gymnasieutbildningar och utbildningstillfällen med omfattande filter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schoolUnitCode: { type: 'string', description: 'Skolenhetskod' },
-            typeOfSchool: { type: 'string', description: 'Skoltyp (t.ex. gy)' },
-            municipality: { type: 'string', description: 'Kommun' },
-            county: { type: 'string', description: 'Län' },
-            distance: { type: 'boolean', description: 'Distansutbildning' },
-            programCode: { type: 'string', description: 'Programkod (t.ex. NA, TE)' },
-            searchTerm: { type: 'string', description: 'Fritextsökning' },
-            limit: { type: 'number', description: 'Max antal resultat (max 200)' }
-          }
-        }
-      },
-      {
-        name: 'count_education_events',
-        description: 'Räkna antal gymnasieutbildningar som matchar filter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            typeOfSchool: { type: 'string', description: 'Skoltyp' },
-            municipality: { type: 'string', description: 'Kommun' },
-            county: { type: 'string', description: 'Län' },
-            programCode: { type: 'string', description: 'Programkod' },
-            distance: { type: 'boolean', description: 'Distansutbildning' }
-          }
-        }
-      },
-      {
-        name: 'count_adult_education_events',
-        description: 'Räkna antal vuxenutbildningar som matchar filter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            typeOfSchool: { type: 'string', description: 'Typ (yh, sfi, komvuxgycourses)' },
-            municipality: { type: 'string', description: 'Kommun' },
-            county: { type: 'string', description: 'Län' },
-            distance: { type: 'string', description: 'true/false för distans' },
-            searchTerm: { type: 'string', description: 'Fritextsökning' }
-          }
-        }
-      },
-      {
-        name: 'get_adult_education_areas_v4',
-        description: 'Hämta alla utbildningsområden och inriktningar för vuxenutbildning (YH, SFI, Komvux).',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'search_school_units_v4',
-        description: 'Utökad sökning av skolenheter med fler filtreringsmöjligheter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            name: { type: 'string', description: 'Skolnamn eller del av namn' },
-            municipality: { type: 'string', description: 'Kommun' },
-            county: { type: 'string', description: 'Län' },
-            typeOfSchool: { type: 'string', description: 'Skolform (gy, gr, fsk, etc.)' },
-            status: { type: 'string', description: 'Status (AKTIV, UPPHORT, VILANDE)' },
-            limit: { type: 'number', description: 'Max antal resultat (max 200)' }
-          }
-        }
-      },
-      {
-        name: 'get_school_unit_education_events',
-        description: 'Hämta alla utbildningstillfällen för en specifik skolenhet.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Skolenhetskod (8 siffror)' },
-            programCode: { type: 'string', description: 'Filtrera på programkod' },
-            limit: { type: 'number', description: 'Max antal resultat (max 200)' }
-          },
-          required: ['code']
-        }
-      },
+      // ==============================================
+      // V4 SURVEY ENDPOINTS — 9 verktyg
+      // ==============================================
+      { name: 'get_school_unit_nested_survey_custodians_fsk', description: 'Vårdnadshavares enkätdata FSK (nested).', inputSchema: { type: 'object', properties: getSchoolUnitNestedSurveyCustodiansFSKSchema } },
+      { name: 'get_school_unit_nested_survey_custodians_gr', description: 'Vårdnadshavares enkätdata GR (nested).', inputSchema: { type: 'object', properties: getSchoolUnitNestedSurveyCustodiansGRSchema } },
+      { name: 'get_school_unit_nested_survey_custodians_gran', description: 'Vårdnadshavares enkätdata GRAN (nested).', inputSchema: { type: 'object', properties: getSchoolUnitNestedSurveyCustodiansGRANSchema } },
+      { name: 'get_school_unit_nested_survey_pupils_gy', description: 'Elevers enkätdata GY (nested).', inputSchema: { type: 'object', properties: getSchoolUnitNestedSurveyPupilsGYSchema } },
+      { name: 'get_school_unit_flat_survey_custodians_fsk', description: 'Vårdnadshavares enkätdata FSK (flat).', inputSchema: { type: 'object', properties: getSchoolUnitFlatSurveyCustodiansFSKSchema } },
+      { name: 'get_school_unit_flat_survey_custodians_gr', description: 'Vårdnadshavares enkätdata GR (flat).', inputSchema: { type: 'object', properties: getSchoolUnitFlatSurveyCustodiansGRSchema } },
+      { name: 'get_school_unit_flat_survey_custodians_gran', description: 'Vårdnadshavares enkätdata GRAN (flat).', inputSchema: { type: 'object', properties: getSchoolUnitFlatSurveyCustodiansGRANSchema } },
+      { name: 'get_school_unit_flat_survey_pupils_gr', description: 'Elevers enkätdata GR (flat).', inputSchema: { type: 'object', properties: getSchoolUnitFlatSurveyPupilsGRSchema } },
+      { name: 'get_school_unit_flat_survey_pupils_gy', description: 'Elevers enkätdata GY (flat).', inputSchema: { type: 'object', properties: getSchoolUnitFlatSurveyPupilsGYSchema } },
 
-      // FAS 2: Support Data
-      {
-        name: 'get_school_types_v4',
-        description: 'Hämta alla skoltyper med beskrivningar.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_geographical_areas_v4',
-        description: 'Hämta alla län och kommuner i Sverige.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
-      {
-        name: 'get_programs_v4',
-        description: 'Hämta alla gymnasieprogram med inriktningar.',
-        inputSchema: {
-          type: 'object',
-          properties: {}
-        }
-      },
+      // ==============================================
+      // META-VERKTYG (Konsoliderade) — 6 verktyg
+      // ==============================================
+      { name: 'get_national_statistics', description: 'Hämta nationell statistik för valfri skoltyp (meta-verktyg).', inputSchema: { type: 'object', properties: getNationalStatisticsSchema, required: ['schoolType'] } },
+      { name: 'get_salsa_statistics', description: 'Hämta SALSA-statistik för grundskola eller grundsärskola (meta-verktyg).', inputSchema: { type: 'object', properties: getSALSAStatisticsSchema, required: ['schoolType'] } },
+      { name: 'get_program_statistics', description: 'Hämta programstatistik för gymnasium eller gymnasiesärskola (meta-verktyg).', inputSchema: { type: 'object', properties: getProgramStatisticsSchema, required: ['schoolType'] } },
+      { name: 'get_school_unit_statistics', description: 'Hämta statistik för en skolenhet, valfri skoltyp (meta-verktyg).', inputSchema: { type: 'object', properties: getSchoolUnitStatisticsSchema, required: ['code', 'schoolType'] } },
+      { name: 'get_school_unit_survey', description: 'Hämta enkätresultat för en skolenhet i valfritt format (meta-verktyg).', inputSchema: { type: 'object', properties: getSchoolUnitSurveySchema, required: ['code', 'format'] } },
+      { name: 'search_education_events', description: 'Sök utbildningstillfällen i valfritt format (meta-verktyg).', inputSchema: { type: 'object', properties: searchEducationEventsSchema, required: ['format'] } },
 
-      // FAS 3: Advanced - Statistics & Documents
-      {
-        name: 'get_school_unit_documents',
-        description: 'Hämta Skolinspektionens dokument och rapporter för en skolenhet.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Skolenhetskod (8 siffror)' },
-            typeOfSchooling: { type: 'string', description: 'Skolform (fsk, gr, gran, gy, gyan)' },
-            limit: { type: 'number', description: 'Max antal resultat (max 200)' }
-          },
-          required: ['code']
-        }
-      },
-      {
-        name: 'get_school_unit_statistics',
-        description: 'Hämta statistik för en skolenhet (välj skolform: fsk, gr, gran, gy, gyan).',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: { type: 'string', description: 'Skolenhetskod (8 siffror)' },
-            schoolType: { type: 'string', description: 'Skolform (fsk, gr, gran, gy, gyan)' },
-            year: { type: 'string', description: 'Läsår (t.ex. 2023/2024)' }
-          },
-          required: ['code', 'schoolType']
-        }
-      },
-      {
-        name: 'get_national_statistics',
-        description: 'Hämta nationell statistik för en skolform.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schoolType: { type: 'string', description: 'Skolform (fsk, gr, gran, gy, gyan)' },
-            year: { type: 'string', description: 'Läsår' },
-            programCode: { type: 'string', description: 'Programkod (endast gy/gyan)' }
-          },
-          required: ['schoolType']
-        }
-      },
-      {
-        name: 'get_program_statistics',
-        description: 'Hämta programstatistik för gymnasium eller gymnasiesärskola.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            schoolType: { type: 'string', description: 'Skolform (gy eller gyan)' },
-            year: { type: 'string', description: 'Läsår' }
-          },
-          required: ['schoolType']
-        }
-      },
-
-      // Health check
-      {
-        name: 'health_check',
-        description: 'Kör en health check för att testa API-anslutningar och systemstatus.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            includeApiTests: { type: 'boolean', description: 'Inkludera API-tester' }
-          }
-        }
-      }
+      // ==============================================
+      // DIAGNOSTIK — 1 verktyg
+      // ==============================================
+      { name: 'health_check', description: 'Kör en health check för att testa API-anslutningar och systemstatus.', inputSchema: { type: 'object', properties: healthCheckSchema } },
     ]
   };
 });
@@ -947,37 +854,137 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'get_directions':
         return await getDirections();
 
-      // FAS 1: Core Expansion - Gymnasieutbildningar
-      case 'search_education_events':
-        return await searchEducationEvents(args as any);
-      case 'count_education_events':
-        return await countEducationEvents(args as any);
-      case 'count_adult_education_events':
-        return await countAdultEducationEvents(args as any);
-      case 'get_adult_education_areas_v4':
-        return await getAdultEducationAreasV4();
+      // V4 School Units
       case 'search_school_units_v4':
         return await searchSchoolUnitsV4(args as any);
+      case 'get_school_unit_details_v4':
+        return await getSchoolUnitDetailsV4(args as any);
       case 'get_school_unit_education_events':
         return await getSchoolUnitEducationEvents(args as any);
+      case 'get_school_unit_compact_education_events':
+        return await getSchoolUnitCompactEducationEvents(args as any);
+      case 'calculate_distance_from_school_unit':
+        return await calculateDistanceFromSchoolUnit(args as any);
+      case 'get_school_unit_documents':
+        return await getSchoolUnitDocuments(args as any);
+      case 'get_school_unit_statistics_links':
+        return await getSchoolUnitStatisticsLinks(args as any);
+      case 'get_school_unit_statistics_fsk':
+        return await getSchoolUnitStatisticsFSK(args as any);
+      case 'get_school_unit_statistics_gr':
+        return await getSchoolUnitStatisticsGR(args as any);
+      case 'get_school_unit_statistics_gran':
+        return await getSchoolUnitStatisticsGRAN(args as any);
+      case 'get_school_unit_statistics_gy':
+        return await getSchoolUnitStatisticsGY(args as any);
+      case 'get_school_unit_statistics_gyan':
+        return await getSchoolUnitStatisticsGYAN(args as any);
+      case 'get_school_unit_survey_nested':
+        return await getSchoolUnitSurveyNested(args as any);
+      case 'get_school_unit_survey_flat':
+        return await getSchoolUnitSurveyFlat(args as any);
 
-      // FAS 2: Support Data
+      // V4 Education Events
+      case 'search_education_events_v4':
+        return await searchEducationEventsV4(args as any);
+      case 'search_compact_education_events_v4':
+        return await searchCompactEducationEventsV4(args as any);
+      case 'count_education_events_v4':
+        return await countEducationEventsV4(args as any);
+      case 'count_adult_education_events_v4':
+        return await countAdultEducationEventsV4(args as any);
+
+      // V4 Statistics
+      case 'get_national_statistics_fsk':
+        return await getNationalStatisticsFSK(args as any);
+      case 'get_national_statistics_gr':
+        return await getNationalStatisticsGR(args as any);
+      case 'get_national_statistics_gran':
+        return await getNationalStatisticsGRAN(args as any);
+      case 'get_national_statistics_gy':
+        return await getNationalStatisticsGY(args as any);
+      case 'get_national_statistics_gyan':
+        return await getNationalStatisticsGYAN(args as any);
+      case 'get_salsa_statistics_gr':
+        return await getSALSAStatisticsGR(args as any);
+      case 'get_salsa_statistics_gran':
+        return await getSALSAStatisticsGRAN(args as any);
+      case 'get_program_statistics_gy':
+        return await getProgramStatisticsGY(args as any);
+      case 'get_program_statistics_gyan':
+        return await getProgramStatisticsGYAN(args as any);
+
+      // V4 Support Data
       case 'get_school_types_v4':
         return await getSchoolTypesV4();
       case 'get_geographical_areas_v4':
         return await getGeographicalAreasV4();
+      case 'get_principal_organizer_types_v4':
+        return await getPrincipalOrganizerTypesV4();
       case 'get_programs_v4':
         return await getProgramsV4();
+      case 'get_orientations_v4':
+        return await getOrientationsV4();
+      case 'get_instruction_languages_v4':
+        return await getInstructionLanguagesV4();
+      case 'get_distance_study_types_v4':
+        return await getDistanceStudyTypesV4();
+      case 'get_adult_type_of_schooling_v4':
+        return await getAdultTypeOfSchoolingV4();
+      case 'get_municipality_school_units_v4':
+        return await getMunicipalitySchoolUnitsV4();
 
-      // FAS 3: Advanced - Statistics & Documents
-      case 'get_school_unit_documents':
-        return await getSchoolUnitDocuments(args as any);
-      case 'get_school_unit_statistics':
-        return await getSchoolUnitStatistics(args as any);
+      // V4 Nya endpoints
+      case 'get_adult_education_areas_v4':
+        return await getAdultEducationAreasV4();
+      case 'get_api_info_v4':
+        return await getApiInfoV4();
+      case 'search_compact_school_units_v4':
+        return await searchCompactSchoolUnitsV4(args as any);
+      case 'get_secondary_school_units_v4':
+        return await getSecondarySchoolUnitsV4(args as any);
+      case 'get_all_schools_salsa_statistics':
+        return await getAllSchoolsSALSAStatistics(args as any);
+      case 'get_school_unit_salsa_statistics':
+        return await getSchoolUnitSALSAStatistics(args as any);
+      case 'get_school_unit_documents_by_type':
+        return await getSchoolUnitDocumentsByType(args as any);
+      case 'get_school_unit_education_events_by_study_path':
+        return await getSchoolUnitEducationEventsByStudyPath(args as any);
+
+      // V4 Survey endpoints
+      case 'get_school_unit_nested_survey_custodians_fsk':
+        return await getSchoolUnitNestedSurveyCustodiansFSK(args as any);
+      case 'get_school_unit_nested_survey_custodians_gr':
+        return await getSchoolUnitNestedSurveyCustodiansGR(args as any);
+      case 'get_school_unit_nested_survey_custodians_gran':
+        return await getSchoolUnitNestedSurveyCustodiansGRAN(args as any);
+      case 'get_school_unit_nested_survey_pupils_gy':
+        return await getSchoolUnitNestedSurveyPupilsGY(args as any);
+      case 'get_school_unit_flat_survey_custodians_fsk':
+        return await getSchoolUnitFlatSurveyCustodiansFSK(args as any);
+      case 'get_school_unit_flat_survey_custodians_gr':
+        return await getSchoolUnitFlatSurveyCustodiansGR(args as any);
+      case 'get_school_unit_flat_survey_custodians_gran':
+        return await getSchoolUnitFlatSurveyCustodiansGRAN(args as any);
+      case 'get_school_unit_flat_survey_pupils_gr':
+        return await getSchoolUnitFlatSurveyPupilsGR(args as any);
+      case 'get_school_unit_flat_survey_pupils_gy':
+        return await getSchoolUnitFlatSurveyPupilsGY(args as any);
+
+      // Meta-verktyg
       case 'get_national_statistics':
         return await getNationalStatistics(args as any);
+      case 'get_salsa_statistics':
+        return await getSALSAStatistics(args as any);
       case 'get_program_statistics':
         return await getProgramStatistics(args as any);
+      case 'get_school_unit_statistics':
+        return await getSchoolUnitStatistics(args as any);
+      case 'get_school_unit_survey':
+        return await getSchoolUnitSurvey(args as any);
+      case 'search_education_events':
+        return await searchEducationEvents(args as any);
 
       // Diagnostik
       case 'health_check':

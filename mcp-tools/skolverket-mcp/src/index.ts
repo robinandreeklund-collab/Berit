@@ -8,11 +8,17 @@
  * - Skolenhetsregistret API (skolenheter och deras status)
  * - Planned Educations API (vuxenutbildning, gymnasieutbildningar, statistik, dokument)
  *
- * 41 verktyg totalt:
- * - 17 Syllabus API verktyg
- * - 4 School Units verktyg
- * - 17 Planned Educations verktyg
- * - 3 Support Data verktyg
+ * 87 verktyg totalt:
+ * - 17 Syllabus API verktyg (ämnen, kurser, program, läroplaner, stöddata)
+ * - 4 School Units verktyg (sök, detaljer, status, namn)
+ * - 6 Planned Educations verktyg (vuxenutbildning, stöddata)
+ * - 14 V4 School Units verktyg (avancerad sökning, statistik, enkäter, dokument)
+ * - 4 V4 Education Events verktyg (sökning, räkning)
+ * - 9 V4 Statistics verktyg (nationell statistik, SALSA, program)
+ * - 9 V4 Support Data verktyg (skoltyper, geografi, program, språk)
+ * - 8 V4 Nya endpoints (SALSA, dokument, filialer, kompakt)
+ * - 9 V4 Survey endpoints (enkäter per skolform och respondenttyp)
+ * - 6 Meta-verktyg (konsoliderade verktyg)
  * - 1 Health check verktyg
  */
 

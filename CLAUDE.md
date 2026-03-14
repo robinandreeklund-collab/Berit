@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **LM Studio** (port 8000, external): Local LLM inference via OpenAI-compatible API
 - **Lightpanda** (port 9222): High-performance headless browser for web fetching with JS rendering
 - **SCB MCP v3.0** (port 3000, Docker sidecar): Swedish official statistics via PxWebAPI 2.0 — 7-tool pipeline with caching, auto-complete, and markdown output
-- **Skolverket MCP v2.7.0** (port 3000, Docker sidecar): Swedish education data — läroplaner, skolenheter, vuxenutbildning, gymnasieprogram. 37 verktyg.
+- **Skolverket MCP v2.7.0** (port 3000, Docker sidecar): Swedish education data — läroplaner, skolenheter, vuxenutbildning, gymnasieprogram, statistik, enkäter, SALSA. 87 verktyg.
 
 ## Project Structure
 
