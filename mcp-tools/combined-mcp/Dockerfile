@@ -35,7 +35,7 @@ RUN npm ci --ignore-scripts && npm run build
 # ============ Stage 5: Build SMHI ============
 FROM node:22-alpine AS build-smhi
 WORKDIR /app
-COPY smhi-mcp/package.json smhi-mcp/tsconfig.json ./
+COPY smhi-mcp/package.json smhi-mcp/package-lock.json smhi-mcp/tsconfig.json ./
 COPY smhi-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
@@ -72,7 +72,7 @@ COPY --from=build-riksbank /app/dist /app/riksbank/dist
 COPY riksbank-mcp/README.md /app/riksbank/README.md
 
 # SMHI production install
-COPY smhi-mcp/package.json /app/smhi/
+COPY smhi-mcp/package.json smhi-mcp/package-lock.json /app/smhi/
 RUN cd /app/smhi && npm ci --omit=dev --ignore-scripts
 COPY --from=build-smhi /app/dist /app/smhi/dist
 
