@@ -7,7 +7,6 @@ import {
   formatStationList,
   formatHydroobs,
   formatOcobs,
-  formatHydroPrediction,
   formatFireRiskForecast,
   formatFireRiskAnalysis,
   markdownTable,
@@ -70,6 +69,66 @@ describe('formatSnowForecast', () => {
     const result = formatSnowForecast({});
     expect(result.count).toBe(0);
     expect(result.markdown).toContain('Ingen snöprognosdata');
+  });
+
+  it('formats snow1g flat data object format', () => {
+    const data = {
+      createdTime: '2025-01-15T06:00:00Z',
+      approvedTime: '2025-01-15T06:00:00Z',
+      referenceTime: '2025-01-15T06:00:00Z',
+      geometry: { type: 'Point', coordinates: [[18.0686, 59.3293]] },
+      timeSeries: [
+        {
+          time: '2025-01-15T07:00:00Z',
+          data: {
+            air_temperature: -5.2,
+            wind_speed: 3.1,
+            precipitation_amount_mean: 0.5,
+            cloud_area_fraction: 6,
+            symbol_code: 15,
+          },
+        },
+        {
+          time: '2025-01-15T08:00:00Z',
+          data: {
+            air_temperature: -6.1,
+            wind_speed: 2.8,
+            precipitation_amount_mean: 1.2,
+            cloud_area_fraction: 8,
+            symbol_code: 16,
+          },
+        },
+      ],
+    };
+    const result = formatSnowForecast(data);
+    expect(result.count).toBe(2);
+    expect(result.markdown).toContain('Snöprognos');
+    expect(result.markdown).toContain('-5.2');
+    expect(result.markdown).toContain('-6.1');
+    expect(result.markdown).toContain('Lätt snöfall');
+    expect(result.markdown).toContain('Måttligt snöfall');
+  });
+
+  it('handles parameters array format as fallback', () => {
+    const data = {
+      approvedTime: '2025-01-15T06:00:00Z',
+      timeSeries: [
+        {
+          validTime: '2025-01-15T07:00:00Z',
+          parameters: [
+            { name: 't', values: [-3.0] },
+            { name: 'ws', values: [2.5] },
+            { name: 'pmean', values: [0.1] },
+            { name: 'tcc_mean', values: [5] },
+            { name: 'Wsymb2', values: [15] },
+          ],
+        },
+      ],
+    };
+    const result = formatSnowForecast(data);
+    expect(result.count).toBe(1);
+    expect(result.markdown).toContain('-3.0');
+    expect(result.markdown).toContain('Lätt snöfall');
   });
 });
 
@@ -174,14 +233,6 @@ describe('formatOcobs', () => {
     expect(result.count).toBe(1);
     expect(result.markdown).toContain('Oceanografiska');
     expect(result.markdown).toContain('Havstemperatur');
-  });
-});
-
-describe('formatHydroPrediction', () => {
-  it('handles missing timeSeries', () => {
-    const result = formatHydroPrediction({});
-    expect(result.count).toBe(0);
-    expect(result.markdown).toContain('Ingen hydrologisk prognosdata');
   });
 });
 

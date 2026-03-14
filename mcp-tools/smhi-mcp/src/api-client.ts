@@ -1,16 +1,15 @@
 /**
  * SMHI Open Data API client.
  *
- * Connects to 9 SMHI APIs:
+ * Connects to 8 SMHI APIs:
  * - metfcst/pmp3g  — Weather forecasts (10 days)
  * - metfcst/snow1g — Snow forecasts
  * - metanalys/mesan2g — Weather analysis (MESAN)
  * - metobs — Meteorological observations
  * - hydroobs — Hydrological observations
- * - pthbv — Hydrological predictions
  * - ocobs — Oceanographic observations
- * - metfcst/fwif1g — Fire risk forecasts
- * - metanalys/fwia — Fire risk analysis
+ * - metfcst/fwif1g — Fire risk forecasts (seasonal, May–Oct)
+ * - metanalys/fwia — Fire risk analysis (seasonal, May–Oct)
  *
  * Features:
  * - In-memory cache with differentiated TTL
@@ -24,7 +23,6 @@ const BASE_URLS = {
   metanalys: 'https://opendata-download-metanalys.smhi.se/api',
   metobs: 'https://opendata-download-metobs.smhi.se/api',
   hydroobs: 'https://opendata-download-hydroobs.smhi.se/api',
-  pthbv: 'https://opendata-download-pthbv.smhi.se/api',
   ocobs: 'https://opendata-download-ocobs.smhi.se/api',
 } as const;
 
@@ -126,14 +124,6 @@ export class SmhiApiClient {
   async getHydroobs(parameter: number, station: number, period: string): Promise<{ data: unknown; cached: boolean }> {
     const url = `${BASE_URLS.hydroobs}/version/1.0/parameter/${parameter}/station/${station}/period/${period}/data.json`;
     return this._fetch(url, CACHE_TTL_OBSERVATION_MS);
-  }
-
-  // ── Hydrological Predictions ────────────────────────────────────────────
-
-  /** Get hydrological prediction for a point. */
-  async getHydroPrediction(lat: number, lon: number): Promise<{ data: unknown; cached: boolean }> {
-    const url = `${BASE_URLS.pthbv}/version/1/geotype/point/lon/${lon.toFixed(4)}/lat/${lat.toFixed(4)}/data.json`;
-    return this._fetch(url, CACHE_TTL_FORECAST_MS);
   }
 
   // ── Oceanographic Observations ──────────────────────────────────────────

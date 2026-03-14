@@ -56,7 +56,7 @@ app.get('/mcp', (req, res) => {
     protocol: 'mcp',
     version: '1.0.0',
     name: 'SMHI MCP Server',
-    description: 'Väder-, hydrologisk-, oceanografisk- och brandriskdata från SMHI — 10 verktyg',
+    description: 'Väder-, hydrologisk-, oceanografisk- och brandriskdata från SMHI — 9 verktyg med automatisk geocoding',
     authentication: 'none',
     transport: 'http',
     capabilities: {
@@ -213,7 +213,7 @@ app.get('/', (req, res) => {
     name: 'SMHI MCP Server',
     version: '1.0.0',
     description: 'Väder-, hydrologisk-, oceanografisk- och brandriskdata från SMHI',
-    tools: 10,
+    tools: 9,
     categories: ['väderprognoser', 'väderanalyser', 'väderobservationer', 'hydrologi', 'oceanografi', 'brandrisk'],
     endpoints: {
       mcp: '/mcp',

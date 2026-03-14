@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * SMHI MCP Server v1.0
+ * SMHI MCP Server v1.1
  *
- * 10 tools for Swedish weather, hydrology, oceanography and fire risk data
+ * 9 tools for Swedish weather, hydrology, oceanography and fire risk data
  * via SMHI Open Data APIs.
  * Supports both stdio and HTTP transports.
+ * Automatic geocoding: accepts place names (e.g. "Tibro") instead of lat/lon.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -27,11 +28,11 @@ import {
   formatMetobs,
   formatStationList,
   formatHydroobs,
-  formatHydroPrediction,
   formatOcobs,
   formatFireRiskForecast,
   formatFireRiskAnalysis,
 } from './formatter.js';
+import { resolveCoordinates } from './geocode.js';
 import { LLM_INSTRUCTIONS } from './instructions.js';
 import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
 import { resources, getResourceContent } from './resources.js';
@@ -130,39 +131,39 @@ export class SmhiMCPServer {
       const params = args || {};
       const client = getApiClient();
       let result: { markdown: string; count: number; raw: unknown };
+      let resolvedName: string | undefined;
+
+      // Helper: resolve coordinates for point-based tools
+      const resolvePoint = async () => {
+        const resolved = await resolveCoordinates(params);
+        if ('error' in resolved) return resolved;
+        resolvedName = resolved.resolvedName;
+        return resolved;
+      };
 
       switch (tool.id) {
         // ── Väderprognoser ──────────────────────────────────────────────
         case 'smhi_vaderprognoser_metfcst': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getWeatherForecast(lat, lon);
+          const coords = await resolvePoint();
+          if ('error' in coords) return this._missingParamsError(coords.error);
+          const { data } = await client.getWeatherForecast(coords.lat, coords.lon);
           result = formatWeatherForecast(data);
           break;
         }
 
         case 'smhi_vaderprognoser_snow': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getSnowForecast(lat, lon);
+          const coords = await resolvePoint();
+          if ('error' in coords) return this._missingParamsError(coords.error);
+          const { data } = await client.getSnowForecast(coords.lat, coords.lon);
           result = formatSnowForecast(data);
           break;
         }
 
         // ── Väderanalyser ───────────────────────────────────────────────
         case 'smhi_vaderanalyser_mesan': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getMesanAnalysis(lat, lon);
+          const coords = await resolvePoint();
+          if ('error' in coords) return this._missingParamsError(coords.error);
+          const { data } = await client.getMesanAnalysis(coords.lat, coords.lon);
           result = formatMesanAnalysis(data);
           break;
         }
@@ -203,17 +204,6 @@ export class SmhiMCPServer {
           break;
         }
 
-        case 'smhi_hydrologi_pthbv': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getHydroPrediction(lat, lon);
-          result = formatHydroPrediction(data);
-          break;
-        }
-
         // ── Oceanografi ─────────────────────────────────────────────────
         case 'smhi_oceanografi_ocobs': {
           const parameter = params.parameter as number;
@@ -229,23 +219,17 @@ export class SmhiMCPServer {
 
         // ── Brandrisk ───────────────────────────────────────────────────
         case 'smhi_brandrisk_fwif': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getFireRiskForecast(lat, lon);
+          const coords = await resolvePoint();
+          if ('error' in coords) return this._missingParamsError(coords.error);
+          const { data } = await client.getFireRiskForecast(coords.lat, coords.lon);
           result = formatFireRiskForecast(data);
           break;
         }
 
         case 'smhi_brandrisk_fwia': {
-          const lat = params.latitude as number;
-          const lon = params.longitude as number;
-          if (!lat || !lon) {
-            return this._missingParamsError('latitude och longitude');
-          }
-          const { data } = await client.getFireRiskAnalysis(lat, lon);
+          const coords = await resolvePoint();
+          if ('error' in coords) return this._missingParamsError(coords.error);
+          const { data } = await client.getFireRiskAnalysis(coords.lat, coords.lon);
           result = formatFireRiskAnalysis(data);
           break;
         }
@@ -263,6 +247,10 @@ export class SmhiMCPServer {
         antal: result.count,
         data: result.markdown,
       };
+
+      if (resolvedName) {
+        response.plats = resolvedName;
+      }
 
       return {
         content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],

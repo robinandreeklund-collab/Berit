@@ -1,8 +1,11 @@
 /**
- * 10 tool definitions for the SMHI MCP server.
+ * 9 tool definitions for the SMHI MCP server.
  *
  * Each tool includes a full JSON Schema `inputSchema` so the LLM knows
  * exactly which parameters to provide for successful API requests.
+ *
+ * Point-based tools accept either lat/lon OR a location name string
+ * (e.g. "Tibro", "Göteborg") which is automatically geocoded.
  */
 
 import { METOBS_PARAMETERS, HYDROOBS_PARAMETERS, OCOBS_PARAMETERS } from './types.js';
@@ -58,27 +61,32 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta väderprognos för en plats i Sverige (~10 dagar framåt).\n\n' +
       '**Användningsfall:** Se vädret kommande dagar — temperatur, vind, nederbörd, moln.\n' +
       '**Returnerar:** Timvis prognos med temperatur, vind, nederbörd, molnighet, vädersymbol.\n' +
-      '**Exempel:** "Vädret i Stockholm imorgon", "Väderprognos Göteborg", "Regnar det i Malmö?"',
+      '**Exempel:** "Vädret i Stockholm imorgon", "Väderprognos Göteborg", "Regnar det i Malmö?"\n' +
+      '**Tips:** Ange platsnamn (t.ex. "Tibro") istället för koordinater — geocoding sker automatiskt.',
     category: 'vaderprognoser',
     api: 'metfcst/pmp3g',
     endpoint: '/category/pmp3g/version/2/geotype/point/lon/{lon}/lat/{lat}/data.json',
     inputSchema: {
       type: 'object',
       properties: {
+        location: {
+          type: 'string',
+          description: 'Platsnamn i Sverige (t.ex. "Tibro", "Göteborg", "Kiruna"). Geocodas automatiskt till lat/lon. Alternativ till latitude/longitude.',
+        },
         latitude: {
           type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Exempel: 59.3293 (Stockholm), 57.7089 (Göteborg), 55.6050 (Malmö).',
+          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Behövs ej om location anges.',
           minimum: 55.0,
           maximum: 70.0,
         },
         longitude: {
           type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Exempel: 18.0686 (Stockholm), 11.9746 (Göteborg), 13.0038 (Malmö).',
+          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Behövs ej om location anges.',
           minimum: 10.0,
           maximum: 25.0,
         },
       },
-      required: ['latitude', 'longitude'],
+      required: [],
     },
   },
   {
@@ -88,27 +96,32 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta snöprognos för en plats i Sverige.\n\n' +
       '**Användningsfall:** Se snödjup, snöfall och snörelaterade prognoser.\n' +
       '**Returnerar:** Prognosdata för snö.\n' +
-      '**Exempel:** "Snöprognos Kiruna", "Kommer det snöa i Östersund?"',
+      '**Exempel:** "Snöprognos Kiruna", "Kommer det snöa i Östersund?"\n' +
+      '**Tips:** Ange platsnamn istället för koordinater — geocoding sker automatiskt.',
     category: 'vaderprognoser',
     api: 'metfcst/snow1g',
     endpoint: '/category/snow1g/version/1/geotype/point/lon/{lon}/lat/{lat}/data.json',
     inputSchema: {
       type: 'object',
       properties: {
+        location: {
+          type: 'string',
+          description: 'Platsnamn i Sverige (t.ex. "Kiruna", "Östersund"). Geocodas automatiskt.',
+        },
         latitude: {
           type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0.',
+          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Behövs ej om location anges.',
           minimum: 55.0,
           maximum: 70.0,
         },
         longitude: {
           type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0.',
+          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Behövs ej om location anges.',
           minimum: 10.0,
           maximum: 25.0,
         },
       },
-      required: ['latitude', 'longitude'],
+      required: [],
     },
   },
 
@@ -120,27 +133,32 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta senaste väderanalys (MESAN) för en plats.\n\n' +
       '**Användningsfall:** Se det faktiska vädret just nu baserat på mätdata + modellanalys.\n' +
       '**Returnerar:** Analysdata: temperatur, vind, nederbörd, sikt, moln, vädersymbol.\n' +
-      '**Exempel:** "Hur är vädret nu i Stockholm?", "Aktuell temperatur Göteborg"',
+      '**Exempel:** "Hur är vädret nu i Stockholm?", "Aktuell temperatur Göteborg"\n' +
+      '**Tips:** Ange platsnamn istället för koordinater — geocoding sker automatiskt.',
     category: 'vaderanalyser',
     api: 'metanalys/mesan2g',
     endpoint: '/category/mesan2g/version/1/geotype/point/lon/{lon}/lat/{lat}/data.json',
     inputSchema: {
       type: 'object',
       properties: {
+        location: {
+          type: 'string',
+          description: 'Platsnamn i Sverige (t.ex. "Stockholm", "Göteborg"). Geocodas automatiskt.',
+        },
         latitude: {
           type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0.',
+          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Behövs ej om location anges.',
           minimum: 55.0,
           maximum: 70.0,
         },
         longitude: {
           type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0.',
+          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Behövs ej om location anges.',
           minimum: 10.0,
           maximum: 25.0,
         },
       },
-      required: ['latitude', 'longitude'],
+      required: [],
     },
   },
 
@@ -200,7 +218,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
 
-  // ── Hydrologi (2) ──────────────────────────────────────────────────────
+  // ── Hydrologi (1) ──────────────────────────────────────────────────────
   {
     id: 'smhi_hydrologi_hydroobs',
     name: 'SMHI Hydrologiska Observationer',
@@ -230,36 +248,6 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         },
       },
       required: ['parameter', 'station'],
-    },
-  },
-  {
-    id: 'smhi_hydrologi_pthbv',
-    name: 'SMHI Hydrologisk Prognos',
-    description:
-      'Hämta hydrologisk prognos (PT-HBV-modellen) för en plats.\n\n' +
-      '**Användningsfall:** Se prognoser för vattenflöde och vattenstånd.\n' +
-      '**Returnerar:** Prognosdata med tidssteg.\n' +
-      '**Exempel:** "Hydrologisk prognos Dalälven", "Vattenprognos norra Sverige"',
-    category: 'hydrologi',
-    api: 'pthbv',
-    endpoint: '/version/1/geotype/point/lon/{lon}/lat/{lat}/data.json',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        latitude: {
-          type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0.',
-          minimum: 55.0,
-          maximum: 70.0,
-        },
-        longitude: {
-          type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0.',
-          minimum: 10.0,
-          maximum: 25.0,
-        },
-      },
-      required: ['latitude', 'longitude'],
     },
   },
 
@@ -304,27 +292,33 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta brandriskprognos (FWI — Fire Weather Index) för en plats.\n\n' +
       '**Användningsfall:** Se brandrisk och brandväderprognoser.\n' +
       '**Returnerar:** FWI-index, ISI, BUI, FFMC, skogstorka, gräsbrandsrisk per dag.\n' +
-      '**Exempel:** "Brandrisk Stockholm", "FWI-prognos Gotland", "Risk för skogsbrand?"',
+      '**Exempel:** "Brandrisk Stockholm", "FWI-prognos Gotland", "Risk för skogsbrand?"\n' +
+      '**OBS:** Säsongsbaserat API — data tillgänglig ca maj–oktober.\n' +
+      '**Tips:** Ange platsnamn istället för koordinater — geocoding sker automatiskt.',
     category: 'brandrisk',
     api: 'metfcst/fwif1g',
     endpoint: '/category/fwif1g/version/1/geotype/point/lon/{lon}/lat/{lat}/data.json',
     inputSchema: {
       type: 'object',
       properties: {
+        location: {
+          type: 'string',
+          description: 'Platsnamn i Sverige (t.ex. "Gotland", "Stockholm"). Geocodas automatiskt.',
+        },
         latitude: {
           type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0.',
+          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Behövs ej om location anges.',
           minimum: 55.0,
           maximum: 70.0,
         },
         longitude: {
           type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0.',
+          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Behövs ej om location anges.',
           minimum: 10.0,
           maximum: 25.0,
         },
       },
-      required: ['latitude', 'longitude'],
+      required: [],
     },
   },
   {
@@ -334,27 +328,33 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta senaste brandriskanalys för en plats.\n\n' +
       '**Användningsfall:** Se aktuell brandrisk baserat på analysdata.\n' +
       '**Returnerar:** Brandriskparametrar: FWI, torkhetsindex, gräsbrandsindex.\n' +
-      '**Exempel:** "Aktuell brandrisk Gotland", "Brandriskanalys Småland"',
+      '**Exempel:** "Aktuell brandrisk Gotland", "Brandriskanalys Småland"\n' +
+      '**OBS:** Säsongsbaserat API — data tillgänglig ca maj–oktober.\n' +
+      '**Tips:** Ange platsnamn istället för koordinater — geocoding sker automatiskt.',
     category: 'brandrisk',
     api: 'metanalys/fwia',
     endpoint: '/category/fwia/version/1/geotype/point/lon/{lon}/lat/{lat}/data.json',
     inputSchema: {
       type: 'object',
       properties: {
+        location: {
+          type: 'string',
+          description: 'Platsnamn i Sverige (t.ex. "Gotland", "Småland"). Geocodas automatiskt.',
+        },
         latitude: {
           type: 'number',
-          description: 'Latitud (WGS84). Sverige: 55.0–70.0.',
+          description: 'Latitud (WGS84). Sverige: 55.0–70.0. Behövs ej om location anges.',
           minimum: 55.0,
           maximum: 70.0,
         },
         longitude: {
           type: 'number',
-          description: 'Longitud (WGS84). Sverige: 10.0–25.0.',
+          description: 'Longitud (WGS84). Sverige: 10.0–25.0. Behövs ej om location anges.',
           minimum: 10.0,
           maximum: 25.0,
         },
       },
-      required: ['latitude', 'longitude'],
+      required: [],
     },
   },
 ];

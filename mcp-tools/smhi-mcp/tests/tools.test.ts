@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { TOOL_DEFINITIONS, getToolById, getToolsByCategory } from '../src/tools.js';
 
 describe('TOOL_DEFINITIONS', () => {
-  it('has exactly 10 tools', () => {
-    expect(TOOL_DEFINITIONS).toHaveLength(10);
+  it('has exactly 9 tools', () => {
+    expect(TOOL_DEFINITIONS).toHaveLength(9);
   });
 
   it('all tools have required fields', () => {
@@ -30,19 +30,22 @@ describe('TOOL_DEFINITIONS', () => {
     }
   });
 
-  it('point-based tools require latitude and longitude', () => {
+  it('point-based tools accept location parameter', () => {
     const pointTools = [
       'smhi_vaderprognoser_metfcst',
       'smhi_vaderprognoser_snow',
       'smhi_vaderanalyser_mesan',
-      'smhi_hydrologi_pthbv',
       'smhi_brandrisk_fwif',
       'smhi_brandrisk_fwia',
     ];
     for (const id of pointTools) {
       const tool = getToolById(id);
       expect(tool).toBeDefined();
-      expect(tool!.inputSchema.required).toEqual(['latitude', 'longitude']);
+      const props = tool!.inputSchema.properties as Record<string, Record<string, unknown>>;
+      expect(props.location).toBeDefined();
+      expect(props.location.type).toBe('string');
+      expect(props.latitude).toBeDefined();
+      expect(props.longitude).toBeDefined();
     }
   });
 
@@ -100,9 +103,20 @@ describe('TOOL_DEFINITIONS', () => {
     expect(categories['vaderprognoser']).toHaveLength(2);
     expect(categories['vaderanalyser']).toHaveLength(1);
     expect(categories['vaderobservationer']).toHaveLength(2);
-    expect(categories['hydrologi']).toHaveLength(2);
+    expect(categories['hydrologi']).toHaveLength(1);
     expect(categories['oceanografi']).toHaveLength(1);
     expect(categories['brandrisk']).toHaveLength(2);
+  });
+
+  it('pthbv tool does not exist (API deprecated)', () => {
+    expect(getToolById('smhi_hydrologi_pthbv')).toBeUndefined();
+  });
+
+  it('brandrisk tools mention seasonality', () => {
+    const fwif = getToolById('smhi_brandrisk_fwif');
+    const fwia = getToolById('smhi_brandrisk_fwia');
+    expect(fwif!.description).toContain('maj–oktober');
+    expect(fwia!.description).toContain('maj–oktober');
   });
 });
 
@@ -117,7 +131,7 @@ describe('getToolById', () => {
     expect(getToolById('nonexistent')).toBeUndefined();
   });
 
-  it('finds all 10 tools', () => {
+  it('finds all 9 tools', () => {
     const allIds = TOOL_DEFINITIONS.map((t) => t.id);
     for (const id of allIds) {
       expect(getToolById(id)).toBeDefined();

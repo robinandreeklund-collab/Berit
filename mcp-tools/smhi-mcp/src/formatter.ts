@@ -96,7 +96,23 @@ export function formatWeatherForecast(
   };
 }
 
-/** Format snow forecast response. */
+/** Snow1g parameter name mapping. */
+const SNOW_PARAM_LABELS: Record<string, { label: string; unit: string }> = {
+  air_temperature: { label: 'Temperatur', unit: '°C' },
+  precipitation_amount_mean: { label: 'Nederbörd (medel)', unit: 'mm/h' },
+  precipitation_amount_mean_deterministic: { label: 'Nederbörd (determ.)', unit: 'mm/h' },
+  precipitation_frozen_part: { label: 'Fruset (%)', unit: '%' },
+  wind_speed: { label: 'Vind', unit: 'm/s' },
+  wind_speed_of_gust: { label: 'Byvind', unit: 'm/s' },
+  wind_from_direction: { label: 'Vindriktning', unit: '°' },
+  relative_humidity: { label: 'Luftfuktighet', unit: '%' },
+  air_pressure_at_mean_sea_level: { label: 'Lufttryck', unit: 'hPa' },
+  visibility_in_air: { label: 'Sikt', unit: 'km' },
+  cloud_area_fraction: { label: 'Moln', unit: 'oktas' },
+  symbol_code: { label: 'Vädersymbol', unit: 'kod' },
+};
+
+/** Format snow forecast response (snow1g — flat data object format). */
 export function formatSnowForecast(
   data: unknown,
 ): { markdown: string; count: number; raw: unknown } {
@@ -107,26 +123,56 @@ export function formatSnowForecast(
 
   const timeSeries = forecast.timeSeries as Array<Record<string, unknown>>;
   const approvedTime = formatDate(forecast.approvedTime as string);
+  const geo = forecast.geometry as Record<string, unknown>;
+  const coords = (geo?.coordinates as number[][])?.[0] || [];
   const limit = Math.min(timeSeries.length, 24);
-  const headers = ['Tid', 'Parameter', 'Värde', 'Enhet'];
+
+  // Snow1g uses flat data object { key: value } instead of parameters array
+  const headers = ['Tid', 'Temp °C', 'Vind m/s', 'Nederb mm/h', 'Moln', 'Väder'];
   const rows: string[][] = [];
 
   for (let i = 0; i < limit; i++) {
     const ts = timeSeries[i];
-    const validTime = formatDate(ts.validTime as string);
-    const params = ts.parameters as Array<Record<string, unknown>>;
+    const time = formatDate((ts.time || ts.validTime) as string);
+    const d = (ts.data || {}) as Record<string, number>;
 
-    for (const p of params) {
+    // Also support parameters array format (PMP3g style) as fallback
+    if (ts.parameters && Array.isArray(ts.parameters)) {
+      const params = ts.parameters as Array<Record<string, unknown>>;
+      const getParam = (name: string): number | null => {
+        const p = params.find((p) => p.name === name);
+        return p ? (p.values as number[])[0] : null;
+      };
+      const wsymb = getParam('Wsymb2') ?? getParam('symbol_code');
+      const weatherText = wsymb != null ? (WEATHER_SYMBOLS[wsymb] || String(wsymb)) : '—';
       rows.push([
-        validTime.slice(5),
-        String(p.name || '—'),
-        formatNumber((p.values as number[])?.[0]),
-        String(p.unit || '—'),
+        time.slice(5),
+        formatNumber(getParam('t') ?? getParam('air_temperature')),
+        formatNumber(getParam('ws') ?? getParam('wind_speed')),
+        formatNumber(getParam('pmean') ?? getParam('precipitation_amount_mean'), 2),
+        formatNumber(getParam('tcc_mean') ?? getParam('cloud_area_fraction'), 0),
+        weatherText,
+      ]);
+    } else {
+      // Flat data object format (snow1g)
+      const wsymb = d.symbol_code;
+      const weatherText = wsymb != null ? (WEATHER_SYMBOLS[wsymb] || String(Math.round(wsymb))) : '—';
+      rows.push([
+        time.slice(5),
+        formatNumber(d.air_temperature),
+        formatNumber(d.wind_speed),
+        formatNumber(d.precipitation_amount_mean ?? d.precipitation_amount_mean_deterministic, 2),
+        formatNumber(d.cloud_area_fraction, 0),
+        weatherText,
       ]);
     }
   }
 
-  const header = `**Snöprognos** — Godkänd: ${approvedTime}\nVisar ${limit} av ${timeSeries.length} tidssteg\n\n`;
+  const header =
+    `**Snöprognos** — Godkänd: ${approvedTime}\n` +
+    (coords.length >= 2 ? `Koordinater: ${coords[1]?.toFixed(4) || '?'}°N, ${coords[0]?.toFixed(4) || '?'}°E\n` : '') +
+    `Visar ${limit} av ${timeSeries.length} tidssteg\n\n`;
+
   return { markdown: header + markdownTable(headers, rows), count: timeSeries.length, raw: data };
 }
 
@@ -327,41 +373,6 @@ export function formatOcobs(
     `Visar ${limit} av ${values.length} mätningar\n\n`;
 
   return { markdown: header + markdownTable(headers, rows), count: values.length, raw: data };
-}
-
-/** Format hydrological prediction data. */
-export function formatHydroPrediction(
-  data: unknown,
-): { markdown: string; count: number; raw: unknown } {
-  const pred = data as Record<string, unknown>;
-  if (!pred || !pred.timeSeries) {
-    return { markdown: '_Ingen hydrologisk prognosdata._', count: 0, raw: data };
-  }
-
-  const timeSeries = pred.timeSeries as Array<Record<string, unknown>>;
-  const approvedTime = formatDate(pred.approvedTime as string);
-  const limit = Math.min(timeSeries.length, 24);
-
-  const headers = ['Tid', 'Parameter', 'Värde', 'Enhet'];
-  const rows: string[][] = [];
-
-  for (let i = 0; i < limit; i++) {
-    const ts = timeSeries[i];
-    const validTime = formatDate(ts.validTime as string);
-    const params = ts.parameters as Array<Record<string, unknown>>;
-
-    for (const p of params) {
-      rows.push([
-        validTime.slice(5),
-        String(p.name || '—'),
-        formatNumber((p.values as number[])?.[0], 2),
-        String(p.unit || '—'),
-      ]);
-    }
-  }
-
-  const header = `**Hydrologisk prognos** — Godkänd: ${approvedTime}\nVisar ${limit} av ${timeSeries.length} tidssteg\n\n`;
-  return { markdown: header + markdownTable(headers, rows), count: timeSeries.length, raw: data };
 }
 
 // ---------------------------------------------------------------------------
