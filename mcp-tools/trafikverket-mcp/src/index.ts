@@ -1,0 +1,351 @@
+#!/usr/bin/env node
+
+/**
+ * Trafikverket MCP Server v1.0
+ *
+ * 22 tools for real-time Swedish traffic data via Trafikverket Open API.
+ * Supports both stdio and HTTP transports.
+ */
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { TOOL_DEFINITIONS, getToolById, type ToolDefinition } from './tools.js';
+import { getApiClient, type FilterClause, type QueryOptions } from './api-client.js';
+import { formatResponse } from './formatter.js';
+import { SWEDISH_COUNTIES } from './types.js';
+import { LLM_INSTRUCTIONS } from './instructions.js';
+import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
+import { resources, getResourceContent } from './resources.js';
+
+// ---------------------------------------------------------------------------
+// Call tracker — prevents LLM from looping the same tool
+// ---------------------------------------------------------------------------
+
+interface CallRecord {
+  count: number;
+  firstCall: number;
+}
+
+const CALL_LIMIT = 3;
+const CALL_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+class CallTracker {
+  private records = new Map<string, CallRecord>();
+
+  check(toolId: string): { allowed: boolean; message?: string } {
+    const now = Date.now();
+    const record = this.records.get(toolId);
+
+    if (!record || now - record.firstCall > CALL_WINDOW_MS) {
+      this.records.set(toolId, { count: 1, firstCall: now });
+      return { allowed: true };
+    }
+
+    if (record.count >= CALL_LIMIT) {
+      const waitSec = Math.ceil((record.firstCall + CALL_WINDOW_MS - now) / 1000);
+      return {
+        allowed: false,
+        message: `Verktyget ${toolId} har anropats ${CALL_LIMIT} gånger inom 5 minuter. Vänta ${waitSec}s eller prova ett annat verktyg.`,
+      };
+    }
+
+    record.count++;
+    return { allowed: true };
+  }
+
+  reset(): void {
+    this.records.clear();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tool input → API query mapping
+// ---------------------------------------------------------------------------
+
+function buildFilter(
+  tool: ToolDefinition,
+  args: Record<string, unknown>,
+): FilterClause | null {
+  const plats = (args.plats as string)?.trim();
+  const station = (args.station as string)?.trim();
+  const lan = (args.lan as string)?.trim();
+  const id = (args.id as string)?.trim();
+
+  switch (tool.filterType) {
+    case 'location':
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (lan) return { operator: 'EQ', name: 'Deviation.CountyNo', value: lan };
+      return null;
+
+    case 'station':
+      if (station) return { operator: 'LIKE', name: tool.filterField, value: `*${station}*` };
+      return null;
+
+    case 'weather':
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
+      return null;
+
+    case 'camera':
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
+      return null;
+
+    case 'camera_id':
+      if (id) return { operator: 'EQ', name: 'Id', value: id };
+      return null;
+
+    case 'county':
+      if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
+      if (plats) return { operator: 'LIKE', name: 'LocationText', value: `*${plats}*` };
+      return null;
+
+    default:
+      return null;
+  }
+}
+
+function getInputSchema(tool: ToolDefinition): Record<string, unknown> {
+  switch (tool.filterType) {
+    case 'location':
+      return {
+        type: 'object',
+        properties: {
+          plats: { type: 'string', description: 'Plats, ort eller vägnummer (t.ex. "Stockholm", "E4")' },
+          lan: { type: 'string', description: 'Länskod (t.ex. "01" för Stockholm)' },
+          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
+        },
+      };
+    case 'station':
+      return {
+        type: 'object',
+        properties: {
+          station: { type: 'string', description: 'Stationsnamn (t.ex. "Stockholm C", "Göteborg C")' },
+          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
+        },
+      };
+    case 'weather':
+      return {
+        type: 'object',
+        properties: {
+          plats: { type: 'string', description: 'Stationsnamn eller plats (t.ex. "E4 Hudiksvall")' },
+          lan: { type: 'string', description: 'Länskod' },
+          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
+        },
+      };
+    case 'camera':
+      return {
+        type: 'object',
+        properties: {
+          plats: { type: 'string', description: 'Plats eller väg (t.ex. "E4 Stockholm")' },
+          lan: { type: 'string', description: 'Länskod' },
+          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
+        },
+      };
+    case 'camera_id':
+      return {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Kamera-ID' },
+        },
+        required: ['id'],
+      };
+    case 'county':
+      return {
+        type: 'object',
+        properties: {
+          plats: { type: 'string', description: 'Platsnamn att söka efter' },
+          lan: { type: 'string', description: 'Länskod (t.ex. "14" för Västra Götaland)' },
+          limit: { type: 'number', description: 'Max antal resultat (standard: 10)' },
+        },
+      };
+    default:
+      return { type: 'object', properties: {} };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MCP Server class
+// ---------------------------------------------------------------------------
+
+export class TrafikverketMCPServer {
+  private callTracker = new CallTracker();
+
+  getTools(): Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+  }> {
+    return TOOL_DEFINITIONS.map((tool) => ({
+      name: tool.id,
+      description: tool.description,
+      inputSchema: getInputSchema(tool),
+    }));
+  }
+
+  async callTool(
+    name: string,
+    args: Record<string, unknown> | undefined,
+  ): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
+    const tool = getToolById(name);
+    if (!tool) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: `Okänt verktyg: ${name}`,
+              action: 'Använd ett av de 22 tillgängliga verktygen.',
+              available: TOOL_DEFINITIONS.map((t) => t.id),
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    // Check call limit
+    const check = this.callTracker.check(tool.id);
+    if (!check.allowed) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ error: check.message }) }],
+        isError: true,
+      };
+    }
+
+    try {
+      const filter = buildFilter(tool, args || {});
+      const limit = Math.min(Math.max(Number(args?.limit) || 10, 1), 50);
+
+      const queryOpts: QueryOptions = {
+        objecttype: tool.objecttype,
+        schemaVersion: tool.schemaVersion,
+        namespace: tool.namespace,
+        limit,
+        filter,
+        orderBy: tool.orderBy,
+      };
+
+      const client = getApiClient();
+      const { data, cached } = await client.query(queryOpts);
+
+      const { markdown, count, raw } = formatResponse(data, tool.objecttype, tool.id);
+
+      const response: Record<string, unknown> = {
+        verktyg: tool.id,
+        kategori: tool.category,
+        antal: count,
+        cache: cached,
+        data: markdown,
+      };
+
+      // Include raw JSON for small result sets
+      if (count <= 5) {
+        response.raw = raw;
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              error: message,
+              verktyg: tool.id,
+              action: message.includes('API_KEY')
+                ? 'Sätt miljövariabeln TRAFIKVERKET_API_KEY.'
+                : message.includes('429')
+                  ? 'API:t är överbelastat. Vänta en stund och försök igen.'
+                  : 'Kontrollera filtervärden och försök igen.',
+              suggestions: [
+                'Kontrollera att TRAFIKVERKET_API_KEY är korrekt',
+                'Prova med en annan plats eller färre resultat',
+                `Länskoder: ${Object.entries(SWEDISH_COUNTIES).slice(0, 5).map(([k, v]) => `${k}=${v}`).join(', ')}…`,
+              ],
+            }),
+          },
+        ],
+        isError: true,
+      };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stdio transport (for CLI clients)
+// ---------------------------------------------------------------------------
+
+async function main(): Promise<void> {
+  const server = new Server(
+    {
+      name: 'Trafikverket MCP Server',
+      version: '1.0.0',
+    },
+    {
+      capabilities: {
+        tools: {},
+        prompts: {},
+        resources: {},
+      },
+    },
+  );
+
+  const mcpServer = new TrafikverketMCPServer();
+
+  // Tools
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: mcpServer.getTools(),
+  }));
+
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    return await mcpServer.callTool(name, args as Record<string, unknown>);
+  });
+
+  // Prompts
+  server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+    prompts,
+  }));
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const prompt = getPromptById(name);
+    if (!prompt) throw new Error(`Prompt hittades inte: ${name}`);
+    return { messages: generatePromptMessages(name, (args || {}) as Record<string, string>) };
+  });
+
+  // Resources
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources,
+  }));
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    const content = getResourceContent(uri);
+    if (!content) throw new Error(`Resurs hittades inte: ${uri}`);
+    return {
+      contents: [{ uri, mimeType: content.mimeType, text: content.content }],
+    };
+  });
+
+  // Connect via stdio
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('Trafikverket MCP Server running on stdio');
+}
+
+// Run if executed directly
+main().catch(console.error);
