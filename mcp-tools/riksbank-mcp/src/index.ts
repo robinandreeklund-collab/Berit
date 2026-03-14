@@ -351,13 +351,13 @@ export class RiksbankMCPServer {
           {
             type: 'text',
             text: JSON.stringify({
-              error: message,
+              error: message.length > 500 ? message.slice(0, 497) + '...' : message,
               verktyg: tool.id,
               action: message.includes('429')
-                ? 'API:t är överbelastat. Vänta en stund och försök igen.'
+                ? 'API:t är överbelastat. Försök INTE igen — presentera vad du har eller välj ett annat verktyg.'
                 : message.includes('404')
-                  ? 'Serie eller indikator hittades inte. Kontrollera ID:t.'
-                  : 'Kontrollera parametrar och försök igen.',
+                  ? 'Serie eller indikator hittades inte. Försök INTE anropa samma verktyg igen.'
+                  : 'Verktyget misslyckades. Försök INTE anropa samma verktyg igen. Presentera tillgänglig information eller förklara felet för användaren.',
               suggestions: [
                 'Kontrollera att serie-ID eller indikator-ID är korrekt',
                 'Datumformat: YYYY-MM-DD',

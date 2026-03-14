@@ -263,18 +263,13 @@ export class TrafikverketMCPServer {
           {
             type: 'text',
             text: JSON.stringify({
-              error: message,
+              error: message.length > 500 ? message.slice(0, 497) + '...' : message,
               verktyg: tool.id,
               action: message.includes('API_KEY')
-                ? 'Sätt miljövariabeln TRAFIKVERKET_API_KEY.'
+                ? 'Sätt miljövariabeln TRAFIKVERKET_API_KEY. Försök INTE anropa verktyget igen.'
                 : message.includes('429')
-                  ? 'API:t är överbelastat. Vänta en stund och försök igen.'
-                  : 'Kontrollera filtervärden och försök igen.',
-              suggestions: [
-                'Kontrollera att TRAFIKVERKET_API_KEY är korrekt',
-                'Prova med en annan plats eller färre resultat',
-                `Länskoder: ${Object.entries(SWEDISH_COUNTIES).slice(0, 5).map(([k, v]) => `${k}=${v}`).join(', ')}…`,
-              ],
+                  ? 'API:t är överbelastat. Försök INTE igen — presentera vad du har eller välj ett annat verktyg.'
+                  : 'Verktyget misslyckades. Försök INTE anropa samma verktyg igen. Presentera tillgänglig information eller förklara felet för användaren.',
             }),
           },
         ],
