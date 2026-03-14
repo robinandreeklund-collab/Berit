@@ -1,6 +1,7 @@
-# Combined MCP Server — SCB + Skolverket on one instance
-# SCB:       / (backwards compatible)
-# Skolverket: /skolverket/
+# Combined MCP Server — SCB + Skolverket + Trafikverket on one instance
+# SCB:          / (backwards compatible)
+# Skolverket:   /skolverket/
+# Trafikverket: /trafikverket/
 
 # ============ Stage 1: Build SCB ============
 FROM node:22-alpine AS build-scb
@@ -16,7 +17,14 @@ COPY skolverket-mcp/package.json skolverket-mcp/package-lock.json skolverket-mcp
 COPY skolverket-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 3: Production ============
+# ============ Stage 3: Build Trafikverket ============
+FROM node:22-alpine AS build-trafikverket
+WORKDIR /app
+COPY trafikverket-mcp/package.json trafikverket-mcp/package-lock.json trafikverket-mcp/tsconfig.json ./
+COPY trafikverket-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 4: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -35,6 +43,12 @@ RUN cd /app/skolverket && npm ci --only=production --ignore-scripts
 COPY --from=build-skolverket /app/dist /app/skolverket/dist
 COPY skolverket-mcp/public /app/skolverket/public
 RUN mkdir -p /app/skolverket/logs
+
+# Trafikverket production install
+COPY trafikverket-mcp/package.json trafikverket-mcp/package-lock.json /app/trafikverket/
+RUN cd /app/trafikverket && npm ci --omit=dev --ignore-scripts
+COPY --from=build-trafikverket /app/dist /app/trafikverket/dist
+COPY trafikverket-mcp/README.md /app/trafikverket/README.md
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
