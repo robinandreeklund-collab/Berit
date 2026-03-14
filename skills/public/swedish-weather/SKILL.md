@@ -3,11 +3,13 @@ name: swedish-weather
 description: Använd denna färdighet när användaren frågar om svenskt väder, väderprognos, temperatur, vind, nederbörd, regn, snö, snöprognos, SMHI, väderanalys, MESAN, väderobservationer, mätstation, vattenstånd, vattenföring, hydrologi, havsnivå, havstemperatur, våghöjd, oceanografi, brandrisk, skogsbrand, gräsbrand, FWI, eldningsförbud, meteorologi, klimatdata, eller väderleksrapport i Sverige. Denna färdighet använder SMHI MCP-verktygen för att hämta data direkt från SMHI:s öppna API:er.
 ---
 
-# Svenskt Väder (SMHI MCP v1.0)
+# Svenskt Väder (SMHI MCP v1.1)
 
 ## Översikt
 
-Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- och brandriskdata via SMHI:s 9 öppna API:er. Du har 10 verktyg i 6 kategorier.
+Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- och brandriskdata via SMHI:s öppna API:er. Du har 9 verktyg i 6 kategorier.
+
+**Automatisk geocoding:** Prognoser och analyser accepterar platsnamn (t.ex. "Tibro") istället för koordinater — systemet konverterar automatiskt.
 
 ## Tillgängliga MCP-verktyg
 
@@ -36,7 +38,6 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 | Verktyg | Beskrivning |
 |---------|-------------|
 | `smhi_hydrologi_hydroobs` | Hydrologiska observationer (vattenstånd, vattenföring, temperatur) |
-| `smhi_hydrologi_pthbv` | Hydrologiska prognoser (PT-HBV-modellen) |
 
 ### Oceanografi (Hav, Vågor)
 
@@ -44,7 +45,7 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 |---------|-------------|
 | `smhi_oceanografi_ocobs` | Havstemperatur, vattenstånd, våghöjd, salthalt |
 
-### Brandrisk (FWI, Skogsbrand)
+### Brandrisk (FWI, Skogsbrand) — Säsongsbaserat (maj–oktober)
 
 | Verktyg | Beskrivning |
 |---------|-------------|
@@ -55,13 +56,12 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 
 ### Frågor om väderprognos
 
-1. Identifiera plats → slå upp koordinater (Stockholm: 59.3293, 18.0686)
-2. `smhi_vaderprognoser_metfcst(latitude, longitude)` → prognos ~10 dagar
+1. `smhi_vaderprognoser_metfcst(location="Stockholm")` → prognos ~10 dagar
+   - Alternativt: `smhi_vaderprognoser_metfcst(latitude=59.3293, longitude=18.0686)`
 
 ### Frågor om aktuellt väder
 
-1. Identifiera plats → koordinater
-2. `smhi_vaderanalyser_mesan(latitude, longitude)` → aktuellt väder
+1. `smhi_vaderanalyser_mesan(location="Göteborg")` → aktuellt väder
 
 ### Frågor om historiska mätningar
 
@@ -73,7 +73,6 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 ### Frågor om vattenstånd/hydrologi
 
 1. `smhi_hydrologi_hydroobs(parameter, station, period)` → observationer
-2. `smhi_hydrologi_pthbv(latitude, longitude)` → prognoser
 
 ### Frågor om havsdata
 
@@ -81,23 +80,11 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 
 ### Frågor om brandrisk
 
-1. `smhi_brandrisk_fwia(latitude, longitude)` → aktuell brandrisk
-2. `smhi_brandrisk_fwif(latitude, longitude)` → brandriskprognos
+1. `smhi_brandrisk_fwia(location="Gotland")` → aktuell brandrisk
+2. `smhi_brandrisk_fwif(location="Stockholm")` → brandriskprognos
+3. **OBS:** Data finns bara under brandsäsongen (ca maj–oktober)
 
-## Vanliga koordinater
-
-| Plats | Latitud | Longitud |
-|-------|---------|----------|
-| Stockholm | 59.3293 | 18.0686 |
-| Göteborg | 57.7089 | 11.9746 |
-| Malmö | 55.6050 | 13.0038 |
-| Kiruna | 67.8558 | 20.2253 |
-| Luleå | 65.5848 | 22.1547 |
-| Umeå | 63.8258 | 20.2630 |
-| Östersund | 63.1792 | 14.6357 |
-| Visby | 57.6348 | 18.2948 |
-
-## Vanliga stationer (metobs)
+## Vanliga stationer (metobs/hydroobs)
 
 | ID | Namn |
 |----|------|
@@ -111,32 +98,34 @@ Denna färdighet ger dig tillgång till väder-, hydrologisk-, oceanografisk- oc
 ## KRITISKA REGLER
 
 1. **Max 4 verktygsanrop per fråga** — välj rätt verktyg direkt, sedan SVAR
-2. **Koordinater i WGS84** — lat 55-70, lon 10-25
+2. **Använd location-parameter** — ange platsnamn (t.ex. "Tibro") direkt, lat/lon behövs ej
 3. **Om ett verktyg misslyckas — försök INTE igen.** Svara med vad du har
 4. **Presentera data överskådligt** — använd tabeller
 5. **Fråga INTE användaren** om förtydligande — gissa rimliga defaults
 6. **Ange källa**: "Källa: SMHI (smhi.se)"
+7. **Brandrisk returnerar 404 utanför brandsäsongen** — informera användaren
 
 ## Exempelfrågor och arbetsflöden
 
-### "Vädret i Stockholm?"
+### "Vädret i Tibro?"
 
-1. `smhi_vaderprognoser_metfcst(latitude=59.3293, longitude=18.0686)` → prognos
+1. `smhi_vaderprognoser_metfcst(location="Tibro")` → prognos (geocoding sker automatiskt)
 
 ### "Temperatur Malmö just nu?"
 
-1. `smhi_vaderanalyser_mesan(latitude=55.6050, longitude=13.0038)` → aktuellt
+1. `smhi_vaderanalyser_mesan(location="Malmö")` → aktuellt
 
 ### "Snöar det i Kiruna?"
 
-1. `smhi_vaderprognoser_metfcst(latitude=67.8558, longitude=20.2253)` → kolla Wsymb2-koder 15-17, 25-27
+1. `smhi_vaderprognoser_metfcst(location="Kiruna")` → kolla Wsymb2-koder 15-17, 25-27
 
 ### "Brandrisk Gotland?"
 
-1. `smhi_brandrisk_fwif(latitude=57.6348, longitude=18.2948)` → FWI-prognos
+1. `smhi_brandrisk_fwif(location="Gotland")` → FWI-prognos (OBS: bara maj–okt)
 
 ## Felsökning
 
-- **404-fel:** Koordinater utanför Sverige, eller ogiltigt stations-/parameter-ID
+- **404-fel:** Koordinater utanför Sverige, ogiltigt stations-/parameter-ID, eller brandrisk utanför säsong
 - **Tom data:** Prova annan period (latest-hour → latest-day)
 - **Hitta station:** Använd `smhi_vaderobservationer_stationer` med rätt parameter-ID
+- **Geocoding misslyckas:** Ange koordinater (latitude/longitude) direkt istället

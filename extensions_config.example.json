@@ -112,7 +112,7 @@
       "url": "$SMHI_MCP_URL",
       "headers": {},
       "oauth": null,
-      "description": "SMHI — Väder, hydrologi, oceanografi, brandrisk. Prognoser, analyser, observationer. 10 verktyg."
+      "description": "SMHI — Väder, hydrologi, oceanografi, brandrisk. Prognoser, analyser, observationer med automatisk geocoding. 9 verktyg."
     }
   },
   "skills": {}
