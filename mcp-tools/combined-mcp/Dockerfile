@@ -1,0 +1,52 @@
+# Combined MCP Server — SCB + Skolverket on one instance
+# SCB:       / (backwards compatible)
+# Skolverket: /skolverket/
+
+# ============ Stage 1: Build SCB ============
+FROM node:22-alpine AS build-scb
+WORKDIR /app
+COPY scb-mcp/package.json scb-mcp/package-lock.json scb-mcp/tsconfig.json ./
+COPY scb-mcp/src ./src
+RUN npm ci
+
+# ============ Stage 2: Build Skolverket ============
+FROM node:22-alpine AS build-skolverket
+WORKDIR /app
+COPY skolverket-mcp/package.json skolverket-mcp/package-lock.json skolverket-mcp/tsconfig.json ./
+COPY skolverket-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 3: Production ============
+FROM node:22-alpine
+
+# Install nginx and envsubst (from gettext)
+RUN apk add --no-cache nginx gettext
+
+WORKDIR /app
+
+# SCB production install
+COPY scb-mcp/package.json scb-mcp/package-lock.json /app/scb/
+RUN cd /app/scb && npm ci --omit=dev --ignore-scripts
+COPY --from=build-scb /app/dist /app/scb/dist
+
+# Skolverket production install
+COPY skolverket-mcp/package.json skolverket-mcp/package-lock.json /app/skolverket/
+RUN cd /app/skolverket && npm ci --only=production --ignore-scripts
+COPY --from=build-skolverket /app/dist /app/skolverket/dist
+COPY skolverket-mcp/public /app/skolverket/public
+RUN mkdir -p /app/skolverket/logs
+
+# Nginx config template + start script
+COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
+COPY combined-mcp/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+ENV NODE_ENV=production
+ENV PORT=10000
+
+EXPOSE 10000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
+  CMD wget -qO- http://localhost:${PORT}/health || exit 1
+
+CMD ["/app/start.sh"]

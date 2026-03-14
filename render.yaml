@@ -2,10 +2,9 @@ services:
   - type: web
     name: scb-mcp
     runtime: docker
-    dockerfilePath: ./mcp-tools/scb-mcp/Dockerfile
-    dockerContext: ./mcp-tools/scb-mcp
+    dockerfilePath: ./mcp-tools/combined-mcp/Dockerfile
+    dockerContext: ./mcp-tools
     region: frankfurt
-    plan: free
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
