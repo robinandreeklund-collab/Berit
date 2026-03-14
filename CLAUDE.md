@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SCB MCP v3.0** (port 3000, Docker sidecar): Swedish official statistics via PxWebAPI 2.0 — 7-tool pipeline with caching, auto-complete, and markdown output
 - **Skolverket MCP v2.7.0** (port 3000, Docker sidecar): Swedish education data — läroplaner, skolenheter, vuxenutbildning, gymnasieprogram, statistik, enkäter, SALSA. 87 verktyg.
 - **Trafikverket MCP v1.0** (port 3000, Docker sidecar): Swedish traffic data — störningar, tåg, väg, väder, kameror, prognoser. 22 verktyg.
+- **Riksbank MCP v1.0** (port 3000, Docker sidecar): Swedish economic data — räntor, valutakurser, SWESTR, makroprognoser. 8 verktyg.
 
 ## Project Structure
 
@@ -51,10 +52,12 @@ Berit/
 ├── mcp-tools/                  # MCP tool servers (local source)
 │   ├── scb-mcp/               # SCB MCP v3.0 (forked & enhanced from isakskogstad/SCB-MCP)
 │   ├── skolverket-mcp/        # Skolverket MCP v2.7.0 (forked from isakskogstad/Skolverket-MCP)
-│   └── trafikverket-mcp/      # Trafikverket MCP v1.0 — 22 verktyg för realtids trafikdata
+│   ├── trafikverket-mcp/      # Trafikverket MCP v1.0 — 22 verktyg för realtids trafikdata
+│   └── riksbank-mcp/         # Riksbank MCP v1.0 — 8 verktyg för ekonomisk data
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
-│   └── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
+│   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
+│   └── riksbank-mcp/         # Riksbank MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 
