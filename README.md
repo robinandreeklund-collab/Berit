@@ -216,9 +216,9 @@ Fork of [Skolverket-MCP](https://github.com/isakskogstad/Skolverket-MCP) providi
 
 **Docker (default):** Runs as a sidecar container (`skolverket-mcp`) in Docker Compose. Enabled by default in `extensions_config.example.json`.
 
-**Without Docker:** Override by setting `SKOLVERKET_MCP_URL` in `.env`:
+**Without Docker:** Override by setting `SKOLVERKET_MCP_URL` in `.env` (runs on same Render instance as SCB):
 ```bash
-SKOLVERKET_MCP_URL=https://skolverket-mcp.onrender.com/mcp
+SKOLVERKET_MCP_URL=https://scb-mcp.onrender.com/skolverket/mcp
 ```
 
 #### IM Channels
