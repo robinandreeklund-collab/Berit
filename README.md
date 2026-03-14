@@ -221,6 +221,17 @@ Fork of [Skolverket-MCP](https://github.com/isakskogstad/Skolverket-MCP) providi
 SKOLVERKET_MCP_URL=https://scb-mcp.onrender.com/skolverket/mcp
 ```
 
+##### Lightpanda MCP v1.0 (Web Browsing)
+
+TypeScript MCP server providing web browsing, search and data extraction via the Lightpanda headless browser with full JavaScript rendering. Source in `mcp-tools/lightpanda-mcp/`. 12 tools: navigate, search, markdown, links, click, execute_js, fill_form, extract_data, fetch_api, wait_for, get_text, screenshot.
+
+**Docker (default):** Runs as a sidecar container (`lightpanda-mcp`) in Docker Compose alongside the Lightpanda browser container. Enabled by default in `extensions_config.example.json`.
+
+**Without Docker:** Override by setting `LIGHTPANDA_MCP_URL` in `.env`:
+```bash
+LIGHTPANDA_MCP_URL=https://scb-mcp.onrender.com/lightpanda/mcp
+```
+
 #### IM Channels
 
 DeerFlow supports receiving tasks from messaging apps. Channels auto-start when configured — no public IP required for any of them.

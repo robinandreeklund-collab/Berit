@@ -1,4 +1,4 @@
-# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank on one instance
+# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda on one instance
 # SCB:          / (backwards compatible)
 # Skolverket:   /skolverket/
 # Trafikverket: /trafikverket/
@@ -39,7 +39,14 @@ COPY smhi-mcp/package.json smhi-mcp/package-lock.json smhi-mcp/tsconfig.json ./
 COPY smhi-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 6: Production ============
+# ============ Stage 6: Build Lightpanda ============
+FROM node:22-alpine AS build-lightpanda
+WORKDIR /app
+COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json lightpanda-mcp/tsconfig.json ./
+COPY lightpanda-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 7: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -75,6 +82,11 @@ COPY riksbank-mcp/README.md /app/riksbank/README.md
 COPY smhi-mcp/package.json smhi-mcp/package-lock.json /app/smhi/
 RUN cd /app/smhi && npm ci --omit=dev --ignore-scripts
 COPY --from=build-smhi /app/dist /app/smhi/dist
+
+# Lightpanda production install
+COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json /app/lightpanda/
+RUN cd /app/lightpanda && npm ci --omit=dev --ignore-scripts
+COPY --from=build-lightpanda /app/dist /app/lightpanda/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
