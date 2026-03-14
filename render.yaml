@@ -5,7 +5,6 @@ services:
     dockerfilePath: ./mcp-tools/combined-mcp/Dockerfile
     dockerContext: ./mcp-tools
     region: frankfurt
-    plan: free
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
