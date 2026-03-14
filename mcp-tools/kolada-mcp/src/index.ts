@@ -177,7 +177,7 @@ export class KoladaMCPServer {
           const kommunId = String(params.kommun_id);
           const fromYear = params.from_year as string;
           const toYear = params.to_year as string;
-          let path = `/kpi/${kpiId}/municipality/${kommunId}`;
+          let path = `/data/municipality/${kommunId}/kpi/${kpiId}`;
           if (fromYear && toYear) {
             path += `?from_date=${fromYear}&to_date=${toYear}`;
           } else if (fromYear) {
@@ -220,7 +220,7 @@ export class KoladaMCPServer {
           const kpiId = String(params.kpi_id);
           const kommunIds = String(params.kommun_ids);
           const year = params.year as string;
-          let path = `/kpi/${kpiId}/municipality/${kommunIds}`;
+          let path = `/data/municipality/${kommunIds}/kpi/${kpiId}`;
           if (year) {
             path += `?from_date=${year}&to_date=${year}`;
           }
@@ -236,7 +236,7 @@ export class KoladaMCPServer {
           const numYears = Number(params.years) || 5;
           const toYear = currentYear();
           const fromYear = toYear - numYears;
-          const path = `/kpi/${kpiId}/municipality/${kommunId}?from_date=${fromYear}&to_date=${toYear}`;
+          const path = `/data/municipality/${kommunId}/kpi/${kpiId}?from_date=${fromYear}&to_date=${toYear}`;
           const { data } = await client.getData(path);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatTrend(data, kpiLabel);
