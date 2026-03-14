@@ -248,9 +248,63 @@ CMD ["node", "dist/http-server.js"]
 
 ---
 
-## Steg 3 — Skill-definition
+## Steg 3 — Skill-definition (SKILL.md)
 
-### 3.1 Skapa `skills/public/{skill-name}/SKILL.md`
+> **KRITISKT: Alla MCP-verktygens instruktioner ska ligga i SKILL.md — INTE i lead agent-prompten.**
+
+### 3.1 Varför SKILL.md istället för lead agent-prompten?
+
+Berit använder en **progressiv laddningsarkitektur** för att hålla lead agent-prompten minimal:
+
+```
+Lead Agent Prompt (alltid laddad)
+├── Generella instruktioner (workflow, clarification, subagents)
+├── Skill-lista: bara namn + description + sökväg     ← MINIMALT
+│   └── "swedish-weather: Använd vid frågor om väder..."
+└── Tool-definitioner (LangChain injicerar automatiskt)
+
+SKILL.md (laddas on-demand via read_file)
+├── Detaljerade instruktioner för MCP-verktygen       ← ALLT HÄR
+├── Arbetsflöden med steg-för-steg
+├── Verktygsparametrar och exempel
+├── Vanliga stationer/koder
+└── Felsökning
+```
+
+**Hur det fungerar:**
+
+1. Lead agent ser bara skill-**namn och description** (en rad per skill)
+2. När användarens fråga matchar en skills `description`-fält → agenten anropar `read_file` på SKILL.md
+3. Först DÅ laddas alla detaljerade instruktioner, arbetsflöden och exempel
+
+**Fördelar:**
+- Lead agent-prompten förblir liten — oavsett hur många MCP-servrar som läggs till
+- Varje ny MCP lägger bara till ~2 rader i prompten (namn + description)
+- Detaljerade instruktioner laddas BARA när de behövs
+- Ingen risk att spränga kontextfönstret
+
+**VARNING — gör INTE detta:**
+- Lägg INTE till MCP-verktygsnamn i `backend/src/agents/lead_agent/prompt.py`
+- Lägg INTE till arbetsflöden eller parameterbeskrivningar i lead agent-prompten
+- Lägg INTE till stationslistor, koder, eller exempelfrågor i lead agent-prompten
+- Allt det ska ligga i SKILL.md
+
+### 3.2 Description-fältet — triggers
+
+`description` i SKILL.md frontmatter är det ENDA som syns i lead agent-prompten. Det måste:
+- Innehålla alla relevanta nyckelord som användaren kan tänkas använda
+- Vara på svenska (matchar användarens språk)
+- Vara tillräckligt brett för att fånga relaterade frågor
+
+Exempel (swedish-weather):
+```
+description: Använd denna färdighet när användaren frågar om svenskt väder,
+väderprognos, temperatur, vind, nederbörd, regn, snö, SMHI, väderanalys,
+MESAN, väderobservationer, mätstation, vattenstånd, hydrologi, oceanografi,
+brandrisk, FWI, meteorologi, klimatdata, eller väderleksrapport i Sverige.
+```
+
+### 3.3 Skapa `skills/public/{skill-name}/SKILL.md`
 
 ```markdown
 ---
@@ -271,14 +325,27 @@ description: Använd denna färdighet när användaren frågar om {triggers}...
 | `{name}_tool_2` | ... |
 
 ## Arbetsflöde
-1. {Steg för steg}
+1. {Steg för steg — detaljerat}
+
+## Vanliga parametrar/koder
+{Tabeller med stations-ID, parameter-koder, etc.}
 
 ## KRITISKA REGLER
 1. **Max 4 verktygsanrop per fråga**
 2. **Om ett verktyg misslyckas — försök INTE igen.**
 3. **Presentera data överskådligt** — använd tabeller
 4. **Ange källa**: "Källa: {API-källa}"
+
+## Felsökning
+{Vanliga felkoder och lösningar}
 ```
+
+### 3.4 Checklista för SKILL.md
+
+- [ ] `description`-fältet innehåller alla relevanta svenska nyckelord
+- [ ] Alla verktygsnamn listas med exakt `id` från `tools.ts`
+- [ ] Arbetsflöden visar vilka verktyg som ska anropas för vanliga frågor
+- [ ] Inga instruktioner har lagts till i lead agent-prompten (`prompt.py`)
 
 ---
 
@@ -694,7 +761,8 @@ make dev   # Verifiera att {Name} syns i bannern
 - [ ] `mcp-tools/{name}-mcp/` — Källkod, tester, package.json, tsconfig.json, .gitignore
 - [ ] `mcp-tools/{name}-mcp/package-lock.json` — Committad (krävs av Docker `npm ci`)
 - [ ] `docker/{name}-mcp/Dockerfile` — Standalone Docker-image
-- [ ] `skills/public/{skill-name}/SKILL.md` — Skill-definition
+- [ ] `skills/public/{skill-name}/SKILL.md` — Skill-definition med alla verktygs-instruktioner
+- [ ] **INGEN ändring** i `backend/src/agents/lead_agent/prompt.py` — all promptning sker i SKILL.md
 - [ ] `mcp-tools/combined-mcp/Dockerfile` — Build-stage + production install
 - [ ] `mcp-tools/combined-mcp/nginx.conf` — Upstream + location
 - [ ] `mcp-tools/combined-mcp/start.sh` — Start, healthcheck, PID
@@ -720,3 +788,4 @@ make dev   # Verifiera att {Name} syns i bannern
 4. **"params is not iterable"** — API-responsen har annat format än förväntat. Testa mot live API
 5. **Branner visar "(ej konfigurerad)"** — `{NAME}_MCP_URL` exporteras inte. Kolla `serve.sh` startup
 6. **Skill triggas inte** — `description`-fältet i SKILL.md saknar rätt nyckelord
+7. **Kontextfönstret sprängs** — Du la MCP-instruktioner i `prompt.py` istället för SKILL.md. Lead agent-prompten ska BARA ha skill-namn och description — alla detaljer, arbetsflöden, parameterbeskrivningar och exempel ska ligga i SKILL.md som laddas on-demand
