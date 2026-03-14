@@ -100,17 +100,22 @@ export async function searchCompactSchoolUnitsV4(params: {
   sort?: string;
 }) {
   try {
-    const result = await plannedEducationApi.searchCompactSchoolUnitsV4(params);
+    const result = await plannedEducationApi.searchCompactSchoolUnitsV4(params) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const embedded = body._embedded || {};
+    const compactSchoolUnits = embedded.compactSchoolUnits || embedded.listedSchoolUnits || [];
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            page: result.page,
-            totalSchoolUnits: result.page?.totalElements || 0,
-            compactSchoolUnits: result._embedded.compactSchoolUnits,
-            _links: result._links
+            page: body.page,
+            totalSchoolUnits: body.page?.totalElements || compactSchoolUnits.length,
+            compactSchoolUnits,
+            _links: body._links
           }, null, 2)
         }
       ]
@@ -192,17 +197,20 @@ export async function getAllSchoolsSALSAStatistics(params: {
   county?: string;
 }) {
   try {
-    const result = await plannedEducationApi.getAllSchoolsSALSAStatistics(params);
+    const result = await plannedEducationApi.getAllSchoolsSALSAStatistics(params) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const schools = body.compulsorySchoolUnitSalsaMetricList || [];
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            statistics: result.data,
-            totalSchools: result.data.schools.length,
-            nationalAverage: result.data.nationalAverage,
-            _links: result._links
+            totalSchools: schools.length,
+            schools: schools.slice(0, 50),
+            note: schools.length > 50 ? `Visar 50 av ${schools.length} skolor. Använd filter för att begränsa.` : undefined
           }, null, 2)
         }
       ]
@@ -235,17 +243,21 @@ export async function getSchoolUnitSALSAStatistics(params: {
 }) {
   try {
     const { schoolUnitId, ...queryParams } = params;
-    const result = await plannedEducationApi.getSchoolUnitSALSAStatistics(schoolUnitId, queryParams);
+    const result = await plannedEducationApi.getSchoolUnitSALSAStatistics(schoolUnitId, queryParams) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const schools = body.compulsorySchoolUnitSalsaMetricList || [];
+    const school = schools.length > 0 ? schools[0] : body;
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            schoolUnitCode: result.schoolUnitCode,
-            schoolUnitName: result.schoolUnitName,
-            salsaData: result.salsaData,
-            _links: result._links
+            schoolUnitCode: school.schoolUnitCode || schoolUnitId,
+            schoolUnitName: school.name,
+            salsaData: school
           }, null, 2)
         }
       ]

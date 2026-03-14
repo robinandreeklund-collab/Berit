@@ -62,16 +62,21 @@ export async function searchSchoolUnitsV4(params: {
       throw createValidationError(paginationValidation);
     }
 
-    const result = await plannedEducationApi.searchSchoolUnitsV4(params);
+    const result = await plannedEducationApi.searchSchoolUnitsV4(params) as any;
+
+    // The v4 API wraps responses in { status, message, body }
+    const body = result.body || result;
+    const embedded = body._embedded || {};
+    const schoolUnits = embedded.listedSchoolUnits || embedded.schoolUnits || [];
 
     return {
       content: [
         {
           type: 'text' as const,
           text: JSON.stringify({
-            page: result.page,
-            schoolUnits: result._embedded.schoolUnits,
-            _links: result._links
+            page: body.page,
+            schoolUnits,
+            _links: body._links
           }, null, 2)
         }
       ]

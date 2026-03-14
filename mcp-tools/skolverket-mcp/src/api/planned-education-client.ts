@@ -188,13 +188,17 @@ export class PlannedEducationApiClient extends BaseApiClient {
    */
 
   async searchSchoolUnitsV4(params: SchoolUnitSearchParamsV4 = {}): Promise<SchoolUnitV4Response> {
-    const searchParams = {
+    // Only forward params that the v4 API actually accepts
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
-      size: params.size ?? 20,
-      ...params
+      size: params.size ?? 20
     };
+    if (params.name) validParams.name = params.name;
+    if (params.geographicalAreaCode) validParams.geographicalAreaCode = params.geographicalAreaCode;
+    if (params.principalOrganizerType) validParams.principalOrganizerType = params.principalOrganizerType;
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<SchoolUnitV4Response>('/v4/school-units', searchParams, {
+    return this.get<SchoolUnitV4Response>('/v4/school-units', validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
@@ -364,18 +368,13 @@ export class PlannedEducationApiClient extends BaseApiClient {
     });
   }
 
-  async getNationalStatisticsGY(params: any = {}): Promise<NationalStatisticsResponse> {
-    // Stöd för programCode parameter
-    const path = params.programCode
-      ? `/v4/statistics/national-values/gy/${params.programCode}`
-      : `/v4/statistics/national-values/gy`;
-
-    // Ta bort programCode från query params om den finns, den är nu i path
-    const { programCode, ...queryParams } = params;
-
-    return this.get<NationalStatisticsResponse>(path, queryParams, {
-      headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
-    });
+  async getNationalStatisticsGY(_params: any = {}): Promise<NationalStatisticsResponse> {
+    // NOTE: /v4/statistics/national-values/gy does not exist in the Skolverket API.
+    // GY statistics are only available per school unit via /v4/school-units/{code}/statistics/gy
+    throw new Error(
+      'Nationell GY-statistik är inte tillgänglig via detta API. ' +
+      'Använd get_school_unit_statistics_gy med en specifik skolenhetskod istället.'
+    );
   }
 
   async getNationalStatisticsGYAN(params: any = {}): Promise<NationalStatisticsResponse> {
@@ -384,28 +383,34 @@ export class PlannedEducationApiClient extends BaseApiClient {
     });
   }
 
-  async getSALSAStatisticsGR(params: any = {}): Promise<SALSAStatisticsResponse> {
-    return this.get<SALSAStatisticsResponse>('/v4/statistics/salsa/gr', params, {
+  async getSALSAStatisticsGR(params: any = {}): Promise<any> {
+    // SALSA national endpoint is /v4/statistics/all-schools/salsa (no per-school-type split)
+    return this.get<any>('/v4/statistics/all-schools/salsa', params, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getSALSAStatisticsGRAN(params: any = {}): Promise<SALSAStatisticsResponse> {
-    return this.get<SALSAStatisticsResponse>('/v4/statistics/salsa/gran', params, {
+  async getSALSAStatisticsGRAN(params: any = {}): Promise<any> {
+    // SALSA national endpoint is /v4/statistics/all-schools/salsa (no per-school-type split)
+    return this.get<any>('/v4/statistics/all-schools/salsa', params, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }
 
-  async getProgramStatisticsGY(params: any = {}): Promise<ProgramStatisticsResponse> {
-    return this.get<ProgramStatisticsResponse>('/v4/statistics/per-program/gy', params, {
-      headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
-    });
+  async getProgramStatisticsGY(_params: any = {}): Promise<ProgramStatisticsResponse> {
+    // NOTE: /v4/statistics/per-program/gy does not exist in the Skolverket API
+    throw new Error(
+      'Programstatistik per GY-program är inte tillgänglig via detta API. ' +
+      'Använd get_school_unit_statistics_gy med en specifik skolenhetskod istället.'
+    );
   }
 
-  async getProgramStatisticsGYAN(params: any = {}): Promise<ProgramStatisticsResponse> {
-    return this.get<ProgramStatisticsResponse>('/v4/statistics/per-program/gyan', params, {
-      headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
-    });
+  async getProgramStatisticsGYAN(_params: any = {}): Promise<ProgramStatisticsResponse> {
+    // NOTE: /v4/statistics/per-program/gyan does not exist in the Skolverket API
+    throw new Error(
+      'Programstatistik per GYAN-program är inte tillgänglig via detta API. ' +
+      'Använd get_school_unit_statistics_gyan med en specifik skolenhetskod istället.'
+    );
   }
 
   /**
@@ -485,15 +490,19 @@ export class PlannedEducationApiClient extends BaseApiClient {
   }
 
   // Compact School Units V4
-  async searchCompactSchoolUnitsV4(params: SchoolUnitSearchParamsV4 = {}): Promise<CompactSchoolUnitsV4Response> {
-    const searchParams = {
+  async searchCompactSchoolUnitsV4(params: SchoolUnitSearchParamsV4 & { coordinateSystemType?: string } = {}): Promise<CompactSchoolUnitsV4Response> {
+    // Only forward params that the v4 API actually accepts
+    const validParams: Record<string, any> = {
       page: params.page ?? 0,
       size: params.size ?? 20,
-      coordinateSystemType: 'WGS84', // Default enligt dokumentation
-      ...params
+      coordinateSystemType: params.coordinateSystemType || 'WGS84'
     };
+    if (params.name) validParams.name = params.name;
+    if (params.geographicalAreaCode) validParams.geographicalAreaCode = params.geographicalAreaCode;
+    if (params.principalOrganizerType) validParams.principalOrganizerType = params.principalOrganizerType;
+    if (params.sort) validParams.sort = params.sort;
 
-    return this.get<CompactSchoolUnitsV4Response>('/v4/compact-school-units', searchParams, {
+    return this.get<CompactSchoolUnitsV4Response>('/v4/compact-school-units', validParams, {
       headers: { 'Accept': 'application/vnd.skolverket.plannededucations.api.v4.hal+json' }
     });
   }

@@ -203,7 +203,11 @@ export async function getSALSAStatisticsGR(params: {
   grade?: string;
 }) {
   try {
-    const result = await plannedEducationApi.getSALSAStatisticsGR(params);
+    const result = await plannedEducationApi.getSALSAStatisticsGR(params) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const schools = body.compulsorySchoolUnitSalsaMetricList || [];
 
     return {
       content: [
@@ -212,7 +216,9 @@ export async function getSALSAStatisticsGR(params: {
           text: JSON.stringify({
             schoolType: 'GR',
             statisticsType: 'SALSA',
-            ...result
+            totalSchools: schools.length,
+            schools: schools.slice(0, 50),
+            note: schools.length > 50 ? `Visar 50 av ${schools.length} skolor.` : undefined
           }, null, 2)
         }
       ]
@@ -244,7 +250,11 @@ export async function getSALSAStatisticsGRAN(params: {
   grade?: string;
 }) {
   try {
-    const result = await plannedEducationApi.getSALSAStatisticsGRAN(params);
+    const result = await plannedEducationApi.getSALSAStatisticsGRAN(params) as any;
+
+    // The v4 API wraps in { status, message, body }
+    const body = result.body || result;
+    const schools = body.compulsorySchoolUnitSalsaMetricList || [];
 
     return {
       content: [
@@ -253,7 +263,9 @@ export async function getSALSAStatisticsGRAN(params: {
           text: JSON.stringify({
             schoolType: 'GRAN',
             statisticsType: 'SALSA',
-            ...result
+            totalSchools: schools.length,
+            schools: schools.slice(0, 50),
+            note: schools.length > 50 ? `Visar 50 av ${schools.length} skolor.` : undefined
           }, null, 2)
         }
       ]
