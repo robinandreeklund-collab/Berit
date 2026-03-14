@@ -80,6 +80,7 @@ services:
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
       - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
       - TRAFIKVERKET_MCP_URL=http://trafikverket-mcp:3000/mcp
+      - SMHI_MCP_URL=http://smhi-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -116,6 +117,7 @@ services:
       - SCB_MCP_URL=http://scb-mcp:3000/mcp
       - SKOLVERKET_MCP_URL=http://skolverket-mcp:3000/mcp
       - TRAFIKVERKET_MCP_URL=http://trafikverket-mcp:3000/mcp
+      - SMHI_MCP_URL=http://smhi-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -171,6 +173,23 @@ services:
     environment:
       - PORT=3000
       - TRAFIKVERKET_API_KEY=${TRAFIKVERKET_API_KEY}
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── SMHI MCP Server (Swedish weather, hydrology, oceanography, fire risk) ─
+  smhi-mcp:
+    build:
+      context: ../
+      dockerfile: docker/smhi-mcp/Dockerfile
+    container_name: deer-flow-smhi-mcp
+    environment:
+      - PORT=3000
     networks:
       - deer-flow
     restart: unless-stopped

@@ -102,6 +102,17 @@
       "headers": {},
       "oauth": null,
       "description": "Riksbanken — Räntor, valutakurser, SWESTR, makroprognoser. 8 verktyg."
+    },
+    "smhi": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$SMHI_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "SMHI — Väder, hydrologi, oceanografi, brandrisk. Prognoser, analyser, observationer med automatisk geocoding. 9 verktyg."
     }
   },
   "skills": {}

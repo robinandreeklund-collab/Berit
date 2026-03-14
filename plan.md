@@ -1,199 +1,132 @@
-# Plan: Riksbank MCP Server Integration
+# Plan: SMHI MCP Server Integration (v1.0)
 
-Ny MCP-server för Riksbankens öppna API:er (SWEA, SWESTR, Prognoser). Följer exakt samma mönster som `trafikverket-mcp`.
+Ny MCP-server för SMHI:s Open Data API:er — väder, hydrologi, oceanografi, brandrisk. 10 verktyg i 6 kategorier. Följer exakt samma mönster som `riksbank-mcp`. Ingen autentisering krävs — alla SMHI API:er är öppna.
 
-## Scope
+## SMHI API:er
 
-- 8 verktyg, 3 API:er (SWEA räntor/valuta, SWESTR dagslåneränta, Prognoser makroekonomi)
-- Dual transport: stdio + HTTP (Express)
-- Docker sidecar + Node.js fallback
-- Skill-fil för agentsystemet
-- Tester
+| API | Base URL | Beskrivning |
+|-----|----------|-------------|
+| metfcst/pmp3g | `opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2` | Väderprognoser (~10 dagar) |
+| metfcst/snow1g | `opendata-download-metfcst.smhi.se/api/category/snow1g/version/1` | Snöprognoser |
+| metanalys/mesan2g | `opendata-download-metanalys.smhi.se/api/category/mesan2g/version/1` | Väderanalys (MESAN) |
+| metobs | `opendata-download-metobs.smhi.se/api/version/1.0` | Väderobservationer (40+ parametrar) |
+| hydroobs | `opendata-download-hydroobs.smhi.se/api/version/1.0` | Hydrologiska observationer |
+| pthbv | `opendata-download-pthbv.smhi.se/api/version/1` | Hydrologiska prognoser |
+| ocobs | `opendata-download-ocobs.smhi.se/api/version/latest` | Oceanografiska observationer |
+| fwif1g | `opendata-download-metfcst.smhi.se/api/category/fwif1g/version/1` | Brandriskprognoser (FWI) |
+| fwia | `opendata-download-metanalys.smhi.se/api/category/fwia/version/1` | Brandriskanalyser |
 
-## Steg
+## 10 Verktyg (6 kategorier)
 
-### 1. Skapa `mcp-tools/riksbank-mcp/` — projektstruktur
-
-Skapa alla filer med samma struktur som trafikverket-mcp:
-
-- **`package.json`** — `riksbank-mcp`, samma deps (`@modelcontextprotocol/sdk`, `express`, `cors`, `zod`, `marked`), scripts: build/start/start:stdio/dev/test
-- **`tsconfig.json`** — Identisk med trafikverket-mcp
-- **`vitest.config.ts`** — Identisk med trafikverket-mcp
-
-### 2. `src/tools.ts` — 8 verktygsdefinitioner
-
-| Tool ID | Namn | API | Endpoint |
-|---------|------|-----|----------|
-| `riksbank_ranta_styrranta` | Riksbanken Styrränta | SWEA | `/Observations/Latest/{seriesId}` + historik |
-| `riksbank_ranta_marknadsrantor` | Riksbanken Marknadsräntor | SWEA | `/Observations/Latest/ByGroup/{groupId}` |
-| `riksbank_valuta_kurser` | Riksbanken Valutakurser | SWEA | `/Observations/Latest/ByGroup/130` |
-| `riksbank_valuta_korskurser` | Riksbanken Korskurser | SWEA | `/CrossRates/{id1}/{id2}/{date}` |
-| `riksbank_swestr` | Riksbanken SWESTR | SWESTR | `/latest/SWESTR` + historik |
-| `riksbank_prognos_inflation` | Riksbanken Inflation | Prognoser | `/forecasts?indicator=...` (KPI, KPIF) |
-| `riksbank_prognos_bnp` | Riksbanken BNP | Prognoser | `/forecasts?indicator=...` (BNP) |
-| `riksbank_prognos_ovrigt` | Riksbanken Makro | Prognoser | `/indicators` + `/forecasts` |
-
-ToolDefinition-interface anpassat för REST (ej XML som Trafikverket):
-```typescript
-interface ToolDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: string;           // ranta | valuta | swestr | prognos
-  api: 'swea' | 'swestr' | 'forecasts';
-  endpoint: string;           // URL-mall
-  defaultParams?: Record<string, string>;
-}
-```
-
-### 3. `src/types.ts` — Zod-scheman + konstanter
-
-- `ObservationSchema` — `{ date, value }`
-- `SeriesSchema` — `{ seriesId, seriesName, groupId }`
-- `GroupSchema` — `{ groupId, groupName, parentGroupId }`
-- `SwestrSchema` — `{ rate, date, pctl12_5, pctl87_5, volume, numberOfTransactions, numberOfAgents, publicationTime }`
-- `ForecastSchema` — `{ indicator, values: { date, forecast, outcome } }`
-- `IndicatorSchema` — `{ id, name }`
-- Inputscheman: `RateFilterSchema`, `CurrencyFilterSchema`, `CrossRateFilterSchema`, `SwestrFilterSchema`, `ForecastFilterSchema`
-- Konstanter: `SERIES_IDS` (SECBREPOEFF, SEKEURPMI, etc.), `GROUP_IDS`, `INDICATOR_IDS`
-
-### 4. `src/api-client.ts` — HTTP-klient
-
-- `RiksbankApiClient` klass med MemoryCache (samma mönster)
-- Tre bas-URL:er konfigurerbara via env vars
-- Standard JSON fetch (inte XML som Trafikverket)
-- API-nyckel via `Ocp-Apim-Subscription-Key` header (valfri, funkar anonymt)
-- Cache: 3600s räntor, 86400s metadata
-- Retry med exponential backoff (429-hantering)
-
-### 5. `src/formatter.ts` — Markdown-formatering
-
-- `formatObservations()` — Räntor/kurser → tabell med datum + värde
-- `formatSwestr()` — SWESTR → tabell med rate, percentiler, volym
-- `formatForecasts()` — Prognoser → tabell med prognos vs utfall
-- `formatSeries()` — Seriemetadata
-- `formatIndicators()` — Indikatorlista
-- `formatCrossRate()` — Korskurs mellan valutor
-
-### 6. `src/index.ts` — MCP-server (stdio)
-
-- `RiksbankMCPServer` klass
-- `getTools()` → 8 verktyg med Zod-inputscheman
-- `callTool(name, args)` → API-anrop + formatering
-- CallTracker (max 3 anrop/5 min per verktyg)
-- Handlers: tools/list, tools/call, prompts/list, prompts/get, resources/list, resources/read
-- Stdio transport
-
-### 7. `src/http-server.ts` — Express HTTP-server
-
-Identisk struktur som trafikverket-mcp:
-- `GET /health`, `GET /mcp`, `POST /mcp`, `GET /`
-- JSON-RPC 2.0 dispatcher
-- CORS, PORT env var
-
-### 8. `src/instructions.ts` + `src/prompts.ts` + `src/resources.ts`
-
-**Instructions:** Verktygslista, arbetsflöde, viktiga serie-ID:n
-
-**Prompts (3 st):**
-- `analyze-interest-rates` — Styrränta + marknadsräntor + SWESTR
-- `currency-report` — Valutakurser + korskurser
-- `economic-outlook` — Alla prognoser
-
-**Resources (3 st):**
-- `riksbank://documentation` — API-referens
-- `riksbank://series` — Viktiga serie-ID:n
-- `riksbank://indicators` — Prognosindikatorer
-
-### 9. Tester — `tests/`
-
-- `tools.test.ts` — Validera 8 verktyg
-- `api-client.test.ts` — Mock fetch, cache, retry
-- `formatter.test.ts` — Markdown-output
-
-### 10. `docker/riksbank-mcp/Dockerfile`
-
-Multi-stage build (node:22-alpine), kopierar från `mcp-tools/riksbank-mcp/`, `CMD ["node", "dist/http-server.js"]`
-
-### 11. `skills/public/swedish-economy/SKILL.md`
-
-Skill-fil med:
-- `name: swedish-economy`
-- Description som triggar på: ränta, styrränta, reporänta, valutakurs, SEK, kronkurs, EUR/SEK, USD/SEK, SWESTR, dagslåneränta, inflation, KPI, KPIF, BNP, Riksbanken, makroekonomi, arbetsmarknad, prognos
-- Alla 8 verktyg listade i tabeller
-- Arbetsflöde per frågetyp
-- Kritiska regler (max 4 anrop, svenska, etc.)
-- Exempelfrågor
-
-### 12. `extensions_config.example.json` — MCP-server entry
-
-```json
-"riksbank": {
-  "enabled": true,
-  "type": "http",
-  "url": "$RIKSBANK_MCP_URL",
-  "description": "Riksbanken — Räntor, valutakurser, SWESTR, makroprognoser. 8 verktyg."
-}
-```
-
-### 13. `scripts/serve.sh` — Startscript
-
-Lägg till Riksbank MCP-blocket efter Trafikverket (samma mönster):
-- Banner-rad
-- Remote URL check (`RIKSBANK_MCP_URL`)
-- Docker start (port 3103)
-- Node.js fallback
-- Cleanup i trap
-- Status i ready-block med emoji 💰
-
-### 14. Dokumentation
-
-Uppdatera `CLAUDE.md` och `README.md`:
-- Riksbank MCP i arkitekturtabell
-- Port 3103
-- Miljövariabler (`RIKSBANK_API_KEY`, `RIKSBANK_MCP_URL`)
+| # | Tool ID | Kategori | API | Beskrivning |
+|---|---------|----------|-----|-------------|
+| 1 | `smhi_vaderprognoser_metfcst` | vaderprognoser | metfcst/pmp3g | Väderprognos för lat/lon (~10 dagar framåt) |
+| 2 | `smhi_vaderprognoser_snow` | vaderprognoser | metfcst/snow1g | Snöprognos för lat/lon |
+| 3 | `smhi_vaderanalyser_mesan` | vaderanalyser | metanalys/mesan2g | MESAN-analys senaste timmen |
+| 4 | `smhi_vaderobservationer_metobs` | vaderobservationer | metobs | Väderobservationer (station + parameter + period) |
+| 5 | `smhi_vaderobservationer_stationer` | vaderobservationer | metobs | Lista mätstationer för en parameter |
+| 6 | `smhi_hydrologi_hydroobs` | hydrologi | hydroobs | Hydrologiska observationer (vattenstånd, flöde, temp) |
+| 7 | `smhi_hydrologi_pthbv` | hydrologi | pthbv | Hydrologiska prognoser |
+| 8 | `smhi_oceanografi_ocobs` | oceanografi | ocobs | Oceanografiska observationer (havstemperatur, vågor) |
+| 9 | `smhi_brandrisk_fwif` | brandrisk | fwif1g | Brandriskprognos (FWI-index) |
+| 10 | `smhi_brandrisk_fwia` | brandrisk | fwia | Brandriskanalys (senaste) |
 
 ## Nya filer
 
+### `mcp-tools/smhi-mcp/`
+
 ```
-mcp-tools/riksbank-mcp/
-├── package.json
-├── tsconfig.json
-├── vitest.config.ts
+mcp-tools/smhi-mcp/
+├── package.json          # Samma deps som riksbank-mcp
+├── tsconfig.json         # Identisk med riksbank-mcp
 ├── src/
-│   ├── index.ts
-│   ├── http-server.ts
-│   ├── api-client.ts
-│   ├── types.ts
-│   ├── tools.ts
-│   ├── formatter.ts
-│   ├── instructions.ts
-│   ├── prompts.ts
-│   └── resources.ts
+│   ├── index.ts          # SmhiMCPServer klass + stdio transport
+│   ├── http-server.ts    # Express + JSON-RPC 2.0 (/mcp, /health)
+│   ├── tools.ts          # 10 ToolDefinition med fullständiga JSON Schemas
+│   ├── types.ts          # Zod-schemas, SMHI-konstanter, parametertabeller
+│   ├── api-client.ts     # SmhiApiClient — 9 API-endpoints, caching
+│   ├── formatter.ts      # JSON → Markdown-tabell konvertering
+│   ├── instructions.ts   # LLM workflow-instruktioner (svenska)
+│   ├── prompts.ts        # 3 prompt-templates
+│   └── resources.ts      # Statisk referensdokumentation
 └── tests/
     ├── tools.test.ts
     ├── api-client.test.ts
     └── formatter.test.ts
-
-docker/riksbank-mcp/
-└── Dockerfile
-
-skills/public/swedish-economy/
-└── SKILL.md
 ```
+
+### `docker/smhi-mcp/Dockerfile`
+
+2-stage Alpine build, identiskt mönster som riksbank-mcp.
+
+### `skills/public/swedish-weather/SKILL.md`
+
+Skill-definition med triggers på: väder, SMHI, temperatur, vind, nederbörd, snö, prognos, brandrisk, vattenstånd, havstemperatur, oceanografi, hydrologi.
 
 ## Modifierade filer
 
-- `extensions_config.example.json` — ny MCP-server entry
-- `scripts/serve.sh` — startblock, cleanup, banner, status
-- `CLAUDE.md` — arkitektur, port, beskrivning
-- `README.md` — användarändringar
+| Fil | Ändring |
+|-----|---------|
+| `extensions_config.example.json` | Lägg till `smhi` MCP-server entry |
+| `docker/docker-compose.yaml` | Lägg till `smhi-mcp` service (port 3000 internt) |
+| `mcp-tools/combined-mcp/Dockerfile` | Ny build-stage + production install för SMHI |
+| `mcp-tools/combined-mcp/nginx.conf` | Upstream `smhi` (port 3005) + location `/smhi/` |
+| `mcp-tools/combined-mcp/start.sh` | Starta SMHI MCP på port 3005 |
+| `CLAUDE.md` | Lägg till SMHI MCP i arkitektur + projektstruktur |
+
+## Implementationsordning
+
+### Steg 1: Grundfiler
+- `package.json`, `tsconfig.json`
+
+### Steg 2: Kärnimplementation
+- `src/types.ts` — Zod-schemas + alla SMHI-konstanter (metobs-parametrar, forecast-parametrar, etc.)
+- `src/api-client.ts` — SmhiApiClient med 9 endpoints + caching
+- `src/formatter.ts` — Formatera prognoser, observationer, analyser till Markdown
+- `src/tools.ts` — 10 verktyg med fullständiga JSON-schemas
+
+### Steg 3: Server + transport
+- `src/instructions.ts`, `src/prompts.ts`, `src/resources.ts`
+- `src/index.ts` — SmhiMCPServer
+- `src/http-server.ts` — Express HTTP server
+
+### Steg 4: Docker-integration
+- `docker/smhi-mcp/Dockerfile`
+- Uppdatera `docker-compose.yaml`
+- Uppdatera `combined-mcp/` (Dockerfile, nginx.conf, start.sh)
+
+### Steg 5: Skill + Konfiguration
+- `skills/public/swedish-weather/SKILL.md`
+- Uppdatera `extensions_config.example.json`
+
+### Steg 6: Tester
+- `tests/tools.test.ts`, `tests/api-client.test.ts`, `tests/formatter.test.ts`
+
+### Steg 7: Dokumentation
+- Uppdatera `CLAUDE.md`
+
+## Tool Schemas
+
+Alla point-baserade verktyg (prognoser, analyser, brandrisk) tar `latitude` + `longitude` (WGS84, Sverige: 55-70°N, 10-25°E).
+
+Observationsverktyg (metobs, hydroobs, ocobs) tar `parameter` (ID), `station` (ID), `period` (enum).
+
+Stationsverktyget tar bara `parameter` (ID) och returnerar alla stationer.
+
+## Caching
+
+| Typ | TTL | Motivering |
+|-----|-----|------------|
+| Prognoser (metfcst, snow, fwif) | 30 min | Uppdateras var 6:e timme |
+| Analyser (mesan, fwia) | 15 min | Uppdateras varje timme |
+| Observationer (metobs, hydroobs, ocobs) | 5 min | Realtidsdata |
+| Metadata (stationer, parametrar) | 60 min | Ändras sällan |
 
 ## Designbeslut
 
-1. **REST API** (inte XML som Trafikverket) — standard JSON fetch
-2. **Valfri API-nyckel** — funkar anonymt (5 req/min), bättre med nyckel (200 req/min)
-3. **Differentierad cache** — 1h för räntor, 24h för metadata
-4. **8 verktyg** — enligt Riksbank API-specen
-5. **Port 3103** — nästa lediga efter Trafikverket (3102)
-6. **Allt på svenska** — beskrivningar, felmeddelanden, instruktioner
+1. **Inga API-nycklar** — alla SMHI API:er är öppna
+2. **GZIP Accept-Encoding** — krävs av metfcst-API:et
+3. **Port 3005** internt i combined-mcp (nästa lediga)
+4. **Port 3104** lokalt Docker (nästa efter riksbank 3103)
+5. **Allt på svenska** — beskrivningar, felmeddelanden, instruktioner
+6. **10 verktyg** — matchar oneseek-specifikationen
