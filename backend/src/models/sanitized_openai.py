@@ -1,0 +1,90 @@
+"""ChatOpenAI wrapper that sanitizes tool schemas for LM Studio compatibility.
+
+LM Studio's JavaScript Jinja template engine crashes with
+"Cannot read properties of null (reading 'description')" when any tool
+parameter (or nested schema property) has a null/missing description field.
+
+This module provides a drop-in ChatOpenAI replacement that recursively walks
+the entire tool JSON schema and ensures every property has a non-null
+description before sending the request to LM Studio.
+"""
+
+import logging
+from typing import Any
+
+from langchain_core.language_models import LanguageModelInput
+from langchain_openai import ChatOpenAI
+
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_schema(schema: Any, path: str = "") -> Any:
+    """Recursively sanitize a JSON Schema, ensuring all properties have descriptions."""
+    if not isinstance(schema, dict):
+        return schema
+
+    # Ensure this dict has a description if it looks like a schema/property
+    if "type" in schema and "description" not in schema:
+        schema["description"] = path.rsplit(".", 1)[-1] if path else ""
+
+    # Sanitize properties
+    if "properties" in schema and isinstance(schema["properties"], dict):
+        for prop_name, prop_schema in list(schema["properties"].items()):
+            if prop_schema is None:
+                schema["properties"][prop_name] = {"type": "string", "description": prop_name}
+            elif isinstance(prop_schema, dict):
+                if "description" not in prop_schema or prop_schema["description"] is None:
+                    prop_schema["description"] = prop_name
+                _sanitize_schema(prop_schema, f"{path}.{prop_name}" if path else prop_name)
+
+    # Sanitize nested schemas
+    for key in ("items", "additionalProperties"):
+        if key in schema and isinstance(schema[key], dict):
+            _sanitize_schema(schema[key], f"{path}.{key}" if path else key)
+
+    # Sanitize allOf, anyOf, oneOf
+    for key in ("allOf", "anyOf", "oneOf"):
+        if key in schema and isinstance(schema[key], list):
+            for i, sub in enumerate(schema[key]):
+                if isinstance(sub, dict):
+                    _sanitize_schema(sub, f"{path}.{key}[{i}]" if path else f"{key}[{i}]")
+
+    return schema
+
+
+def _sanitize_tools(tools: list[dict]) -> list[dict]:
+    """Sanitize all tool definitions in an OpenAI-format tools list."""
+    for tool in tools:
+        if not isinstance(tool, dict):
+            continue
+        func = tool.get("function", tool)
+        if not isinstance(func, dict):
+            continue
+        # Ensure function description exists
+        if "description" not in func or func["description"] is None:
+            func["description"] = func.get("name", "tool")
+        # Sanitize parameters schema
+        params = func.get("parameters")
+        if isinstance(params, dict):
+            _sanitize_schema(params, "parameters")
+    return tools
+
+
+class SanitizedChatOpenAI(ChatOpenAI):
+    """ChatOpenAI that sanitizes tool schemas before sending to the API.
+
+    Drop-in replacement for ChatOpenAI. Use in config.yaml:
+        use: src.models.sanitized_openai:SanitizedChatOpenAI
+    """
+
+    def _get_request_payload(
+        self,
+        input_: LanguageModelInput,
+        *,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ) -> dict:
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        if "tools" in payload and isinstance(payload["tools"], list):
+            _sanitize_tools(payload["tools"])
+        return payload

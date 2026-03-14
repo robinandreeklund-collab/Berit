@@ -8,7 +8,7 @@
 models:
   - name: nemotron-3-nano
     display_name: Nemotron 3 Nano (LM Studio)
-    use: langchain_openai:ChatOpenAI
+    use: src.models.sanitized_openai:SanitizedChatOpenAI
     model: nvidia/nemotron-3-nano
     base_url: http://192.168.50.170:8000/v1
     api_key: lm-studio
