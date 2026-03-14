@@ -45,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-google-maps-mcp 2>/dev/null || true
@@ -54,6 +54,12 @@ docker stop deer-flow-avanza-mcp 2>/dev/null || true
 docker rm deer-flow-avanza-mcp 2>/dev/null || true
 docker stop deer-flow-blocket-tradera-mcp 2>/dev/null || true
 docker rm deer-flow-blocket-tradera-mcp 2>/dev/null || true
+docker stop deer-flow-riksdag-mcp 2>/dev/null || true
+docker rm deer-flow-riksdag-mcp 2>/dev/null || true
+docker stop deer-flow-nvv-mcp 2>/dev/null || true
+docker rm deer-flow-nvv-mcp 2>/dev/null || true
+docker stop deer-flow-kolada-mcp 2>/dev/null || true
+docker rm deer-flow-kolada-mcp 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
@@ -152,6 +158,21 @@ if [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
     echo "  → Blocket/Tradera MCP: Swedish Marketplaces (local)"
 else
     echo "  → Blocket/Tradera MCP: Swedish Marketplaces (remote)"
+fi
+if [ -z "${RIKSDAG_MCP_URL:-}" ]; then
+    echo "  → Riksdag MCP: Swedish Parliament (local)"
+else
+    echo "  → Riksdag MCP: Swedish Parliament (remote)"
+fi
+if [ -z "${NVV_MCP_URL:-}" ]; then
+    echo "  → NVV MCP: Protected Nature Areas (local)"
+else
+    echo "  → NVV MCP: Protected Nature Areas (remote)"
+fi
+if [ -z "${KOLADA_MCP_URL:-}" ]; then
+    echo "  → Kolada MCP: Municipality Statistics (local)"
+else
+    echo "  → Kolada MCP: Municipality Statistics (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -260,8 +281,20 @@ cleanup() {
     if [ -n "${BLOCKET_TRADERA_MCP_PID:-}" ] && kill -0 "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null; then
         kill "$BLOCKET_TRADERA_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Riksdag MCP Node.js process if running
+    if [ -n "${RIKSDAG_MCP_PID:-}" ] && kill -0 "$RIKSDAG_MCP_PID" 2>/dev/null; then
+        kill "$RIKSDAG_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill NVV MCP Node.js process if running
+    if [ -n "${NVV_MCP_PID:-}" ] && kill -0 "$NVV_MCP_PID" 2>/dev/null; then
+        kill "$NVV_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Kolada MCP Node.js process if running
+    if [ -n "${KOLADA_MCP_PID:-}" ] && kill -0 "$KOLADA_MCP_PID" 2>/dev/null; then
+        kill "$KOLADA_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -289,6 +322,12 @@ cleanup() {
     docker rm deer-flow-avanza-mcp 2>/dev/null || true
     docker stop deer-flow-blocket-tradera-mcp 2>/dev/null || true
     docker rm deer-flow-blocket-tradera-mcp 2>/dev/null || true
+    docker stop deer-flow-riksdag-mcp 2>/dev/null || true
+    docker rm deer-flow-riksdag-mcp 2>/dev/null || true
+    docker stop deer-flow-nvv-mcp 2>/dev/null || true
+    docker rm deer-flow-nvv-mcp 2>/dev/null || true
+    docker stop deer-flow-kolada-mcp 2>/dev/null || true
+    docker rm deer-flow-kolada-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -988,6 +1027,186 @@ elif [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
 fi
 export BLOCKET_TRADERA_MCP_URL="${BLOCKET_TRADERA_MCP_URL:-}"
 
+# Riksdag MCP Server — Swedish parliament & government data
+RIKSDAG_MCP_PORT="${RIKSDAG_MCP_PORT:-3111}"
+RIKSDAG_MCP_DIR="$REPO_ROOT/mcp-tools/riksdag-mcp"
+if [ -n "${RIKSDAG_MCP_URL:-}" ]; then
+    echo "✓ Riksdag MCP using remote instance: ${RIKSDAG_MCP_URL}"
+elif [ -z "${RIKSDAG_MCP_URL:-}" ]; then
+    echo "Starting Riksdag MCP server..."
+    RIKSDAG_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $RIKSDAG_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-riksdag-mcp >/dev/null 2>&1; then
+            echo "  Building Riksdag MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-riksdag-mcp -f docker/riksdag-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-riksdag-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-riksdag-mcp -p "${RIKSDAG_MCP_PORT}:3000" \
+                -e PORT=3000 \
+                --restart unless-stopped deer-flow-riksdag-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$RIKSDAG_MCP_PORT" 30 "Riksdag MCP" || true
+            if docker ps --filter name=deer-flow-riksdag-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export RIKSDAG_MCP_URL="http://localhost:${RIKSDAG_MCP_PORT}/mcp"
+                echo "✓ Riksdag MCP started via Docker on localhost:${RIKSDAG_MCP_PORT}"
+                RIKSDAG_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $RIKSDAG_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Riksdag MCP with Node.js..."
+        if [ ! -f "$RIKSDAG_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Riksdag MCP from local source (first time)..."
+            (cd "$RIKSDAG_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Riksdag MCP build failed. Parliament tools will not be available."
+            }
+        fi
+        if [ -f "$RIKSDAG_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$RIKSDAG_MCP_PORT" \
+                node "$RIKSDAG_MCP_DIR/dist/http-server.js" > logs/riksdag-mcp.log 2>&1 &
+            RIKSDAG_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$RIKSDAG_MCP_PORT" 15 "Riksdag MCP" || {
+                echo "  ⚠ Riksdag MCP failed to start."
+                kill "$RIKSDAG_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$RIKSDAG_MCP_PID" 2>/dev/null; then
+                export RIKSDAG_MCP_URL="http://localhost:${RIKSDAG_MCP_PORT}/mcp"
+                echo "✓ Riksdag MCP started via Node.js on localhost:${RIKSDAG_MCP_PORT}"
+                RIKSDAG_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $RIKSDAG_MCP_STARTED; then
+        echo "  ⚠ Riksdag MCP could not be started. Parliament tools will not be available."
+        echo "  Install Docker or Node.js to enable Riksdag MCP."
+    fi
+fi
+export RIKSDAG_MCP_URL="${RIKSDAG_MCP_URL:-}"
+
+# NVV MCP Server — Swedish protected nature areas
+NVV_MCP_PORT="${NVV_MCP_PORT:-3112}"
+NVV_MCP_DIR="$REPO_ROOT/mcp-tools/nvv-mcp"
+if [ -n "${NVV_MCP_URL:-}" ]; then
+    echo "✓ NVV MCP using remote instance: ${NVV_MCP_URL}"
+elif [ -z "${NVV_MCP_URL:-}" ]; then
+    echo "Starting NVV MCP server..."
+    NVV_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $NVV_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-nvv-mcp >/dev/null 2>&1; then
+            echo "  Building NVV MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-nvv-mcp -f docker/nvv-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-nvv-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-nvv-mcp -p "${NVV_MCP_PORT}:3000" \
+                -e PORT=3000 \
+                --restart unless-stopped deer-flow-nvv-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$NVV_MCP_PORT" 30 "NVV MCP" || true
+            if docker ps --filter name=deer-flow-nvv-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export NVV_MCP_URL="http://localhost:${NVV_MCP_PORT}/mcp"
+                echo "✓ NVV MCP started via Docker on localhost:${NVV_MCP_PORT}"
+                NVV_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $NVV_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting NVV MCP with Node.js..."
+        if [ ! -f "$NVV_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building NVV MCP from local source (first time)..."
+            (cd "$NVV_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ NVV MCP build failed. Nature protection tools will not be available."
+            }
+        fi
+        if [ -f "$NVV_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$NVV_MCP_PORT" \
+                node "$NVV_MCP_DIR/dist/http-server.js" > logs/nvv-mcp.log 2>&1 &
+            NVV_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$NVV_MCP_PORT" 15 "NVV MCP" || {
+                echo "  ⚠ NVV MCP failed to start."
+                kill "$NVV_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$NVV_MCP_PID" 2>/dev/null; then
+                export NVV_MCP_URL="http://localhost:${NVV_MCP_PORT}/mcp"
+                echo "✓ NVV MCP started via Node.js on localhost:${NVV_MCP_PORT}"
+                NVV_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $NVV_MCP_STARTED; then
+        echo "  ⚠ NVV MCP could not be started. Nature protection tools will not be available."
+        echo "  Install Docker or Node.js to enable NVV MCP."
+    fi
+fi
+export NVV_MCP_URL="${NVV_MCP_URL:-}"
+
+# Kolada MCP Server — Swedish municipality statistics
+KOLADA_MCP_PORT="${KOLADA_MCP_PORT:-3113}"
+KOLADA_MCP_DIR="$REPO_ROOT/mcp-tools/kolada-mcp"
+if [ -n "${KOLADA_MCP_URL:-}" ]; then
+    echo "✓ Kolada MCP using remote instance: ${KOLADA_MCP_URL}"
+elif [ -z "${KOLADA_MCP_URL:-}" ]; then
+    echo "Starting Kolada MCP server..."
+    KOLADA_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $KOLADA_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-kolada-mcp >/dev/null 2>&1; then
+            echo "  Building Kolada MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-kolada-mcp -f docker/kolada-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-kolada-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-kolada-mcp -p "${KOLADA_MCP_PORT}:3000" \
+                -e PORT=3000 \
+                --restart unless-stopped deer-flow-kolada-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$KOLADA_MCP_PORT" 30 "Kolada MCP" || true
+            if docker ps --filter name=deer-flow-kolada-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export KOLADA_MCP_URL="http://localhost:${KOLADA_MCP_PORT}/mcp"
+                echo "✓ Kolada MCP started via Docker on localhost:${KOLADA_MCP_PORT}"
+                KOLADA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $KOLADA_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Kolada MCP with Node.js..."
+        if [ ! -f "$KOLADA_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Kolada MCP from local source (first time)..."
+            (cd "$KOLADA_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Kolada MCP build failed. Municipality statistics tools will not be available."
+            }
+        fi
+        if [ -f "$KOLADA_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$KOLADA_MCP_PORT" \
+                node "$KOLADA_MCP_DIR/dist/http-server.js" > logs/kolada-mcp.log 2>&1 &
+            KOLADA_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$KOLADA_MCP_PORT" 15 "Kolada MCP" || {
+                echo "  ⚠ Kolada MCP failed to start."
+                kill "$KOLADA_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$KOLADA_MCP_PID" 2>/dev/null; then
+                export KOLADA_MCP_URL="http://localhost:${KOLADA_MCP_PORT}/mcp"
+                echo "✓ Kolada MCP started via Node.js on localhost:${KOLADA_MCP_PORT}"
+                KOLADA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $KOLADA_MCP_STARTED; then
+        echo "  ⚠ Kolada MCP could not be started. Municipality statistics tools will not be available."
+        echo "  Install Docker or Node.js to enable Kolada MCP."
+    fi
+fi
+export KOLADA_MCP_URL="${KOLADA_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -1112,6 +1331,21 @@ if [ -n "${BLOCKET_TRADERA_MCP_URL:-}" ]; then
 else
     echo "  🛒 Blocket:      (ej konfigurerad)"
 fi
+if [ -n "${RIKSDAG_MCP_URL:-}" ]; then
+    echo "  🏛️ Riksdag:      ${RIKSDAG_MCP_URL}"
+else
+    echo "  🏛️ Riksdag:      (ej konfigurerad)"
+fi
+if [ -n "${NVV_MCP_URL:-}" ]; then
+    echo "  🌿 NVV:          ${NVV_MCP_URL}"
+else
+    echo "  🌿 NVV:          (ej konfigurerad)"
+fi
+if [ -n "${KOLADA_MCP_URL:-}" ]; then
+    echo "  📊 Kolada:       ${KOLADA_MCP_URL}"
+else
+    echo "  📊 Kolada:       (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -1173,6 +1407,21 @@ if [ -n "${BLOCKET_TRADERA_MCP_PID:-}" ]; then
     echo "     - Blocket:     logs/blocket-tradera-mcp.log"
 elif [ -z "${BLOCKET_TRADERA_MCP_URL:-}" ] || echo "${BLOCKET_TRADERA_MCP_URL}" | grep -q "localhost"; then
     echo "     - Blocket:     docker logs deer-flow-blocket-tradera-mcp"
+fi
+if [ -n "${RIKSDAG_MCP_PID:-}" ]; then
+    echo "     - Riksdag:     logs/riksdag-mcp.log"
+elif [ -z "${RIKSDAG_MCP_URL:-}" ] || echo "${RIKSDAG_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Riksdag:     docker logs deer-flow-riksdag-mcp"
+fi
+if [ -n "${NVV_MCP_PID:-}" ]; then
+    echo "     - NVV:         logs/nvv-mcp.log"
+elif [ -z "${NVV_MCP_URL:-}" ] || echo "${NVV_MCP_URL}" | grep -q "localhost"; then
+    echo "     - NVV:         docker logs deer-flow-nvv-mcp"
+fi
+if [ -n "${KOLADA_MCP_PID:-}" ]; then
+    echo "     - Kolada:      logs/kolada-mcp.log"
+elif [ -z "${KOLADA_MCP_URL:-}" ] || echo "${KOLADA_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Kolada:      docker logs deer-flow-kolada-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"

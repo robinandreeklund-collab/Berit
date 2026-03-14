@@ -166,6 +166,39 @@
       "headers": {},
       "oauth": null,
       "description": "Blocket & Tradera — Sök begagnat, prisjämförelse, bilar, båtar, MC, auktioner. 10 verktyg."
+    },
+    "riksdag": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$RIKSDAG_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Riksdag & Regering — Riksdagsdokument, ledamöter, voteringar, anföranden, regeringsdokument. 15 verktyg."
+    },
+    "nvv": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$NVV_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Naturvårdsverket — Skyddade naturområden, nationalparker, naturreservat, Natura 2000, Ramsar, arter. 8 verktyg."
+    },
+    "kolada": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$KOLADA_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Kolada — Kommunal och regional nyckeltalsjämförelse. Skolresultat, ekonomi, omsorg, befolkning. 10 verktyg."
     }
   },
   "skills": {}
