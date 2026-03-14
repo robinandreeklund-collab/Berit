@@ -19,6 +19,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Trafikverket MCP v1.0** (port 3000, Docker sidecar): Swedish traffic data — störningar, tåg, väg, väder, kameror, prognoser. 22 verktyg.
 - **Riksbank MCP v1.0** (port 3000, Docker sidecar): Swedish economic data — räntor, valutakurser, SWESTR, makroprognoser. 8 verktyg.
 - **SMHI MCP v1.0** (port 3000, Docker sidecar): Swedish weather, hydrology, oceanography, fire risk — väderprognoser, analyser, observationer, vattenstånd, havsdata, brandrisk. 10 verktyg.
+- **Elpris MCP v1.0** (port 3000, Docker sidecar): Swedish electricity prices — spotpriser, historik, zonjämförelse via elprisetjustnu.se. 4 verktyg.
+- **Bolagsverket MCP v1.0** (port 3000, Docker sidecar): Swedish company data — organisationsuppslag, grunddata, styrelse, registrering, dokument via Värdefulla datamängder API. 6 verktyg.
 
 ## Project Structure
 
@@ -57,13 +59,17 @@ Berit/
 │   ├── trafikverket-mcp/      # Trafikverket MCP v1.0 — 22 verktyg för realtids trafikdata
 │   ├── riksbank-mcp/         # Riksbank MCP v1.0 — 8 verktyg för ekonomisk data
 │   ├── smhi-mcp/             # SMHI MCP v1.0 — 10 verktyg för väder, hydrologi, oceanografi, brandrisk
-│   └── lightpanda-mcp/       # Lightpanda MCP v1.0 — 12 verktyg för webbsurfning, sökning, datautvinning
+│   ├── lightpanda-mcp/       # Lightpanda MCP v1.0 — 12 verktyg för webbsurfning, sökning, datautvinning
+│   ├── elpris-mcp/           # Elpris MCP v1.0 — 4 verktyg för svenska elpriser (spotpriser)
+│   └── bolagsverket-mcp/     # Bolagsverket MCP v1.0 — 6 verktyg för svensk företagsinformation
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
 │   ├── riksbank-mcp/         # Riksbank MCP server Dockerfile
 │   ├── smhi-mcp/             # SMHI MCP server Dockerfile
-│   └── lightpanda-mcp/       # Lightpanda MCP server Dockerfile
+│   ├── lightpanda-mcp/       # Lightpanda MCP server Dockerfile
+│   ├── elpris-mcp/           # Elpris MCP server Dockerfile
+│   └── bolagsverket-mcp/     # Bolagsverket MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 

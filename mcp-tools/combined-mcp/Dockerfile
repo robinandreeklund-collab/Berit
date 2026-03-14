@@ -1,8 +1,10 @@
-# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda on one instance
-# SCB:          / (backwards compatible)
-# Skolverket:   /skolverket/
-# Trafikverket: /trafikverket/
-# Riksbank:     /riksbank/
+# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda + Elpris + Bolagsverket on one instance
+# SCB:            / (backwards compatible)
+# Skolverket:     /skolverket/
+# Trafikverket:   /trafikverket/
+# Riksbank:       /riksbank/
+# Elpris:         /elpris/
+# Bolagsverket:   /bolagsverket/
 
 # ============ Stage 1: Build SCB ============
 FROM node:22-alpine AS build-scb
@@ -46,7 +48,21 @@ COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json lightpanda-mcp
 COPY lightpanda-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 7: Production ============
+# ============ Stage 7: Build Elpris ============
+FROM node:22-alpine AS build-elpris
+WORKDIR /app
+COPY elpris-mcp/package.json elpris-mcp/tsconfig.json ./
+COPY elpris-mcp/src ./src
+RUN npm install && npm run build
+
+# ============ Stage 8: Build Bolagsverket ============
+FROM node:22-alpine AS build-bolagsverket
+WORKDIR /app
+COPY bolagsverket-mcp/package.json bolagsverket-mcp/tsconfig.json ./
+COPY bolagsverket-mcp/src ./src
+RUN npm install && npm run build
+
+# ============ Stage 9: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -87,6 +103,16 @@ COPY --from=build-smhi /app/dist /app/smhi/dist
 COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json /app/lightpanda/
 RUN cd /app/lightpanda && npm ci --omit=dev --ignore-scripts
 COPY --from=build-lightpanda /app/dist /app/lightpanda/dist
+
+# Elpris production install
+COPY elpris-mcp/package.json /app/elpris/
+RUN cd /app/elpris && npm install --omit=dev --ignore-scripts
+COPY --from=build-elpris /app/dist /app/elpris/dist
+
+# Bolagsverket production install
+COPY bolagsverket-mcp/package.json /app/bolagsverket/
+RUN cd /app/bolagsverket && npm install --omit=dev --ignore-scripts
+COPY --from=build-bolagsverket /app/dist /app/bolagsverket/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template

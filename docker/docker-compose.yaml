@@ -84,6 +84,8 @@ services:
       - LIGHTPANDA_MCP_URL=http://lightpanda-mcp:3000/mcp
       - LIGHTPANDA_URL=http://lightpanda:9222
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
+      - ELPRIS_MCP_URL=http://elpris-mcp:3000/mcp
+      - BOLAGSVERKET_MCP_URL=http://bolagsverket-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -124,6 +126,8 @@ services:
       - LIGHTPANDA_MCP_URL=http://lightpanda-mcp:3000/mcp
       - LIGHTPANDA_URL=http://lightpanda:9222
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
+      - ELPRIS_MCP_URL=http://elpris-mcp:3000/mcp
+      - BOLAGSVERKET_MCP_URL=http://bolagsverket-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -213,6 +217,42 @@ services:
       - LIGHTPANDA_CDP_URL=ws://lightpanda:9222
     depends_on:
       - lightpanda
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Elpris MCP Server (Swedish electricity prices) ───────────────────
+  elpris-mcp:
+    build:
+      context: ../
+      dockerfile: docker/elpris-mcp/Dockerfile
+    container_name: deer-flow-elpris-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Bolagsverket MCP Server (Swedish company data) ──────────────────
+  bolagsverket-mcp:
+    build:
+      context: ../
+      dockerfile: docker/bolagsverket-mcp/Dockerfile
+    container_name: deer-flow-bolagsverket-mcp
+    environment:
+      - PORT=3000
+      - BOLAGSVERKET_CLIENT_ID=${BOLAGSVERKET_CLIENT_ID}
+      - BOLAGSVERKET_CLIENT_SECRET=${BOLAGSVERKET_CLIENT_SECRET}
     networks:
       - deer-flow
     restart: unless-stopped

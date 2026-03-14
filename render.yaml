@@ -15,3 +15,7 @@ services:
         sync: false
       - key: RIKSBANK_API_KEY
         sync: false
+      - key: BOLAGSVERKET_CLIENT_ID
+        sync: false
+      - key: BOLAGSVERKET_CLIENT_SECRET
+        sync: false
