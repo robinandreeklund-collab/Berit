@@ -207,8 +207,16 @@ export class NvvMCPServer {
           const sections: string[] = [];
 
           if (include === 'all' || include === 'basic') {
-            const { data } = await client.national(`/omrade/${id}/Gallande`);
-            const detaljResult = formatOmradeDetalj(data);
+            const { data } = await client.national(`/omrade/nolinks?id=${id}`);
+            const items = Array.isArray(data) ? data : [];
+            const item = items.length > 0 ? items[0] : null;
+            if (!item) {
+              return {
+                content: [{ type: 'text', text: JSON.stringify({ error: `Omrade med ID ${id} hittades inte.` }) }],
+                isError: true,
+              };
+            }
+            const detaljResult = formatOmradeDetalj(item);
             sections.push(detaljResult.markdown);
           }
 

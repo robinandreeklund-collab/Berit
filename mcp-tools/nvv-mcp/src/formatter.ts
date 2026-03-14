@@ -50,10 +50,10 @@ export function formatOmraden(
     rows.push([
       String(o.nvrId || o.kod || o.id || '\u2014'),
       String(o.namn || '\u2014'),
-      String(o.skyddstyp || source),
-      formatNumber(o.areal as number, 1),
-      String(o.lan || '\u2014'),
-      String(o.kommun || '\u2014'),
+      String(o.skyddstyp || o.omradesTyp || source),
+      formatNumber((o.areaHa ?? o.areal) as number, 1),
+      String(o.lanAsText || o.lan || '\u2014'),
+      String(o.kommunerAsText || o.kommun || '\u2014'),
     ]);
   }
 
@@ -74,14 +74,19 @@ export function formatOmradeDetalj(
   lines.push(`## ${item.namn || 'Okant omrade'}`);
   lines.push('');
 
+  const areal = (item.areaHa ?? item.areal) as number | null | undefined;
   const fields: [string, unknown][] = [
     ['ID', item.nvrId || item.kod || item.id],
     ['Namn', item.namn],
     ['Skyddstyp', item.skyddstyp],
-    ['Areal (ha)', item.areal != null ? formatNumber(item.areal as number, 1) : null],
-    ['Lan', item.lan],
-    ['Kommun', item.kommun],
-    ['Beslutsdatum', item.beslutsdatum],
+    ['Areal (ha)', areal != null ? formatNumber(areal, 1) : null],
+    ['Landareal (ha)', item.landareaHa != null ? formatNumber(item.landareaHa as number, 1) : null],
+    ['Vattenareal (ha)', item.vattenareaHa != null ? formatNumber(item.vattenareaHa as number, 1) : null],
+    ['Lan', item.lanAsText || item.lan],
+    ['Kommun', item.kommunerAsText || item.kommun],
+    ['IUCN-kategori', item.iucnKategori],
+    ['Forvaltare', item.forvaltare],
+    ['Beslutsmyndighet', item.beslutsmyndighet],
     ['Beskrivning', item.beskrivning],
   ];
 
@@ -101,16 +106,15 @@ export function formatArter(
   const items = Array.isArray(data) ? data : [];
   if (items.length === 0) return { markdown: '_Inga arter hittades._', count: 0, raw: [] };
 
-  const headers = ['Vetenskapligt namn', 'Svenskt namn', 'Grupp', 'Bilaga'];
+  const headers = ['Namn', 'Grupp', 'Områdeskod'];
   const rows: string[][] = [];
 
   for (const item of items) {
     const o = item as Record<string, unknown>;
     rows.push([
-      String(o.vetenskapligtNamn || '\u2014'),
-      String(o.svensktNamn || '\u2014'),
+      String(o.namn || o.vetenskapligtNamn || o.svensktNamn || '\u2014'),
       String(o.grupp || '\u2014'),
-      String(o.bilaga || '\u2014'),
+      String(o.omradesKod || '\u2014'),
     ]);
   }
 

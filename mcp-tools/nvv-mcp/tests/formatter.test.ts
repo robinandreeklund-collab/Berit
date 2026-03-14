@@ -60,13 +60,13 @@ describe('formatOmradeDetalj', () => {
 describe('formatArter', () => {
   it('formats species list', () => {
     const data = [
-      { vetenskapligtNamn: 'Haliaeetus albicilla', svensktNamn: 'Havsorn', grupp: 'B', bilaga: 'I' },
-      { vetenskapligtNamn: 'Lutra lutra', svensktNamn: 'Utter', grupp: 'M', bilaga: 'II' },
+      { namn: 'Havsörn', grupp: 'B - Fåglar', omradesKod: 'SE0420002' },
+      { namn: 'Utter', grupp: 'M - Däggdjur', omradesKod: 'SE0420002' },
     ];
     const result = formatArter(data);
     expect(result.count).toBe(2);
-    expect(result.markdown).toContain('Havsorn');
-    expect(result.markdown).toContain('Lutra lutra');
+    expect(result.markdown).toContain('Havsörn');
+    expect(result.markdown).toContain('Utter');
   });
 
   it('handles empty array', () => {
