@@ -2,6 +2,8 @@
 
 # Skolverket MCP Server
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/robinandreeklund-collab/Berit)
+
 [![Server Status](https://img.shields.io/website?url=https%3A%2F%2Fskolverket-mcp.onrender.com%2Fhealth&label=MCP%20Server&up_message=online&down_message=offline)](https://skolverket-mcp.onrender.com/health)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-Published-brightgreen)](https://registry.modelcontextprotocol.io/servers/io.github.KSAklfszf921/skolverket-mcp)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2025--03--26-green)](https://modelcontextprotocol.io/)
