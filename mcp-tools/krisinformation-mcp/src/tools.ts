@@ -2,6 +2,8 @@
  * 2 tool definitions for the Krisinformation MCP server.
  */
 
+import { COUNTIES } from './types.js';
+
 // ---------------------------------------------------------------------------
 // ToolDefinition interface
 // ---------------------------------------------------------------------------
@@ -17,6 +19,17 @@ export interface ToolDefinition {
 }
 
 // ---------------------------------------------------------------------------
+// Shared descriptions
+// ---------------------------------------------------------------------------
+
+const COUNTY_DESCRIPTION =
+  'Län att filtrera på (länskod). Tillgängliga:\n' +
+  Object.entries(COUNTIES)
+    .map(([code, name]) => `${code}=${name}`)
+    .join(', ') +
+  '.\nLämna tomt för hela Sverige.';
+
+// ---------------------------------------------------------------------------
 // 2 tool definitions
 // ---------------------------------------------------------------------------
 
@@ -25,9 +38,10 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     id: 'krisinformation_search',
     name: 'Sök krisinformation',
     description:
-      'Sök efter krisnyheter och händelser från Krisinformation.se.\n\n' +
+      'Sök efter krisnyheter och händelser från Krisinformation.se (MSB).\n\n' +
       '**Användningsfall:** Hitta aktuella kriser, olyckor, vädervarningar, samhällsstörningar i Sverige.\n' +
       '**Returnerar:** Lista med nyhetsartiklar med rubrik, sammanfattning, källa och datum.\n' +
+      '**Tips:** Utan filter returneras senaste 7 dagarnas nyheter för hela Sverige.\n' +
       '**Exempel:** "Kriser i Stockholm", "Översvämningar Sverige", "Aktuella varningar"',
     category: 'nyheter',
     api: 'krisinformation',
@@ -37,11 +51,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         county: {
           type: 'string',
-          description: 'Län att filtrera på (t.ex. "12" för Skåne, "01" för Stockholm). Se counties-resursen för alla koder.',
+          enum: Object.keys(COUNTIES),
+          description: COUNTY_DESCRIPTION,
         },
         days: {
           type: 'number',
-          description: 'Antal dagar tillbaka att söka (1-30). Standard: 7.',
+          description: 'Antal dagar tillbaka att söka. Standard: 7.',
+          minimum: 1,
+          maximum: 30,
+          default: 7,
         },
       },
     },
@@ -51,8 +69,9 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'Aktiva VMA-varningar',
     description:
       'Hämta aktiva VMA-varningar (Viktigt Meddelande till Allmänheten) från Krisinformation.se.\n\n' +
-      '**Användningsfall:** Se om det finns aktiva krislarm, VMA eller allvarliga varningar i Sverige.\n' +
-      '**Returnerar:** Lista med aktiva VMA med allvarlighetsgrad, meddelande och berörd region.\n' +
+      '**Användningsfall:** Se om det finns aktiva krislarm, VMA eller allvarliga varningar i Sverige just nu.\n' +
+      '**Returnerar:** Lista med aktiva VMA med allvarlighetsgrad (Severe/Moderate/Minor), meddelande och berörd region.\n' +
+      '**Tips:** Anropa UTAN parametrar för att se alla aktiva VMA i hela Sverige. Ofta tomt resultat — det betyder att inga VMA är aktiva.\n' +
       '**Exempel:** "Finns det aktiva VMA?", "Krislarm i Sverige", "Aktiva varningar"',
     category: 'vma',
     api: 'krisinformation',
@@ -62,7 +81,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         county: {
           type: 'string',
-          description: 'Län att filtrera på (t.ex. "12" för Skåne, "01" för Stockholm).',
+          enum: Object.keys(COUNTIES),
+          description: COUNTY_DESCRIPTION,
         },
       },
     },

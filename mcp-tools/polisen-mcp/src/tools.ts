@@ -2,6 +2,8 @@
  * 1 tool definition for the Polisen MCP server.
  */
 
+import { EVENT_TYPES, COUNTIES } from './types.js';
+
 // ---------------------------------------------------------------------------
 // ToolDefinition interface
 // ---------------------------------------------------------------------------
@@ -17,6 +19,21 @@ export interface ToolDefinition {
 }
 
 // ---------------------------------------------------------------------------
+// Shared descriptions
+// ---------------------------------------------------------------------------
+
+const LOCATION_DESCRIPTION =
+  'Län att filtrera på. Använd fullständigt länsnamn.\n' +
+  'Tillgängliga: ' + COUNTIES.join(', ') + '.\n' +
+  'Lämna tomt för hela Sverige.';
+
+const TYPE_DESCRIPTION =
+  'Händelsetyp att filtrera på.\n' +
+  'Vanliga typer: ' +
+  Object.keys(EVENT_TYPES).join(', ') +
+  '.\nOBS: Polisens API kan returnera fler typer än dessa.';
+
+// ---------------------------------------------------------------------------
 // 1 tool definition
 // ---------------------------------------------------------------------------
 
@@ -28,6 +45,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta aktuella polishändelser i Sverige. Uppdateras var 5–10 minut.\n\n' +
       '**Användningsfall:** Se pågående polishändelser, brott och olyckor i ett specifikt län eller i hela Sverige.\n' +
       '**Returnerar:** Lista med händelser: typ, plats, datum, sammanfattning och GPS-koordinater.\n' +
+      '**Tips:** Filtrera med location (länsnamn) OCH/ELLER type (händelsetyp) för relevanta resultat.\n' +
       '**Exempel:** "Polishändelser i Stockholm", "Brott i Malmö idag", "Senaste trafikolyckorna", "Vad händer i Göteborg?"',
     category: 'handelser',
     api: 'polisen',
@@ -37,15 +55,20 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         location: {
           type: 'string',
-          description: 'Län att filtrera på (t.ex. "Stockholms län", "Skåne län", "Västra Götalands län"). Lämna tomt för alla län.',
+          enum: COUNTIES,
+          description: LOCATION_DESCRIPTION,
         },
         type: {
           type: 'string',
-          description: 'Händelsetyp att filtrera på (t.ex. "Misshandel", "Trafikolycka", "Brand", "Stöld", "Inbrott").',
+          enum: Object.keys(EVENT_TYPES),
+          description: TYPE_DESCRIPTION,
         },
         limit: {
           type: 'number',
-          description: 'Max antal händelser att visa (1-500). Standard: 20.',
+          description: 'Max antal händelser att visa. Standard: 20.',
+          minimum: 1,
+          maximum: 500,
+          default: 20,
         },
       },
     },
