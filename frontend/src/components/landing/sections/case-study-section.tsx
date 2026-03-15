@@ -10,46 +10,46 @@ export function CaseStudySection({ className }: { className?: string }) {
   const caseStudies = [
     {
       threadId: "7cfa5f8f-a2f8-47ad-acbd-da7137baf990",
-      title: "Forecast 2026 Agent Trends and Opportunities",
+      title: "Prognostisera AI-agenttrender 2026",
       description:
-        "Create a webpage with a Deep Research report forecasting the agent technology trends and opportunities in 2026.",
+        "Skapa en webbsida med en djupforskningsrapport som prognostiserar agentteknikens trender och möjligheter 2026.",
     },
     {
       threadId: "4f3e55ee-f853-43db-bfb3-7d1a411f03cb",
-      title: 'Generate a Video Based On the Novel "Pride and Prejudice"',
+      title: 'Generera en video baserad på "Stolthet och fördom"',
       description:
-        'Search the specific scene from the novel "Pride and Prejudice", then generate a video as well as a reference image based on the scenes.',
+        'Sök efter en specifik scen ur romanen "Stolthet och fördom" och generera sedan en video samt en referensbild baserad på scenen.',
     },
     {
       threadId: "21cfea46-34bd-4aa6-9e1f-3009452fbeb9",
-      title: "Doraemon Explains the MOE Architecture",
+      title: "Doraemon förklarar MOE-arkitekturen",
       description:
-        "Generate a Doraemon comic strip explaining the MOE architecture to the teenagers who are interested in AI.",
+        "Generera en Doraemon-seriestrip som förklarar MOE-arkitekturen för tonåringar som är intresserade av AI.",
     },
     {
       threadId: "ad76c455-5bf9-4335-8517-fc03834ab828",
-      title: "An Exploratory Data Analysis of the Titanic Dataset",
+      title: "Explorativ dataanalys av Titanic-datasetet",
       description:
-        "Explore the Titanic dataset and identify the key factors that influenced survival rates with visualizations and insights.",
+        "Utforska Titanic-datasetet och identifiera nyckelfaktorer som påverkade överlevnadsgraden med visualiseringar och insikter.",
     },
     {
       threadId: "d3e5adaf-084c-4dd5-9d29-94f1d6bccd98",
-      title: "Watch Y Combinator's Video then Conduct a Deep Research",
+      title: "Titta på Y Combinators video och gör djupforskning",
       description:
-        "Watch the given Y Combinator's YouTube video and conduct a deep research on the YC's tips for technical startup founders.",
+        "Titta på Y Combinators YouTube-video och gör en djupforskningsrapport om YC:s tips för tekniska startup-grundare.",
     },
     {
       threadId: "3823e443-4e2b-4679-b496-a9506eae462b",
-      title: "Collect and Summarize Dr. Fei Fei Li's Podcasts",
+      title: "Samla och sammanfatta Dr. Fei Fei Lis poddar",
       description:
-        "Collect all the podcast appearances of Dr. Fei Fei Li in the last 6 months, then summarize them into a comprehensive report.",
+        "Samla alla poddmedverkan av Dr. Fei Fei Li de senaste 6 månaderna och sammanfatta dem i en heltäckande rapport.",
     },
   ];
   return (
     <Section
       className={className}
-      title="Case Studies"
-      subtitle="See how DeerFlow is used in the wild"
+      title="Fallstudier"
+      subtitle="Se hur Berit används i praktiken"
     >
       <div className="container-md mt-8 grid grid-cols-1 gap-4 px-20 md:grid-cols-2 lg:grid-cols-3">
         {caseStudies.map((caseStudy) => (

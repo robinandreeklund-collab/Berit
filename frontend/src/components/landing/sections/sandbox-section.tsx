@@ -12,20 +12,20 @@ export function SandboxSection({ className }: { className?: string }) {
   return (
     <Section
       className={className}
-      title="Agent Runtime Environment"
+      title="Agentens körmiljö"
       subtitle={
         <p>
-          We give DeerFlow a &quot;computer&quot;, which can execute commands,
-          manage files, and run long tasks — all in a secure Docker-based
-          sandbox
+          Vi ger Berit en &quot;dator&quot; som kan köra kommandon, hantera
+          filer och utföra långa uppgifter — allt i en säker Docker-baserad
+          sandlåda
         </p>
       }
     >
       <div className="mt-8 flex w-full max-w-6xl flex-col items-center gap-12 lg:flex-row lg:gap-16">
-        {/* Left: Terminal */}
+        {/* Vänster: Terminal */}
         <div className="w-full flex-1">
           <Terminal className="h-[360px] w-full">
-            {/* Scene 1: Build a Game */}
+            {/* Scen 1: Bygg ett spel */}
             <TypingAnimation>$ cat requirements.txt</TypingAnimation>
             <AnimatedSpan delay={800} className="text-zinc-400">
               pygame==2.5.0
@@ -35,44 +35,44 @@ export function SandboxSection({ className }: { className?: string }) {
               $ pip install -r requirements.txt
             </TypingAnimation>
             <AnimatedSpan delay={2000} className="text-green-500">
-              ✔ Installed pygame
+              ✔ Installerade pygame
             </AnimatedSpan>
 
             <TypingAnimation delay={2400}>
               $ write game.py --lines 156
             </TypingAnimation>
             <AnimatedSpan delay={3200} className="text-blue-500">
-              ✔ Written 156 lines
+              ✔ Skrev 156 rader
             </AnimatedSpan>
 
             <TypingAnimation delay={3600}>
               $ python game.py --test
             </TypingAnimation>
             <AnimatedSpan delay={4200} className="text-green-500">
-              ✔ All sprites loaded
+              ✔ Alla sprites laddade
             </AnimatedSpan>
             <AnimatedSpan delay={4500} className="text-green-500">
-              ✔ Physics engine OK
+              ✔ Fysikmotor OK
             </AnimatedSpan>
             <AnimatedSpan delay={4800} className="text-green-500">
-              ✔ 60 FPS stable
+              ✔ 60 FPS stabilt
             </AnimatedSpan>
 
-            {/* Scene 2: Data Analysis */}
+            {/* Scen 2: Dataanalys */}
             <TypingAnimation delay={5400}>
-              $ curl -O sales-2024.csv
+              $ curl -O försäljning-2024.csv
             </TypingAnimation>
             <AnimatedSpan delay={6200} className="text-zinc-400">
-              Downloaded 12.4 MB
+              Laddat ner 12.4 MB
             </AnimatedSpan>
           </Terminal>
         </div>
 
-        {/* Right: Description */}
+        {/* Höger: Beskrivning */}
         <div className="w-full flex-1 space-y-6">
           <div className="space-y-4">
             <p className="text-sm font-medium tracking-wider text-purple-400 uppercase">
-              Open-source
+              Öppen källkod
             </p>
             <h2 className="text-4xl font-bold tracking-tight lg:text-5xl">
               <a
@@ -87,7 +87,7 @@ export function SandboxSection({ className }: { className?: string }) {
 
           <div className="space-y-4 text-lg text-zinc-400">
             <p>
-              We recommend using{" "}
+              Vi rekommenderar att använda{" "}
               <a
                 href="https://github.com/agent-infra/sandbox"
                 className="underline"
@@ -96,27 +96,27 @@ export function SandboxSection({ className }: { className?: string }) {
               >
                 All-in-One Sandbox
               </a>{" "}
-              that combines Browser, Shell, File, MCP and VSCode Server in a
-              single Docker container.
+              som kombinerar webbläsare, terminal, filer, MCP och VSCode Server
+              i en enda Docker-container.
             </p>
           </div>
 
-          {/* Feature Tags */}
+          {/* Funktionstaggar */}
           <div className="flex flex-wrap gap-3 pt-4">
             <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-              Isolated
+              Isolerad
             </span>
             <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-              Safe
+              Säker
             </span>
             <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
               Persistent
             </span>
             <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-              Mountable FS
+              Monterbart filsystem
             </span>
             <span className="rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">
-              Long-running
+              Långkörande
             </span>
           </div>
         </div>

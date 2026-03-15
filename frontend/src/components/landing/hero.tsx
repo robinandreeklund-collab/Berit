@@ -28,7 +28,7 @@ export function Hero({ className }: { className?: string }) {
         />
       </div>
       <FlickeringGrid
-        className="absolute inset-0 z-0 translate-y-8 mask-[url(/images/deer.svg)] mask-size-[100vw] mask-center mask-no-repeat md:mask-size-[72vh]"
+        className="absolute inset-0 z-0 translate-y-8 mask-[url(/images/berit.svg)] mask-size-[100vw] mask-center mask-no-repeat md:mask-size-[72vh]"
         squareSize={4}
         gridGap={4}
         color={"white"}
@@ -39,38 +39,36 @@ export function Hero({ className }: { className?: string }) {
         <h1 className="flex items-center gap-2 text-4xl font-bold md:text-6xl">
           <WordRotate
             words={[
-              "Deep Research",
-              "Collect Data",
-              "Analyze Data",
-              "Generate Webpages",
+              "Djupforskning",
+              "Samla data",
+              "Analysera data",
+              "Skapa webbsidor",
               "Vibe Coding",
-              "Generate Slides",
-              "Generate Images",
-              "Generate Podcasts",
-              "Generate Videos",
-              "Generate Songs",
-              "Organize Emails",
-              "Do Anything",
-              "Learn Anything",
+              "Skapa presentationer",
+              "Skapa bilder",
+              "Skapa poddar",
+              "Skapa videor",
+              "Organisera mejl",
+              "Göra vad som helst",
+              "Lära sig vad som helst",
             ]}
           />{" "}
-          <div>with DeerFlow</div>
+          <div>med Berit</div>
         </h1>
         <p
           className="mt-8 scale-105 text-center text-2xl text-shadow-sm"
           style={{ color: "rgb(184,184,192)" }}
         >
-          An open-source SuperAgent harness that researches, codes, and creates.
-          With
+          En AI-superagent med öppen källkod som forskar, kodar och skapar.
+          Med
           <br />
-          the help of sandboxes, memories, tools, skills and subagents, it
-          handles
+          hjälp av sandlådor, minnen, verktyg, färdigheter och underagenter
           <br />
-          different levels of tasks that could take minutes to hours.
+          hanterar hon uppgifter som tar minuter till timmar.
         </p>
         <Link href="/workspace">
           <Button className="size-lg mt-8 scale-108" size="lg">
-            <span className="text-md">Get Started with 2.0</span>
+            <span className="text-md">Kom igång</span>
             <ChevronRightIcon className="size-4" />
           </Button>
         </Link>

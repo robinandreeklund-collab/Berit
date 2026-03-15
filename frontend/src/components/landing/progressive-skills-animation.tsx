@@ -381,7 +381,7 @@ export default function ProgressiveSkillsAnimation() {
             )}
           </motion.button>
           <span className="text-lg font-medium">
-            Click to {isPlaying ? "pause" : "play"}
+            Klicka för att {isPlaying ? "pausa" : "spela"}
           </span>
         </div>
       </Tooltip>
@@ -461,7 +461,7 @@ export default function ProgressiveSkillsAnimation() {
           <div className="border-b border-zinc-800 p-4">
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-green-500" />
-              <span className="text-sm text-zinc-400">DeerFlow Agent</span>
+              <span className="text-sm text-zinc-400">Berit Agent</span>
             </div>
           </div>
 
@@ -480,7 +480,7 @@ export default function ProgressiveSkillsAnimation() {
                 >
                   <div className="max-w-[90%] rounded-2xl rounded-tr-sm bg-blue-600 px-5 py-3">
                     <p className="text-base">
-                      Research mRNA delivery, build a landing page, deploy to
+                      Undersök mRNA-leverans, bygg en landningssida, deploya till
                       Vercel
                     </p>
                   </div>
@@ -509,7 +509,7 @@ export default function ProgressiveSkillsAnimation() {
                     "done",
                   ].includes(phase) && (
                     <div className="text-base text-zinc-300">
-                      <span className="text-purple-400">✨</span> Found 3 skills
+                      <span className="text-purple-400">✨</span> Hittade 3 färdigheter
                     </div>
                   )}
 
@@ -527,7 +527,7 @@ export default function ProgressiveSkillsAnimation() {
                     <div className="mt-4">
                       <hr className="mb-3 border-zinc-700" />
                       <div className="mb-3 text-zinc-300">
-                        🔬 Researching...
+                        🔬 Forskar...
                       </div>
                       <div className="mb-3 space-y-2">
                         {/* Loading SKILL.md */}
@@ -543,7 +543,7 @@ export default function ProgressiveSkillsAnimation() {
                         ].includes(phase) && (
                           <div className="flex items-center gap-2 pl-4 text-zinc-400">
                             <FileText size={16} />
-                            <span>Loading deep-search/SKILL.md...</span>
+                            <span>Laddar deep-search/SKILL.md...</span>
                           </div>
                         )}
                         {/* Loading biotech.md */}
@@ -559,7 +559,7 @@ export default function ProgressiveSkillsAnimation() {
                           <div className="flex items-center gap-2 pl-4 text-zinc-400">
                             <FileText size={16} />
                             <span>
-                              Found biotech related topic, loading
+                              Hittade bioteknikrelaterat ämne, laddar
                               deep-search/biotech.md...
                             </span>
                           </div>
@@ -623,10 +623,10 @@ export default function ProgressiveSkillsAnimation() {
                       className="mt-4"
                     >
                       <hr className="mb-3 border-zinc-700" />
-                      <div className="mb-3 text-zinc-300">🔨 Building...</div>
+                      <div className="mb-3 text-zinc-300">🔨 Bygger...</div>
                       <div className="mb-3 flex items-center gap-2 pl-4 text-zinc-400">
                         <FileText size={16} />
-                        <span>Loading frontend-design/SKILL.md...</span>
+                        <span>Laddar frontend-design/SKILL.md...</span>
                       </div>
                       <div className="space-y-2 pl-4">
                         {workspaceFiles.slice(0, buildIndex).map((file) => (
@@ -637,7 +637,7 @@ export default function ProgressiveSkillsAnimation() {
                             className="flex items-center gap-2 text-sm text-green-500"
                           >
                             <FileText size={14} />
-                            <span>Generating {file}...</span>
+                            <span>Genererar {file}...</span>
                             <Check size={14} />
                           </motion.div>
                         ))}
@@ -653,11 +653,11 @@ export default function ProgressiveSkillsAnimation() {
                       className="mt-4"
                     >
                       <hr className="mb-3 border-zinc-700" />
-                      <div className="mb-3 text-zinc-300">🚀 Deploying...</div>
+                      <div className="mb-3 text-zinc-300">🚀 Deployar...</div>
                       <div className="mb-3 space-y-2">
                         <div className="flex items-center gap-2 pl-4 text-zinc-400">
                           <FileText size={16} />
-                          <span>Loading deploy/SKILL.md...</span>
+                          <span>Laddar deploy/SKILL.md...</span>
                         </div>
                         {["deploying", "done"].includes(phase) && (
                           <motion.div
@@ -666,7 +666,7 @@ export default function ProgressiveSkillsAnimation() {
                             className="flex items-center gap-2 pl-4 text-zinc-400"
                           >
                             <Terminal size={16} />
-                            <span>Executing scripts/deploy.sh</span>
+                            <span>Kör scripts/deploy.sh</span>
                           </motion.div>
                         )}
                       </div>
@@ -691,7 +691,7 @@ export default function ProgressiveSkillsAnimation() {
           {/* Chat Input (decorative) */}
           <div className="border-t border-zinc-800 p-4">
             <div className="rounded-xl bg-zinc-800 px-4 py-3 text-sm text-zinc-500">
-              Ask DeerFlow anything...
+              Fråga Berit vad som helst...
             </div>
           </div>
         </div>

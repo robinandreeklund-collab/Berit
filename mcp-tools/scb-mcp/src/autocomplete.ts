@@ -62,6 +62,78 @@ export function autoCompleteSelection(
     const codes = Object.keys(dimDef.category.index);
     const labels = dimDef.category.label || {};
     const ext = dimDef.extension;
+    const dimLower = dimCode.toLowerCase();
+    const labelLower = dimDef.label.toLowerCase();
+
+    // Strategy 0: Smart defaults for age and gender — prefer "total" aggregates
+    // SCB often sets eliminationValueCode to "0" for age, which means "0 years old",
+    // not "total". We must prefer "tot" or similar aggregate codes.
+    const isAgeVariable = dimLower === 'alder' || dimLower === 'ålder' || dimLower === 'age'
+      || labelLower.includes('ålder') || labelLower.includes('alder') || labelLower.includes('age');
+    const isGenderVariable = dimLower === 'kon' || dimLower === 'kön' || dimLower === 'gender' || dimLower === 'sex'
+      || labelLower.includes('kön') || labelLower.includes('kon');
+
+    if (isAgeVariable) {
+      // Prefer total/aggregate codes for age: "tot", "totalt", "total", etc.
+      const totalCodes = ['tot', 'totalt', 'total', 'TOT'];
+      const found = totalCodes.find(tc => codes.includes(tc));
+      if (found) {
+        completed[dimCode] = [found];
+        addedVariables.push({
+          code: dimCode,
+          label: dimDef.label,
+          values: [found],
+          reason: `totalvärde för ålder: "${labels[found] || found}"`,
+        });
+        continue;
+      }
+      // If no "tot" exists, look for a label containing "totalt" or "samtliga"
+      const totalByLabel = codes.find(c => {
+        const lbl = (labels[c] || '').toLowerCase();
+        return lbl.includes('totalt') || lbl.includes('samtliga') || lbl === 'total';
+      });
+      if (totalByLabel) {
+        completed[dimCode] = [totalByLabel];
+        addedVariables.push({
+          code: dimCode,
+          label: dimDef.label,
+          values: [totalByLabel],
+          reason: `totalvärde för ålder: "${labels[totalByLabel] || totalByLabel}"`,
+        });
+        continue;
+      }
+    }
+
+    if (isGenderVariable) {
+      // Prefer total/aggregate codes for gender: "1+2", "tot", "totalt"
+      const totalCodes = ['1+2', 'tot', 'totalt', 'T'];
+      const found = totalCodes.find(tc => codes.includes(tc));
+      if (found) {
+        completed[dimCode] = [found];
+        addedVariables.push({
+          code: dimCode,
+          label: dimDef.label,
+          values: [found],
+          reason: `totalvärde för kön: "${labels[found] || found}"`,
+        });
+        continue;
+      }
+      // If no total code, look for a label containing "totalt" or "samtliga"
+      const totalByLabel = codes.find(c => {
+        const lbl = (labels[c] || '').toLowerCase();
+        return lbl.includes('totalt') || lbl.includes('samtliga') || lbl === 'total';
+      });
+      if (totalByLabel) {
+        completed[dimCode] = [totalByLabel];
+        addedVariables.push({
+          code: dimCode,
+          label: dimDef.label,
+          values: [totalByLabel],
+          reason: `totalvärde för kön: "${labels[totalByLabel] || totalByLabel}"`,
+        });
+        continue;
+      }
+    }
 
     // Strategy 1: Use eliminationValueCode if elimination is allowed
     if (ext?.elimination && ext?.eliminationValueCode) {

@@ -10,6 +10,35 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["suggestions"])
 
+# Editable prompt template for follow-up suggestions.
+# {n} = number of suggestions, {conversation} = formatted conversation.
+SUGGESTIONS_PROMPT_TEMPLATE = (
+    "Du genererar uppföljningsförslag som ANVÄNDAREN kan skicka som nästa meddelande.\n"
+    "Baserat på konversationen nedan, producera EXAKT {n} korta uppföljningsförslag.\n\n"
+    "KRITISKA REGLER FÖR FORMAT:\n"
+    "- Skriv som om ANVÄNDAREN säger det — INTE som om AI:n erbjuder hjälp.\n"
+    "- ALDRIG skriv \"Hur kan jag hjälpa dig med...\" eller \"Vill du att jag...\"\n"
+    "- Skriv istället direkta förfrågningar/kommandon som användaren skulle skriva.\n"
+    "- Förslagen ska vara naturliga uppföljningar som bygger vidare på svaret.\n\n"
+    "EXEMPEL PÅ BRA FORMAT:\n"
+    "- \"Visa även elpris för Zon 3 och Zon 2\"\n"
+    "- \"Jämför med förra veckans priser\"\n"
+    "- \"Hur ser befolkningstrenden ut de senaste 10 åren?\"\n"
+    "- \"Kolla trafikstörningar i Malmö också\"\n"
+    "- \"Kan du göra en tabell med alla kommuner?\"\n\n"
+    "EXEMPEL PÅ FEL FORMAT (FÖRBJUDET):\n"
+    "- \"Hur kan jag hjälpa dig med väderprognosen?\"\n"
+    "- \"Vill du veta mer om befolkningsstatistik?\"\n"
+    "- \"Ska jag söka efter fler uppgifter?\"\n\n"
+    "Övriga krav:\n"
+    "- MÅSTE vara på svenska.\n"
+    "- Max 15 ord per förslag.\n"
+    "- Ingen numrering, markdown eller extra text.\n"
+    "- Output MÅSTE vara en JSON-array med strängar.\n\n"
+    "Konversation:\n"
+    "{conversation}\n"
+)
+
 
 class SuggestionMessage(BaseModel):
     role: str = Field(..., description="Message role: user|assistant")
@@ -88,18 +117,7 @@ async def generate_suggestions(thread_id: str, request: SuggestionsRequest) -> S
     if not conversation:
         return SuggestionsResponse(suggestions=[])
 
-    prompt = (
-        "You generate follow-up questions to help the user continue the conversation.\n"
-        f"Based on the conversation below, produce EXACTLY {n} short questions the user might ask next.\n"
-        "Requirements:\n"
-        "- The questions MUST be in Swedish.\n"
-        "- The questions must be relevant to the conversation.\n"
-        "- Keep each question concise (preferably <= 20 words).\n"
-        "- Do NOT include numbering, markdown, or extra text.\n"
-        "- Output MUST be a JSON array of strings only.\n\n"
-        "Conversation:\n"
-        f"{conversation}\n"
-    )
+    prompt = SUGGESTIONS_PROMPT_TEMPLATE.format(n=n, conversation=conversation)
 
     try:
         model = create_chat_model(name=request.model_name, thinking_enabled=False)

@@ -49,11 +49,11 @@ export const svSE: Translations = {
   welcome: {
     greeting: "Hej, välkommen tillbaka!",
     description:
-      "Välkommen till 🦌 DeerFlow, en öppen superagent. Med inbyggda och anpassade färdigheter kan DeerFlow hjälpa dig att söka på webben, analysera data och skapa artefakter som presentationer, webbsidor och nästan vad som helst.",
+      "Välkommen till Berit, en öppen superagent. Med inbyggda och anpassade färdigheter kan Berit hjälpa dig att söka på webben, analysera data och skapa artefakter som presentationer, webbsidor och nästan vad som helst.",
 
     createYourOwnSkill: "Skapa din egen färdighet",
     createYourOwnSkillDescription:
-      "Skapa din egen färdighet för att frigöra DeerFlows fulla potential. Med anpassade färdigheter\nkan DeerFlow hjälpa dig att söka på webben, analysera data och skapa\nartefakter som presentationer, webbsidor och nästan vad som helst.",
+      "Skapa din egen färdighet för att frigöra Berits fulla potential. Med anpassade färdigheter\nkan Berit hjälpa dig att söka på webben, analysera data och skapa\nartefakter som presentationer, webbsidor och nästan vad som helst.",
   },
 
   // Clipboard
@@ -205,13 +205,13 @@ export const svSE: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "DeerFlows officiella webbplats",
-    githubTooltip: "DeerFlow på Github",
+    officialWebsite: "Berits officiella webbplats",
+    githubTooltip: "Berit på Github",
     settingsAndMore: "Inställningar och mer",
-    visitGithub: "DeerFlow på GitHub",
+    visitGithub: "Berit på GitHub",
     reportIssue: "Rapportera ett problem",
     contactUs: "Kontakta oss",
-    about: "Om DeerFlow",
+    about: "Om Berit",
   },
 
   // Conversation
@@ -227,7 +227,7 @@ export const svSE: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "Berit",
     chats: "Chattar",
     newChat: "Ny chatt",
     untitled: "Namnlös",
@@ -254,7 +254,7 @@ export const svSE: Translations = {
     clickToViewContent: "Klicka för att visa filinnehåll",
     writeTodos: "Uppdatera att-göra-lista",
     skillInstallTooltip:
-      "Installera färdighet och gör den tillgänglig i DeerFlow",
+      "Installera färdighet och gör den tillgänglig i Berit",
   },
 
   // Uploads
@@ -276,19 +276,20 @@ export const svSE: Translations = {
   // Settings
   settings: {
     title: "Inställningar",
-    description: "Anpassa hur DeerFlow ser ut och beter sig för dig.",
+    description: "Anpassa hur Berit ser ut och beter sig för dig.",
     sections: {
       appearance: "Utseende",
       memory: "Minne",
       tools: "Verktyg",
       skills: "Färdigheter",
+      prompts: "Promptar",
       notification: "Aviseringar",
       about: "Om",
     },
     memory: {
       title: "Minne",
       description:
-        "DeerFlow lär sig automatiskt från dina konversationer i bakgrunden. Dessa minnen hjälper DeerFlow att förstå dig bättre och leverera en mer personlig upplevelse.",
+        "Berit lär sig automatiskt från dina konversationer i bakgrunden. Dessa minnen hjälper Berit att förstå dig bättre och leverera en mer personlig upplevelse.",
       empty: "Ingen minnesdata att visa.",
       rawJson: "Rå JSON",
       markdown: {
@@ -346,18 +347,28 @@ export const svSE: Translations = {
       createSkill: "Skapa färdighet",
       emptyTitle: "Inga agentfärdigheter ännu",
       emptyDescription:
-        "Lägg dina agentfärdighetsmappar under mappen `/skills/custom` i DeerFlows rotmapp.",
+        "Lägg dina agentfärdighetsmappar under mappen `/skills/custom` i Berits rotmapp.",
       emptyButton: "Skapa din första färdighet",
+    },
+    prompts: {
+      title: "Promptar",
+      description:
+        "Visa och redigera alla promptmallar som används i agentflödet. Ändringar gäller direkt men återställs vid omstart.",
+      loadError: "Kunde inte ladda promptar.",
+      reset: "Återställ",
+      saved: "Sparat!",
+      runtimeNote:
+        "Ändringar sparas i minnet och gäller direkt. De återställs vid omstart av servern.",
     },
     notification: {
       title: "Aviseringar",
       description:
-        "DeerFlow skickar bara en avisering när fönstret inte är aktivt. Detta är särskilt användbart för långvariga uppgifter så att du kan byta till annat arbete och bli meddelad när det är klart.",
+        "Berit skickar bara en avisering när fönstret inte är aktivt. Detta är särskilt användbart för långvariga uppgifter så att du kan byta till annat arbete och bli meddelad när det är klart.",
       requestPermission: "Begär aviseringsbehörighet",
       deniedHint:
         "Aviseringsbehörighet nekades. Du kan aktivera den i webbläsarens webbplatsinställningar för att ta emot aviseringar.",
       testButton: "Skicka testavisering",
-      testTitle: "DeerFlow",
+      testTitle: "Berit",
       testBody: "Detta är en testavisering.",
       notSupported: "Din webbläsare stöder inte aviseringar.",
       disableNotification: "Inaktivera aviseringar",

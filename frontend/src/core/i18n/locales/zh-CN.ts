@@ -266,6 +266,7 @@ export const zhCN: Translations = {
       memory: "记忆",
       tools: "工具",
       skills: "技能",
+      prompts: "提示词",
       notification: "通知",
       about: "关于",
     },
@@ -328,6 +329,14 @@ export const zhCN: Translations = {
       emptyDescription:
         "将你的 Agent Skill 文件夹放在 DeerFlow 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
+    },
+    prompts: {
+      title: "提示词",
+      description: "查看和编辑代理流程中使用的所有提示词模板。更改立即生效，但服务器重启后会重置。",
+      loadError: "加载提示词失败。",
+      reset: "重置",
+      saved: "已保存！",
+      runtimeNote: "更改存储在内存中并立即生效。服务器重启时会重置。",
     },
     notification: {
       title: "通知",

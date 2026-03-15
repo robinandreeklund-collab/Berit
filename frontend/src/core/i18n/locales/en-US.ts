@@ -279,6 +279,7 @@ export const enUS: Translations = {
       memory: "Memory",
       tools: "Tools",
       skills: "Skills",
+      prompts: "Prompts",
       notification: "Notification",
       about: "About",
     },
@@ -343,6 +344,16 @@ export const enUS: Translations = {
       emptyDescription:
         "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
       emptyButton: "Create Your First Skill",
+    },
+    prompts: {
+      title: "Prompts",
+      description:
+        "View and edit all prompt templates used in the agent flow. Changes apply immediately but reset on server restart.",
+      loadError: "Failed to load prompts.",
+      reset: "Reset",
+      saved: "Saved!",
+      runtimeNote:
+        "Changes are stored in memory and apply immediately. They reset when the server restarts.",
     },
     notification: {
       title: "Notification",

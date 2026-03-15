@@ -4,6 +4,7 @@ import {
   BellIcon,
   InfoIcon,
   BrainIcon,
+  MessageSquareTextIcon,
   PaletteIcon,
   SparklesIcon,
   WrenchIcon,
@@ -21,6 +22,7 @@ import { AboutSettingsPage } from "@/components/workspace/settings/about-setting
 import { AppearanceSettingsPage } from "@/components/workspace/settings/appearance-settings-page";
 import { MemorySettingsPage } from "@/components/workspace/settings/memory-settings-page";
 import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
+import { PromptSettingsPage } from "@/components/workspace/settings/prompt-settings-page";
 import { SkillSettingsPage } from "@/components/workspace/settings/skill-settings-page";
 import { ToolSettingsPage } from "@/components/workspace/settings/tool-settings-page";
 import { useI18n } from "@/core/i18n/hooks";
@@ -31,6 +33,7 @@ type SettingsSection =
   | "memory"
   | "tools"
   | "skills"
+  | "prompts"
   | "notification"
   | "about";
 
@@ -71,6 +74,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
       },
       { id: "tools", label: t.settings.sections.tools, icon: WrenchIcon },
       { id: "skills", label: t.settings.sections.skills, icon: SparklesIcon },
+      {
+        id: "prompts",
+        label: t.settings.sections.prompts,
+        icon: MessageSquareTextIcon,
+      },
       { id: "about", label: t.settings.sections.about, icon: InfoIcon },
     ],
     [
@@ -78,6 +86,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       t.settings.sections.memory,
       t.settings.sections.tools,
       t.settings.sections.skills,
+      t.settings.sections.prompts,
       t.settings.sections.notification,
       t.settings.sections.about,
     ],
@@ -132,6 +141,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                   onClose={() => props.onOpenChange?.(false)}
                 />
               )}
+              {activeSection === "prompts" && <PromptSettingsPage />}
               {activeSection === "notification" && <NotificationSettingsPage />}
               {activeSection === "about" && <AboutSettingsPage />}
             </div>

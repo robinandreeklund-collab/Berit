@@ -1,7 +1,7 @@
 """Memory update queue with debounce mechanism."""
 
 import threading
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -105,24 +105,30 @@ class MemoryUpdateQueue:
         try:
             updater = MemoryUpdater()
 
-            for context in contexts_to_process:
+            def _update_one(ctx: ConversationContext) -> tuple[str, bool]:
+                """Process a single memory update. Returns (thread_id, success)."""
                 try:
-                    print(f"Updating memory for thread {context.thread_id}")
+                    print(f"Updating memory for thread {ctx.thread_id}")
                     success = updater.update_memory(
-                        messages=context.messages,
-                        thread_id=context.thread_id,
-                        agent_name=context.agent_name,
+                        messages=ctx.messages,
+                        thread_id=ctx.thread_id,
+                        agent_name=ctx.agent_name,
                     )
-                    if success:
-                        print(f"Memory updated successfully for thread {context.thread_id}")
-                    else:
-                        print(f"Memory update skipped/failed for thread {context.thread_id}")
+                    return ctx.thread_id, success
                 except Exception as e:
-                    print(f"Error updating memory for thread {context.thread_id}: {e}")
+                    print(f"Error updating memory for thread {ctx.thread_id}: {e}")
+                    return ctx.thread_id, False
 
-                # Small delay between updates to avoid rate limiting
-                if len(contexts_to_process) > 1:
-                    time.sleep(0.5)
+            # Process memory updates concurrently (up to 3 at a time)
+            max_workers = min(len(contexts_to_process), 3)
+            with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="memory-update-") as pool:
+                futures = {pool.submit(_update_one, ctx): ctx for ctx in contexts_to_process}
+                for future in as_completed(futures):
+                    thread_id, success = future.result()
+                    if success:
+                        print(f"Memory updated successfully for thread {thread_id}")
+                    else:
+                        print(f"Memory update skipped/failed for thread {thread_id}")
 
         finally:
             with self._lock:

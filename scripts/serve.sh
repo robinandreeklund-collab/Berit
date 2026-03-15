@@ -437,22 +437,29 @@ else
     GATEWAY_EXTRA_FLAGS=""
 fi
 
-echo "Starting Lightpanda headless browser..."
+# Only start local Lightpanda browser if MCP is NOT using a remote instance.
+# When LIGHTPANDA_MCP_URL points to Render (or another remote), the remote
+# instance has its own built-in Lightpanda browser — no local one needed.
 LIGHTPANDA_PORT="${LIGHTPANDA_PORT:-9222}"
-if command -v docker >/dev/null 2>&1; then
-    docker run -d --name deer-flow-lightpanda -p "${LIGHTPANDA_PORT}:9222" \
-        --restart unless-stopped lightpanda/browser:nightly > /dev/null 2>&1
-    ./scripts/wait-for-port.sh "$LIGHTPANDA_PORT" 15 "Lightpanda" || {
-        echo "  ⚠ Lightpanda failed to start. Web fetch/search will not work."
-        echo "  Continuing without Lightpanda..."
-    }
-    echo "✓ Lightpanda started on localhost:${LIGHTPANDA_PORT}"
+if [ -n "${LIGHTPANDA_MCP_URL:-}" ] && ! echo "${LIGHTPANDA_MCP_URL}" | grep -q "localhost"; then
+    echo "✓ Lightpanda browser skipped — remote MCP instance has its own browser"
 else
-    echo "  ⚠ Docker not found — skipping Lightpanda."
-    echo "  Web fetch/search requires Lightpanda. Install Docker or run Lightpanda manually."
+    echo "Starting Lightpanda headless browser..."
+    if command -v docker >/dev/null 2>&1; then
+        docker run -d --name deer-flow-lightpanda -p "${LIGHTPANDA_PORT}:9222" \
+            --restart unless-stopped lightpanda/browser:nightly > /dev/null 2>&1
+        ./scripts/wait-for-port.sh "$LIGHTPANDA_PORT" 15 "Lightpanda" || {
+            echo "  ⚠ Lightpanda failed to start. Web fetch/search will not work."
+            echo "  Continuing without Lightpanda..."
+        }
+        echo "✓ Lightpanda started on localhost:${LIGHTPANDA_PORT}"
+    else
+        echo "  ⚠ Docker not found — skipping Lightpanda."
+        echo "  Web fetch/search requires Lightpanda. Install Docker or run Lightpanda manually."
+    fi
+    export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
+    export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 fi
-export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
-export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # SCB MCP Server — Swedish official statistics
 SCB_MCP_PORT="${SCB_MCP_PORT:-3100}"
@@ -1742,7 +1749,7 @@ echo "Starting LangGraph server..."
 echo "✓ LangGraph server started on localhost:2024"
 
 echo "Starting Gateway API..."
-(cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1) &
+(cd backend && uv run uvicorn src.gateway.app:app --host 0.0.0.0 --port 8001 --workers 4 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1) &
 ./scripts/wait-for-port.sh 8001 30 "Gateway API" || {
     echo "✗ Gateway API failed to start. Last log output:"
     tail -60 logs/gateway.log

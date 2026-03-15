@@ -9,6 +9,7 @@ from src.agents.middlewares.clarification_middleware import ClarificationMiddlew
 from src.agents.middlewares.memory_middleware import MemoryMiddleware
 from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
+from src.agents.middlewares.tool_call_loop_middleware import ToolCallLoopMiddleware
 from src.agents.middlewares.todo_middleware import TodoMiddleware
 from src.agents.middlewares.tool_error_handling_middleware import build_lead_runtime_middlewares
 from src.agents.middlewares.view_image_middleware import ViewImageMiddleware
@@ -245,6 +246,9 @@ def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_nam
         max_concurrent_subagents = config.get("configurable", {}).get("max_concurrent_subagents", 3)
         middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
 
+    # ToolCallLoopMiddleware prevents LLMs from endlessly repeating the same tool call
+    middlewares.append(ToolCallLoopMiddleware())
+
     # ClarificationMiddleware should always be last
     middlewares.append(ClarificationMiddleware())
     return middlewares
@@ -320,10 +324,12 @@ def make_lead_agent(config: RunnableConfig):
             state_schema=ThreadState,
         )
 
-    # Default lead agent (unchanged behavior)
+    # Default lead agent — include setup_agent tool so bootstrap skill works in normal mode
+    base_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled)
+    base_tools = base_tools + [setup_agent]
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort),
-        tools=get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled),
+        tools=base_tools,
         middleware=_build_middlewares(config, model_name=model_name, agent_name=agent_name),
         system_prompt=apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents, agent_name=agent_name),
         state_schema=ThreadState,
