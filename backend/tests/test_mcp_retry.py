@@ -1,9 +1,10 @@
-"""Tests for MCP tool loading retry logic."""
+"""Tests for MCP tool loading retry logic and parallel initialization."""
 
 import asyncio
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.mcp.tools import _is_http_transport, _load_tools_from_server
+from src.mcp.tools import _is_http_transport, _load_tools_from_server, get_mcp_tools
 
 
 def test_is_http_transport_http():
@@ -122,3 +123,46 @@ def test_first_attempt_success_no_retry():
 
     assert len(tools) == 1
     mock_sleep.assert_not_called()
+
+
+def test_parallel_loading():
+    """Multiple MCP servers should be loaded concurrently, not sequentially.
+
+    Each mock server takes 0.5s to respond. With 3 servers loaded in parallel,
+    total time should be ~0.5s, not ~1.5s.
+    """
+    async def _slow_get_tools():
+        await asyncio.sleep(0.5)
+        tool = MagicMock()
+        tool.name = f"tool_{id(tool)}"
+        return [tool]
+
+    def make_slow_client(*args, **kwargs):
+        client = MagicMock()
+        client.get_tools = _slow_get_tools
+        return client
+
+    servers_config = {
+        "server_a": {"transport": "http", "url": "http://a:3000/mcp"},
+        "server_b": {"transport": "http", "url": "http://b:3000/mcp"},
+        "server_c": {"transport": "http", "url": "http://c:3000/mcp"},
+    }
+
+    mock_extensions = MagicMock()
+    mock_extensions.mcp_servers = {
+        name: MagicMock(enabled=True, type="http", url=cfg["url"])
+        for name, cfg in servers_config.items()
+    }
+
+    with patch("langchain_mcp_adapters.client.MultiServerMCPClient", side_effect=make_slow_client), \
+         patch("src.mcp.tools.ExtensionsConfig.from_file", return_value=mock_extensions), \
+         patch("src.mcp.tools.build_servers_config", return_value=servers_config), \
+         patch("src.mcp.tools.get_initial_oauth_headers", new_callable=AsyncMock, return_value={}), \
+         patch("src.mcp.tools.build_oauth_tool_interceptor", return_value=None):
+        start = time.monotonic()
+        tools = asyncio.run(get_mcp_tools())
+        elapsed = time.monotonic() - start
+
+    assert len(tools) == 3
+    # Parallel: ~0.5s. Sequential would be ~1.5s. Allow generous margin.
+    assert elapsed < 1.0, f"Parallel loading took {elapsed:.2f}s — expected < 1.0s (are servers loading sequentially?)"

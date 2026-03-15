@@ -58,11 +58,14 @@ async def get_mcp_tools() -> list[BaseTool]:
         if oauth_interceptor is not None:
             tool_interceptors.append(oauth_interceptor)
 
-        # Load each server independently so one failure doesn't kill all others
-        all_tools: list[BaseTool] = []
-        for server_name, server_config in servers_config.items():
-            tools = await _load_tools_from_server(server_name, {server_name: server_config}, tool_interceptors)
-            all_tools.extend(tools)
+        # Load all servers concurrently so one slow server doesn't block the rest
+        results = await asyncio.gather(
+            *[
+                _load_tools_from_server(server_name, {server_name: server_config}, tool_interceptors)
+                for server_name, server_config in servers_config.items()
+            ]
+        )
+        all_tools: list[BaseTool] = [tool for tools in results for tool in tools]
 
         tool_names = [t.name for t in all_tools]
         logger.info(f"Successfully loaded {len(all_tools)} total MCP tool(s): {tool_names}")
