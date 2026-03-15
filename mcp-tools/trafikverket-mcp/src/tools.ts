@@ -42,7 +42,6 @@ export interface ToolDefinition {
   filterField: string;
   filterType: 'location' | 'station' | 'weather' | 'camera' | 'camera_id' | 'county';
   include?: string[];
-  orderBy?: string;
   inputSchema: Record<string, unknown>;
 }
 
@@ -185,9 +184,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
@@ -211,9 +209,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
@@ -261,9 +258,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
@@ -667,9 +663,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'prognos',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {

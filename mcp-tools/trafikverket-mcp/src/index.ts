@@ -19,6 +19,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { TOOL_DEFINITIONS, getToolById, type ToolDefinition } from './tools.js';
 import { getApiClient, type FilterClause, type QueryOptions } from './api-client.js';
+import { SWEDISH_COUNTIES } from './types.js';
 import { formatResponse } from './formatter.js';
 import { LLM_INSTRUCTIONS } from './instructions.js';
 import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
@@ -93,8 +94,17 @@ function buildFilter(
       return null;
 
     case 'weather':
+      // WeatherMeasurepoint does not support CountyNo as a query filter.
+      // For county searches, search by county name in the station Name field instead.
       if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
-      if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
+      if (lan) {
+        const countyName = SWEDISH_COUNTIES[lan];
+        if (countyName) {
+          // Extract short name (e.g. "Stockholms län" → "Stockholm")
+          const shortName = countyName.replace(/s?\s+län$/, '');
+          return { operator: 'LIKE', name: tool.filterField, value: likePattern(shortName) };
+        }
+      }
       return null;
 
     case 'camera':
@@ -181,7 +191,6 @@ export class TrafikverketMCPServer {
         namespace: tool.namespace,
         limit,
         filter,
-        orderBy: tool.orderBy,
       };
 
       const client = getApiClient();

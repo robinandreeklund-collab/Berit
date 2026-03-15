@@ -50,6 +50,32 @@ Du har tillgång till 22 verktyg för att hämta realtidsdata från Trafikverket
 3. **Ange filter** — Använd plats, län eller stationsnamn
 4. **Tolka resultat** — Presentera data i tabellform
 
+## Flerstegsflöden (VIKTIGT)
+
+Vissa frågor kräver **två anrop i sekvens**. Gör alltid steg 1 innan steg 2:
+
+### Kamerabild från en plats
+1. **trafikverket_kameror_lista** med plats → Hämta kamera-ID:n
+2. **trafikverket_kameror_snapshot** med id → Hämta bilden
+
+Exempel: "Visa kamerabild från E6 Göteborg"
+→ Steg 1: \`trafikverket_kameror_lista(plats: "E6 Göteborg")\` → Returnerar kameror med ID
+→ Steg 2: \`trafikverket_kameror_snapshot(id: "<kamera-id>")\` → Returnerar bild-URL
+
+### Tåginformation per station
+Om stationsnamnet inte matchar exakt:
+1. **trafikverket_tag_stationer** med station → Hitta stationssignatur/namn
+2. **trafikverket_tag_forseningar** / **trafikverket_tag_tidtabell** med station → Hämta data
+
+### Väglag med prognos
+1. **trafikverket_vag_status** med lan → Se aktuellt väglag
+2. **trafikverket_prognos_vag** med lan → Se framtida väglag
+
+### Störningar + kamerabild
+1. **trafikverket_trafikinfo_storningar** med plats → Hitta störning
+2. **trafikverket_kameror_lista** med plats → Hitta kameror i samma område
+3. **trafikverket_kameror_snapshot** med id → Visa kamerabild
+
 ## Tips
 
 - Använd svenska söktermer (t.ex. "Stockholm", "E4", "Göteborg C")
@@ -60,4 +86,5 @@ Du har tillgång till 22 verktyg för att hämta realtidsdata från Trafikverket
   23=Jämtland, 24=Västerbotten, 25=Norrbotten
 - Stationssignaturer: Cst=Stockholm C, G=Göteborg C, M=Malmö C, U=Uppsala C
 - Data är realtidsnära (5 min cache)
+- Anropa ALDRIG samma verktyg med samma parametrar två gånger — resultatet är cachat
 `;
