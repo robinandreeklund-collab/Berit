@@ -17,14 +17,16 @@ description: Använd denna färdighet när användaren frågar om kommunstatisti
 ### Nyckeltal
 | KPI-ID | Beskrivning |
 |--------|-------------|
-| N00945 | Invånare totalt |
-| N00941 | Befolkningsökning/-minskning |
-| N01951 | Nettokostnadsavvikelse, kr/inv |
-| U09400 | Elever åk 9 som uppnått kunskapskrav i alla ämnen |
-| N07900 | Resultat av medborgarundersökning |
-| N15033 | Kostnad per elev i grundskola |
-| N28040 | Andel nöjda brukare i hemtjänst |
-| N20049 | Skattesats, kommun |
+| N01951 | Invånare totalt, antal |
+| N01963 | Befolkningsförändring sedan föregående år (%) |
+| N01920 | Invånare 0-18 år, antal |
+| N00980 | Äldre äldre av invånare 65+, andel (%) |
+| N02267 | Sysselsättningsgrad 20-64 år, andel (%) |
+| N02280 | Arbetslöshet 20-64 år, andel (%) |
+| N00901 | Skattesats till kommun (%) |
+| N15006 | Kostnad grundskola åk 1-9, kr/elev |
+| N15504 | Meritvärde åk 9, genomsnitt (17 ämnen) |
+| N20891 | Invånare 65+ i särskilt boende/hemtjänst, andel (%) |
 
 ### Kommuner
 | ID | Kommun | | ID | Kommun |
@@ -57,13 +59,17 @@ Ange källa: "Källa: Kolada (kolada.se)"
 
 ## Exempel
 
-**Fråga:** "Visa nettokostnadsavvikelsen per invånare för Örebro 2020–2024"
-**Svar:** Örebro = 1880, Nettokostnadsavvikelse = N01951 (kända ID:n!)
+**Fråga:** "Hur många bor i Örebro?"
+**Svar:** Örebro = 1880, Invånare totalt = N01951 (kända ID:n!)
 → 1 anrop: `kolada_data_kommun(kpi_id="N01951", kommun_id="1880", from_year=2020, to_year=2024)`
 
 **Fråga:** "Jämför skolresultat mellan Malmö och Lund"
-**Svar:** Malmö = 1280, Lund = 1281, Skolresultat = U09400 (kända ID:n!)
-→ 1 anrop: `kolada_jamfor_kommuner(kpi_id="U09400", kommun_ids="1280,1281")`
+**Svar:** Malmö = 1280, Lund = 1281, Meritvärde = N15504 (kända ID:n!)
+→ 1 anrop: `kolada_jamfor_kommuner(kpi_id="N15504", kommun_ids="1280,1281")`
+
+**Fråga:** "Hur är arbetsmarknaden i Göteborg?"
+**Svar:** Göteborg = 1480, Sysselsättningsgrad = N02267 (kända ID:n!)
+→ 1 anrop: `kolada_data_kommun(kpi_id="N02267", kommun_id="1480", from_year=2020, to_year=2024)`
 
 ## Alla verktyg
 
