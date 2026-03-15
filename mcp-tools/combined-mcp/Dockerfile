@@ -1,10 +1,21 @@
-# Combined MCP Server — SCB + Skolverket + Trafikverket + Riksbank + SMHI + Lightpanda + Elpris + Bolagsverket + Riksdag + NVV + Kolada on one instance
-# SCB:            / (backwards compatible)
-# Skolverket:     /skolverket/
-# Trafikverket:   /trafikverket/
-# Riksbank:       /riksbank/
-# Elpris:         /elpris/
-# Bolagsverket:   /bolagsverket/
+# Combined MCP Server — 18 MCP servers on one Render instance
+# SCB:              / (backwards compatible)
+# Skolverket:       /skolverket/
+# Trafikverket:     /trafikverket/
+# Riksbank:         /riksbank/
+# SMHI:             /smhi/
+# Lightpanda:       /lightpanda/
+# Elpris:           /elpris/
+# Bolagsverket:     /bolagsverket/
+# Google Maps:      /google-maps/
+# Blocket/Tradera:  /blocket-tradera/
+# Riksdag:          /riksdag/
+# NVV:              /nvv/
+# Kolada:           /kolada/
+# KB:               /kb/
+# Upphandlingsdata: /upphandlingsdata/
+# OECD:             /oecd/
+# Trafikanalys:     /trafikanalys/
 
 # ============ Stage 1: Build SCB ============
 FROM node:22-alpine AS build-scb
@@ -97,7 +108,35 @@ COPY kolada-mcp/package.json kolada-mcp/package-lock.json kolada-mcp/tsconfig.js
 COPY kolada-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 14: Production ============
+# ============ Stage 14: Build KB ============
+FROM node:22-alpine AS build-kb
+WORKDIR /app
+COPY kb-mcp/package.json kb-mcp/package-lock.json kb-mcp/tsconfig.json ./
+COPY kb-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 15: Build Upphandlingsdata ============
+FROM node:22-alpine AS build-upphandlingsdata
+WORKDIR /app
+COPY upphandlingsdata-mcp/package.json upphandlingsdata-mcp/package-lock.json upphandlingsdata-mcp/tsconfig.json ./
+COPY upphandlingsdata-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 16: Build OECD ============
+FROM node:22-alpine AS build-oecd
+WORKDIR /app
+COPY oecd-mcp/package.json oecd-mcp/package-lock.json oecd-mcp/tsconfig.json ./
+COPY oecd-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 17: Build Trafikanalys ============
+FROM node:22-alpine AS build-trafikanalys
+WORKDIR /app
+COPY trafikanalys-mcp/package.json trafikanalys-mcp/package-lock.json trafikanalys-mcp/tsconfig.json ./
+COPY trafikanalys-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 18: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -173,6 +212,26 @@ COPY --from=build-nvv /app/dist /app/nvv/dist
 COPY kolada-mcp/package.json kolada-mcp/package-lock.json /app/kolada/
 RUN cd /app/kolada && npm ci --omit=dev --ignore-scripts
 COPY --from=build-kolada /app/dist /app/kolada/dist
+
+# KB production install
+COPY kb-mcp/package.json kb-mcp/package-lock.json /app/kb/
+RUN cd /app/kb && npm ci --omit=dev --ignore-scripts
+COPY --from=build-kb /app/dist /app/kb/dist
+
+# Upphandlingsdata production install
+COPY upphandlingsdata-mcp/package.json upphandlingsdata-mcp/package-lock.json /app/upphandlingsdata/
+RUN cd /app/upphandlingsdata && npm ci --omit=dev --ignore-scripts
+COPY --from=build-upphandlingsdata /app/dist /app/upphandlingsdata/dist
+
+# OECD production install
+COPY oecd-mcp/package.json oecd-mcp/package-lock.json /app/oecd/
+RUN cd /app/oecd && npm ci --omit=dev --ignore-scripts
+COPY --from=build-oecd /app/dist /app/oecd/dist
+
+# Trafikanalys production install
+COPY trafikanalys-mcp/package.json trafikanalys-mcp/package-lock.json /app/trafikanalys/
+RUN cd /app/trafikanalys && npm ci --omit=dev --ignore-scripts
+COPY --from=build-trafikanalys /app/dist /app/trafikanalys/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template

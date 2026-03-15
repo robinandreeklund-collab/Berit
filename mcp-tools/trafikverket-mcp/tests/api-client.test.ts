@@ -58,14 +58,14 @@ describe('buildQueryXml', () => {
       filter: {
         operator: 'LIKE',
         name: 'Deviation.LocationDescriptor',
-        value: '*Stockholm*',
+        value: '.*Stockholm.*',
       },
     });
 
     expect(xml).toContain('<FILTER>');
     expect(xml).toContain('<LIKE');
     expect(xml).toContain('name="Deviation.LocationDescriptor"');
-    expect(xml).toContain('value="*Stockholm*"');
+    expect(xml).toContain('value=".*Stockholm.*"');
     expect(xml).toContain('</FILTER>');
   });
 
@@ -88,15 +88,13 @@ describe('buildQueryXml', () => {
     expect(xml).toContain('<INCLUDE>LocationSignature</INCLUDE>');
   });
 
-  it('includes ORDER BY when provided', () => {
+  it('does not include SORTING (not supported by Trafikverket API v2)', () => {
     const xml = buildQueryXml('key', {
       objecttype: 'TrainAnnouncement',
-      orderBy: 'AdvertisedTimeAtLocation',
     });
 
-    expect(xml).toContain('<SORTING>');
-    expect(xml).toContain('name="AdvertisedTimeAtLocation"');
-    expect(xml).toContain('type="DESC"');
+    expect(xml).not.toContain('<SORTING>');
+    expect(xml).not.toContain('<ORDER');
   });
 
   it('escapes API key with special characters', () => {

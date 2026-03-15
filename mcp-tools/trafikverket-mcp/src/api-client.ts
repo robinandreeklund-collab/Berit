@@ -68,7 +68,6 @@ export interface QueryOptions {
   limit?: number;
   filter?: FilterClause | null;
   include?: string[];
-  orderBy?: string;
 }
 
 export interface FilterClause {
@@ -93,17 +92,12 @@ function buildQueryXml(apiKey: string, opts: QueryOptions): string {
     includeXml = opts.include.map((f) => `<INCLUDE>${escapeXml(f)}</INCLUDE>`).join('');
   }
 
-  let orderByXml = '';
-  if (opts.orderBy) {
-    orderByXml = `<SORTING><ORDER name="${escapeXml(opts.orderBy)}" type="DESC" /></SORTING>`;
-  }
-
   return (
     `<REQUEST>` +
     `<LOGIN authenticationkey="${escapeXml(apiKey)}" />` +
     `<QUERY objecttype="${escapeXml(opts.objecttype)}"${ns}` +
     ` schemaversion="${escapeXml(schema)}" limit="${limit}">` +
-    `${filterXml}${includeXml}${orderByXml}` +
+    `${filterXml}${includeXml}` +
     `</QUERY>` +
     `</REQUEST>`
   );

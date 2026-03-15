@@ -45,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-google-maps-mcp 2>/dev/null || true
@@ -60,6 +60,14 @@ docker stop deer-flow-nvv-mcp 2>/dev/null || true
 docker rm deer-flow-nvv-mcp 2>/dev/null || true
 docker stop deer-flow-kolada-mcp 2>/dev/null || true
 docker rm deer-flow-kolada-mcp 2>/dev/null || true
+docker stop deer-flow-kb-mcp 2>/dev/null || true
+docker rm deer-flow-kb-mcp 2>/dev/null || true
+docker stop deer-flow-upphandlingsdata-mcp 2>/dev/null || true
+docker rm deer-flow-upphandlingsdata-mcp 2>/dev/null || true
+docker stop deer-flow-oecd-mcp 2>/dev/null || true
+docker rm deer-flow-oecd-mcp 2>/dev/null || true
+docker stop deer-flow-trafikanalys-mcp 2>/dev/null || true
+docker rm deer-flow-trafikanalys-mcp 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
@@ -173,6 +181,26 @@ if [ -z "${KOLADA_MCP_URL:-}" ]; then
     echo "  → Kolada MCP: Municipality Statistics (local)"
 else
     echo "  → Kolada MCP: Municipality Statistics (remote)"
+fi
+if [ -z "${KB_MCP_URL:-}" ]; then
+    echo "  → KB MCP: Swedish Library (local)"
+else
+    echo "  → KB MCP: Swedish Library (remote)"
+fi
+if [ -z "${UPPHANDLINGSDATA_MCP_URL:-}" ]; then
+    echo "  → Upphandlingsdata MCP: Public Procurement (local)"
+else
+    echo "  → Upphandlingsdata MCP: Public Procurement (remote)"
+fi
+if [ -z "${OECD_MCP_URL:-}" ]; then
+    echo "  → OECD MCP: OECD Statistics (local)"
+else
+    echo "  → OECD MCP: OECD Statistics (remote)"
+fi
+if [ -z "${TRAFIKANALYS_MCP_URL:-}" ]; then
+    echo "  → Trafikanalys MCP: Transport Statistics (local)"
+else
+    echo "  → Trafikanalys MCP: Transport Statistics (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -293,8 +321,24 @@ cleanup() {
     if [ -n "${KOLADA_MCP_PID:-}" ] && kill -0 "$KOLADA_MCP_PID" 2>/dev/null; then
         kill "$KOLADA_MCP_PID" 2>/dev/null || true
     fi
+    # Kill KB MCP Node.js process if running
+    if [ -n "${KB_MCP_PID:-}" ] && kill -0 "$KB_MCP_PID" 2>/dev/null; then
+        kill "$KB_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Upphandlingsdata MCP Node.js process if running
+    if [ -n "${UPPHANDLINGSDATA_MCP_PID:-}" ] && kill -0 "$UPPHANDLINGSDATA_MCP_PID" 2>/dev/null; then
+        kill "$UPPHANDLINGSDATA_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill OECD MCP Node.js process if running
+    if [ -n "${OECD_MCP_PID:-}" ] && kill -0 "$OECD_MCP_PID" 2>/dev/null; then
+        kill "$OECD_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Trafikanalys MCP Node.js process if running
+    if [ -n "${TRAFIKANALYS_MCP_PID:-}" ] && kill -0 "$TRAFIKANALYS_MCP_PID" 2>/dev/null; then
+        kill "$TRAFIKANALYS_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -328,6 +372,14 @@ cleanup() {
     docker rm deer-flow-nvv-mcp 2>/dev/null || true
     docker stop deer-flow-kolada-mcp 2>/dev/null || true
     docker rm deer-flow-kolada-mcp 2>/dev/null || true
+    docker stop deer-flow-kb-mcp 2>/dev/null || true
+    docker rm deer-flow-kb-mcp 2>/dev/null || true
+    docker stop deer-flow-upphandlingsdata-mcp 2>/dev/null || true
+    docker rm deer-flow-upphandlingsdata-mcp 2>/dev/null || true
+    docker stop deer-flow-oecd-mcp 2>/dev/null || true
+    docker rm deer-flow-oecd-mcp 2>/dev/null || true
+    docker stop deer-flow-trafikanalys-mcp 2>/dev/null || true
+    docker rm deer-flow-trafikanalys-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -1207,6 +1259,246 @@ elif [ -z "${KOLADA_MCP_URL:-}" ]; then
 fi
 export KOLADA_MCP_URL="${KOLADA_MCP_URL:-}"
 
+# KB MCP Server — Kungliga Biblioteket (Libris, K-samsök, Swepub)
+KB_MCP_PORT="${KB_MCP_PORT:-3114}"
+KB_MCP_DIR="$REPO_ROOT/mcp-tools/kb-mcp"
+if [ -n "${KB_MCP_URL:-}" ]; then
+    echo "✓ KB MCP using remote instance: ${KB_MCP_URL}"
+elif [ -z "${KB_MCP_URL:-}" ]; then
+    echo "Starting KB MCP server..."
+    KB_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $KB_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-kb-mcp >/dev/null 2>&1; then
+            echo "  Building KB MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-kb-mcp -f docker/kb-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-kb-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-kb-mcp -p "${KB_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-kb-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$KB_MCP_PORT" 30 "KB MCP" || true
+            if docker ps --filter name=deer-flow-kb-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export KB_MCP_URL="http://localhost:${KB_MCP_PORT}/mcp"
+                echo "✓ KB MCP started via Docker on localhost:${KB_MCP_PORT}"
+                KB_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $KB_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting KB MCP with Node.js..."
+        if [ ! -f "$KB_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building KB MCP from local source (first time)..."
+            (cd "$KB_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ KB MCP build failed. Library tools will not be available."
+            }
+        fi
+        if [ -f "$KB_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$KB_MCP_PORT" \
+                node "$KB_MCP_DIR/dist/http-server.js" > logs/kb-mcp.log 2>&1 &
+            KB_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$KB_MCP_PORT" 15 "KB MCP" || {
+                echo "  ⚠ KB MCP failed to start."
+                kill "$KB_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$KB_MCP_PID" 2>/dev/null; then
+                export KB_MCP_URL="http://localhost:${KB_MCP_PORT}/mcp"
+                echo "✓ KB MCP started via Node.js on localhost:${KB_MCP_PORT}"
+                KB_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $KB_MCP_STARTED; then
+        echo "  ⚠ KB MCP could not be started. Library tools will not be available."
+        echo "  Install Docker or Node.js to enable KB MCP."
+    fi
+fi
+export KB_MCP_URL="${KB_MCP_URL:-}"
+
+# Upphandlingsdata MCP Server — Swedish public procurement
+UPPHANDLINGSDATA_MCP_PORT="${UPPHANDLINGSDATA_MCP_PORT:-3115}"
+UPPHANDLINGSDATA_MCP_DIR="$REPO_ROOT/mcp-tools/upphandlingsdata-mcp"
+if [ -n "${UPPHANDLINGSDATA_MCP_URL:-}" ]; then
+    echo "✓ Upphandlingsdata MCP using remote instance: ${UPPHANDLINGSDATA_MCP_URL}"
+elif [ -z "${UPPHANDLINGSDATA_MCP_URL:-}" ]; then
+    echo "Starting Upphandlingsdata MCP server..."
+    UPPHANDLINGSDATA_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $UPPHANDLINGSDATA_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-upphandlingsdata-mcp >/dev/null 2>&1; then
+            echo "  Building Upphandlingsdata MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-upphandlingsdata-mcp -f docker/upphandlingsdata-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-upphandlingsdata-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-upphandlingsdata-mcp -p "${UPPHANDLINGSDATA_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-upphandlingsdata-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$UPPHANDLINGSDATA_MCP_PORT" 30 "Upphandlingsdata MCP" || true
+            if docker ps --filter name=deer-flow-upphandlingsdata-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export UPPHANDLINGSDATA_MCP_URL="http://localhost:${UPPHANDLINGSDATA_MCP_PORT}/mcp"
+                echo "✓ Upphandlingsdata MCP started via Docker on localhost:${UPPHANDLINGSDATA_MCP_PORT}"
+                UPPHANDLINGSDATA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $UPPHANDLINGSDATA_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Upphandlingsdata MCP with Node.js..."
+        if [ ! -f "$UPPHANDLINGSDATA_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Upphandlingsdata MCP from local source (first time)..."
+            (cd "$UPPHANDLINGSDATA_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Upphandlingsdata MCP build failed. Procurement tools will not be available."
+            }
+        fi
+        if [ -f "$UPPHANDLINGSDATA_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$UPPHANDLINGSDATA_MCP_PORT" \
+                node "$UPPHANDLINGSDATA_MCP_DIR/dist/http-server.js" > logs/upphandlingsdata-mcp.log 2>&1 &
+            UPPHANDLINGSDATA_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$UPPHANDLINGSDATA_MCP_PORT" 15 "Upphandlingsdata MCP" || {
+                echo "  ⚠ Upphandlingsdata MCP failed to start."
+                kill "$UPPHANDLINGSDATA_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$UPPHANDLINGSDATA_MCP_PID" 2>/dev/null; then
+                export UPPHANDLINGSDATA_MCP_URL="http://localhost:${UPPHANDLINGSDATA_MCP_PORT}/mcp"
+                echo "✓ Upphandlingsdata MCP started via Node.js on localhost:${UPPHANDLINGSDATA_MCP_PORT}"
+                UPPHANDLINGSDATA_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $UPPHANDLINGSDATA_MCP_STARTED; then
+        echo "  ⚠ Upphandlingsdata MCP could not be started. Procurement tools will not be available."
+        echo "  Install Docker or Node.js to enable Upphandlingsdata MCP."
+    fi
+fi
+export UPPHANDLINGSDATA_MCP_URL="${UPPHANDLINGSDATA_MCP_URL:-}"
+
+# OECD MCP Server — OECD statistical data via SDMX
+OECD_MCP_PORT="${OECD_MCP_PORT:-3116}"
+OECD_MCP_DIR="$REPO_ROOT/mcp-tools/oecd-mcp"
+if [ -n "${OECD_MCP_URL:-}" ]; then
+    echo "✓ OECD MCP using remote instance: ${OECD_MCP_URL}"
+elif [ -z "${OECD_MCP_URL:-}" ]; then
+    echo "Starting OECD MCP server..."
+    OECD_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $OECD_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-oecd-mcp >/dev/null 2>&1; then
+            echo "  Building OECD MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-oecd-mcp -f docker/oecd-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-oecd-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-oecd-mcp -p "${OECD_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-oecd-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$OECD_MCP_PORT" 30 "OECD MCP" || true
+            if docker ps --filter name=deer-flow-oecd-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export OECD_MCP_URL="http://localhost:${OECD_MCP_PORT}/mcp"
+                echo "✓ OECD MCP started via Docker on localhost:${OECD_MCP_PORT}"
+                OECD_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $OECD_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting OECD MCP with Node.js..."
+        if [ ! -f "$OECD_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building OECD MCP from local source (first time)..."
+            (cd "$OECD_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ OECD MCP build failed. OECD statistics tools will not be available."
+            }
+        fi
+        if [ -f "$OECD_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$OECD_MCP_PORT" \
+                node "$OECD_MCP_DIR/dist/http-server.js" > logs/oecd-mcp.log 2>&1 &
+            OECD_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$OECD_MCP_PORT" 15 "OECD MCP" || {
+                echo "  ⚠ OECD MCP failed to start."
+                kill "$OECD_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$OECD_MCP_PID" 2>/dev/null; then
+                export OECD_MCP_URL="http://localhost:${OECD_MCP_PORT}/mcp"
+                echo "✓ OECD MCP started via Node.js on localhost:${OECD_MCP_PORT}"
+                OECD_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $OECD_MCP_STARTED; then
+        echo "  ⚠ OECD MCP could not be started. OECD statistics tools will not be available."
+        echo "  Install Docker or Node.js to enable OECD MCP."
+    fi
+fi
+export OECD_MCP_URL="${OECD_MCP_URL:-}"
+
+# Trafikanalys MCP Server — Swedish transport statistics
+TRAFIKANALYS_MCP_PORT="${TRAFIKANALYS_MCP_PORT:-3117}"
+TRAFIKANALYS_MCP_DIR="$REPO_ROOT/mcp-tools/trafikanalys-mcp"
+if [ -n "${TRAFIKANALYS_MCP_URL:-}" ]; then
+    echo "✓ Trafikanalys MCP using remote instance: ${TRAFIKANALYS_MCP_URL}"
+elif [ -z "${TRAFIKANALYS_MCP_URL:-}" ]; then
+    echo "Starting Trafikanalys MCP server..."
+    TRAFIKANALYS_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $TRAFIKANALYS_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-trafikanalys-mcp >/dev/null 2>&1; then
+            echo "  Building Trafikanalys MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-trafikanalys-mcp -f docker/trafikanalys-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-trafikanalys-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-trafikanalys-mcp -p "${TRAFIKANALYS_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-trafikanalys-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$TRAFIKANALYS_MCP_PORT" 30 "Trafikanalys MCP" || true
+            if docker ps --filter name=deer-flow-trafikanalys-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export TRAFIKANALYS_MCP_URL="http://localhost:${TRAFIKANALYS_MCP_PORT}/mcp"
+                echo "✓ Trafikanalys MCP started via Docker on localhost:${TRAFIKANALYS_MCP_PORT}"
+                TRAFIKANALYS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $TRAFIKANALYS_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Trafikanalys MCP with Node.js..."
+        if [ ! -f "$TRAFIKANALYS_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Trafikanalys MCP from local source (first time)..."
+            (cd "$TRAFIKANALYS_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Trafikanalys MCP build failed. Transport statistics tools will not be available."
+            }
+        fi
+        if [ -f "$TRAFIKANALYS_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$TRAFIKANALYS_MCP_PORT" \
+                node "$TRAFIKANALYS_MCP_DIR/dist/http-server.js" > logs/trafikanalys-mcp.log 2>&1 &
+            TRAFIKANALYS_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$TRAFIKANALYS_MCP_PORT" 15 "Trafikanalys MCP" || {
+                echo "  ⚠ Trafikanalys MCP failed to start."
+                kill "$TRAFIKANALYS_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$TRAFIKANALYS_MCP_PID" 2>/dev/null; then
+                export TRAFIKANALYS_MCP_URL="http://localhost:${TRAFIKANALYS_MCP_PORT}/mcp"
+                echo "✓ Trafikanalys MCP started via Node.js on localhost:${TRAFIKANALYS_MCP_PORT}"
+                TRAFIKANALYS_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $TRAFIKANALYS_MCP_STARTED; then
+        echo "  ⚠ Trafikanalys MCP could not be started. Transport statistics tools will not be available."
+        echo "  Install Docker or Node.js to enable Trafikanalys MCP."
+    fi
+fi
+export TRAFIKANALYS_MCP_URL="${TRAFIKANALYS_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -1346,6 +1638,26 @@ if [ -n "${KOLADA_MCP_URL:-}" ]; then
 else
     echo "  📊 Kolada:       (ej konfigurerad)"
 fi
+if [ -n "${KB_MCP_URL:-}" ]; then
+    echo "  📚 KB:           ${KB_MCP_URL}"
+else
+    echo "  📚 KB:           (ej konfigurerad)"
+fi
+if [ -n "${UPPHANDLINGSDATA_MCP_URL:-}" ]; then
+    echo "  📋 Upphandling:  ${UPPHANDLINGSDATA_MCP_URL}"
+else
+    echo "  📋 Upphandling:  (ej konfigurerad)"
+fi
+if [ -n "${OECD_MCP_URL:-}" ]; then
+    echo "  🌍 OECD:         ${OECD_MCP_URL}"
+else
+    echo "  🌍 OECD:         (ej konfigurerad)"
+fi
+if [ -n "${TRAFIKANALYS_MCP_URL:-}" ]; then
+    echo "  🚗 Trafikanalys: ${TRAFIKANALYS_MCP_URL}"
+else
+    echo "  🚗 Trafikanalys: (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -1422,6 +1734,26 @@ if [ -n "${KOLADA_MCP_PID:-}" ]; then
     echo "     - Kolada:      logs/kolada-mcp.log"
 elif [ -z "${KOLADA_MCP_URL:-}" ] || echo "${KOLADA_MCP_URL}" | grep -q "localhost"; then
     echo "     - Kolada:      docker logs deer-flow-kolada-mcp"
+fi
+if [ -n "${KB_MCP_PID:-}" ]; then
+    echo "     - KB:          logs/kb-mcp.log"
+elif [ -z "${KB_MCP_URL:-}" ] || echo "${KB_MCP_URL}" | grep -q "localhost"; then
+    echo "     - KB:          docker logs deer-flow-kb-mcp"
+fi
+if [ -n "${UPPHANDLINGSDATA_MCP_PID:-}" ]; then
+    echo "     - Upphandling: logs/upphandlingsdata-mcp.log"
+elif [ -z "${UPPHANDLINGSDATA_MCP_URL:-}" ] || echo "${UPPHANDLINGSDATA_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Upphandling: docker logs deer-flow-upphandlingsdata-mcp"
+fi
+if [ -n "${OECD_MCP_PID:-}" ]; then
+    echo "     - OECD:        logs/oecd-mcp.log"
+elif [ -z "${OECD_MCP_URL:-}" ] || echo "${OECD_MCP_URL}" | grep -q "localhost"; then
+    echo "     - OECD:        docker logs deer-flow-oecd-mcp"
+fi
+if [ -n "${TRAFIKANALYS_MCP_PID:-}" ]; then
+    echo "     - Trafikanalys: logs/trafikanalys-mcp.log"
+elif [ -z "${TRAFIKANALYS_MCP_URL:-}" ] || echo "${TRAFIKANALYS_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Trafikanalys: docker logs deer-flow-trafikanalys-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"

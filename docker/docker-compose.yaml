@@ -92,6 +92,10 @@ services:
       - RIKSDAG_MCP_URL=http://riksdag-mcp:3000/mcp
       - NVV_MCP_URL=http://nvv-mcp:3000/mcp
       - KOLADA_MCP_URL=http://kolada-mcp:3000/mcp
+      - KB_MCP_URL=http://kb-mcp:3000/mcp
+      - UPPHANDLINGSDATA_MCP_URL=http://upphandlingsdata-mcp:3000/mcp
+      - OECD_MCP_URL=http://oecd-mcp:3000/mcp
+      - TRAFIKANALYS_MCP_URL=http://trafikanalys-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -140,6 +144,10 @@ services:
       - RIKSDAG_MCP_URL=http://riksdag-mcp:3000/mcp
       - NVV_MCP_URL=http://nvv-mcp:3000/mcp
       - KOLADA_MCP_URL=http://kolada-mcp:3000/mcp
+      - KB_MCP_URL=http://kb-mcp:3000/mcp
+      - UPPHANDLINGSDATA_MCP_URL=http://upphandlingsdata-mcp:3000/mcp
+      - OECD_MCP_URL=http://oecd-mcp:3000/mcp
+      - TRAFIKANALYS_MCP_URL=http://trafikanalys-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -386,6 +394,74 @@ services:
       context: ../
       dockerfile: docker/kolada-mcp/Dockerfile
     container_name: deer-flow-kolada-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── KB MCP Server (Swedish National Library) ────────────────────────
+  kb-mcp:
+    build:
+      context: ../
+      dockerfile: docker/kb-mcp/Dockerfile
+    container_name: deer-flow-kb-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Upphandlingsdata MCP Server (Swedish public procurement) ───────
+  upphandlingsdata-mcp:
+    build:
+      context: ../
+      dockerfile: docker/upphandlingsdata-mcp/Dockerfile
+    container_name: deer-flow-upphandlingsdata-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── OECD MCP Server (OECD statistical data) ────────────────────────
+  oecd-mcp:
+    build:
+      context: ../
+      dockerfile: docker/oecd-mcp/Dockerfile
+    container_name: deer-flow-oecd-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Trafikanalys MCP Server (Swedish transport statistics) ─────────
+  trafikanalys-mcp:
+    build:
+      context: ../
+      dockerfile: docker/trafikanalys-mcp/Dockerfile
+    container_name: deer-flow-trafikanalys-mcp
     environment:
       - PORT=3000
     networks:

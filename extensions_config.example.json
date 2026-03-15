@@ -199,6 +199,50 @@
       "headers": {},
       "oauth": null,
       "description": "Kolada — Kommunal och regional nyckeltalsjämförelse. Skolresultat, ekonomi, omsorg, befolkning. 10 verktyg."
+    },
+    "kb": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$KB_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Kungliga Biblioteket — Libris (böcker, tidskrifter), K-samsök (kulturarv), Swepub (forskning). 10 verktyg."
+    },
+    "upphandlingsdata": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$UPPHANDLINGSDATA_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Upphandlingsmyndigheten — Offentlig upphandling, LOV, hållbarhetskriterier, EU TED. 7 verktyg."
+    },
+    "oecd": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$OECD_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "OECD — Internationell statistik via SDMX. Ekonomi, hälsa, utbildning, arbetsmarknad, handel, miljö. 9 verktyg."
+    },
+    "trafikanalys": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$TRAFIKANALYS_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Trafikanalys — Svensk transportstatistik. Fordon, registreringar, fordonskilometer, järnväg, flyg. 8 verktyg."
     }
   },
   "skills": {}

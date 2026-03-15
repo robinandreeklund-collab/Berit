@@ -19,6 +19,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { TOOL_DEFINITIONS, getToolById, type ToolDefinition } from './tools.js';
 import { getApiClient, type FilterClause, type QueryOptions } from './api-client.js';
+import { SWEDISH_COUNTIES } from './types.js';
 import { formatResponse } from './formatter.js';
 import { LLM_INSTRUCTIONS } from './instructions.js';
 import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
@@ -78,23 +79,36 @@ function buildFilter(
   const lan = (args.lan as string)?.trim();
   const id = (args.id as string)?.trim();
 
+  // Trafikverket API v2 LIKE uses regex patterns, not SQL/glob wildcards.
+  // Use .*value.* for substring matching (not *value*).
+  const likePattern = (value: string): string => `.*${escapeRegex(value)}.*`;
+
   switch (tool.filterType) {
     case 'location':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
       if (lan) return { operator: 'EQ', name: 'Deviation.CountyNo', value: lan };
       return null;
 
     case 'station':
-      if (station) return { operator: 'LIKE', name: tool.filterField, value: `*${station}*` };
+      if (station) return { operator: 'LIKE', name: tool.filterField, value: likePattern(station) };
       return null;
 
     case 'weather':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
-      if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
+      // WeatherMeasurepoint does not support CountyNo as a query filter.
+      // For county searches, search by county name in the station Name field instead.
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
+      if (lan) {
+        const countyName = SWEDISH_COUNTIES[lan];
+        if (countyName) {
+          // Extract short name (e.g. "Stockholms län" → "Stockholm")
+          const shortName = countyName.replace(/s?\s+län$/, '');
+          return { operator: 'LIKE', name: tool.filterField, value: likePattern(shortName) };
+        }
+      }
       return null;
 
     case 'camera':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
       if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
       return null;
 
@@ -104,12 +118,17 @@ function buildFilter(
 
     case 'county':
       if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
-      if (plats) return { operator: 'LIKE', name: 'LocationText', value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: 'LocationText', value: likePattern(plats) };
       return null;
 
     default:
       return null;
   }
+}
+
+/** Escape special regex characters in user input for safe LIKE patterns. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 
@@ -172,7 +191,6 @@ export class TrafikverketMCPServer {
         namespace: tool.namespace,
         limit,
         filter,
-        orderBy: tool.orderBy,
       };
 
       const client = getApiClient();

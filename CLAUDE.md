@@ -27,6 +27,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Riksdag MCP v1.0** (port 3000, Docker sidecar): Sveriges riksdag och regering — dokument, ledamöter, voteringar, anföranden, regeringsdokument. 15 verktyg.
 - **NVV MCP v1.0** (port 3000, Docker sidecar): Naturvårdsverket — skyddade naturområden, nationalparker, naturreservat, Natura 2000, Ramsar, arter. 8 verktyg.
 - **Kolada MCP v1.0** (port 3000, Docker sidecar): Kommunal och regional statistik — nyckeltal, kommunjämförelse, skolresultat, ekonomi, omsorg. 10 verktyg.
+- **KB MCP v1.0** (port 3000, Docker sidecar): Kungliga Biblioteket — Libris (böcker, tidskrifter), K-samsök (kulturarv), Swepub (forskning). 10 verktyg.
+- **Upphandlingsdata MCP v1.0** (port 3000, Docker sidecar): Offentlig upphandling — LOV, hållbarhetskriterier, EU TED, frågeportal. 7 verktyg.
+- **OECD MCP v1.0** (port 3000, Docker sidecar): Internationell statistik via SDMX — ekonomi, hälsa, utbildning, handel, miljö, 30+ dataset. 9 verktyg.
+- **Trafikanalys MCP v1.0** (port 3000, Docker sidecar): Svensk transportstatistik — fordon, registreringar, fordonskilometer, järnväg, flyg. 8 verktyg.
 
 ## Project Structure
 
@@ -73,7 +77,11 @@ Berit/
 │   ├── blocket-tradera-mcp/  # Blocket/Tradera MCP v1.0 — 10 verktyg för begagnatmarknaden
 │   ├── riksdag-mcp/          # Riksdag MCP v1.0 — 15 verktyg för riksdag och regering
 │   ├── nvv-mcp/              # NVV MCP v1.0 — 8 verktyg för skyddade naturområden
-│   └── kolada-mcp/           # Kolada MCP v1.0 — 10 verktyg för kommunal statistik
+│   ├── kolada-mcp/           # Kolada MCP v1.0 — 10 verktyg för kommunal statistik
+│   ├── kb-mcp/              # KB MCP v1.0 — 10 verktyg för Libris, K-samsök, Swepub
+│   ├── upphandlingsdata-mcp/ # Upphandlingsdata MCP v1.0 — 7 verktyg för offentlig upphandling
+│   ├── oecd-mcp/            # OECD MCP v1.0 — 9 verktyg för internationell statistik
+│   └── trafikanalys-mcp/    # Trafikanalys MCP v1.0 — 8 verktyg för transportstatistik
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
@@ -87,7 +95,11 @@ Berit/
 │   ├── blocket-tradera-mcp/  # Blocket/Tradera MCP server Dockerfile
 │   ├── riksdag-mcp/         # Riksdag MCP server Dockerfile
 │   ├── nvv-mcp/             # NVV MCP server Dockerfile
-│   └── kolada-mcp/          # Kolada MCP server Dockerfile
+│   ├── kolada-mcp/          # Kolada MCP server Dockerfile
+│   ├── kb-mcp/              # KB MCP server Dockerfile
+│   ├── upphandlingsdata-mcp/ # Upphandlingsdata MCP server Dockerfile
+│   ├── oecd-mcp/            # OECD MCP server Dockerfile
+│   └── trafikanalys-mcp/    # Trafikanalys MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 

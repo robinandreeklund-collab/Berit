@@ -42,7 +42,6 @@ export interface ToolDefinition {
   filterField: string;
   filterType: 'location' | 'station' | 'weather' | 'camera' | 'camera_id' | 'county';
   include?: string[];
-  orderBy?: string;
   inputSchema: Record<string, unknown>;
 }
 
@@ -71,7 +70,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Stockholm", "E4", "Södertälje". Ange minst plats ELLER lan.',
+          description: 'Plats, ort eller vägnummer. Fritextsökning: "Stockholm", "E4", "Södertälje". Ange minst plats ELLER lan.',
         },
         lan: {
           type: 'string',
@@ -101,7 +100,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Göteborg", "E6", "Kungsbacka". Ange minst plats ELLER lan.',
+          description: 'Plats, ort eller vägnummer. Fritextsökning: "Göteborg", "E6", "Kungsbacka". Ange minst plats ELLER lan.',
         },
         lan: {
           type: 'string',
@@ -131,7 +130,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "Göteborg", "E18", "Stockholm". Ange minst plats ELLER lan.',
+          description: 'Plats, ort eller vägnummer. Fritextsökning: "Göteborg", "E18", "Stockholm". Ange minst plats ELLER lan.',
         },
         lan: {
           type: 'string',
@@ -161,7 +160,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "E4", "Helsingborg", "Skåne". Ange minst plats ELLER lan.',
+          description: 'Plats, ort eller vägnummer. Fritextsökning: "E4", "Helsingborg", "Skåne". Ange minst plats ELLER lan.',
         },
         lan: {
           type: 'string',
@@ -185,15 +184,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
         station: {
           type: 'string',
-          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C", "Malmö C", "Uppsala C", "Lund C".',
+          description: 'Stationsnamn (fritextsökning). Exempel: "Stockholm C", "Göteborg C", "Malmö C", "Uppsala C", "Lund C".',
         },
         limit: limitProperty,
       },
@@ -211,15 +209,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
         station: {
           type: 'string',
-          description: 'Stationsnamn (wildcard-sökning). Exempel: "Malmö C", "Stockholm C", "Uppsala C".',
+          description: 'Stationsnamn (fritextsökning). Exempel: "Malmö C", "Stockholm C", "Uppsala C".',
         },
         limit: limitProperty,
       },
@@ -244,7 +241,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         station: {
           type: 'string',
-          description: 'Sök stationsnamn (wildcard). Exempel: "Stockholm", "Lund", "Göteborg". Utelämna för att lista alla.',
+          description: 'Sök stationsnamn (fritextsökning). Exempel: "Stockholm", "Lund", "Göteborg". Utelämna för att lista alla.',
         },
         limit: limitProperty,
       },
@@ -261,15 +258,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'tag',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
         station: {
           type: 'string',
-          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C". Utelämna för alla stationer.',
+          description: 'Stationsnamn (fritextsökning). Exempel: "Stockholm C", "Göteborg C". Utelämna för alla stationer.',
         },
         limit: limitProperty,
       },
@@ -383,7 +379,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats, ort eller vägnummer. Wildcard-sökning: "E4", "Stockholm". Ange minst plats ELLER lan.',
+          description: 'Plats, ort eller vägnummer. Fritextsökning: "E4", "Stockholm". Ange minst plats ELLER lan.',
         },
         lan: {
           type: 'string',
@@ -414,7 +410,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4", "Hudiksvall", "E6 Halland".',
+          description: 'Stationsnamn eller väg (fritextsökning). Exempel: "E4", "Hudiksvall", "E6 Halland".',
         },
         lan: {
           type: 'string',
@@ -443,7 +439,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4 Gävle", "Norrbotten".',
+          description: 'Stationsnamn eller väg (fritextsökning). Exempel: "E4 Gävle", "Norrbotten".',
         },
         lan: {
           type: 'string',
@@ -472,7 +468,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Stationsnamn eller väg (wildcard). Exempel: "Ölandsbron", "E6 Halland".',
+          description: 'Stationsnamn eller väg (fritextsökning). Exempel: "Ölandsbron", "E6 Halland".',
         },
         lan: {
           type: 'string',
@@ -501,7 +497,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Stationsnamn eller väg (wildcard). Exempel: "E4 Hudiksvall", "Dalarna".',
+          description: 'Stationsnamn eller väg (fritextsökning). Exempel: "E4 Hudiksvall", "Dalarna".',
         },
         lan: {
           type: 'string',
@@ -532,7 +528,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats eller väg (wildcard). Exempel: "E4 Stockholm", "E6 Malmö".',
+          description: 'Plats eller väg (fritextsökning). Exempel: "E4 Stockholm", "E6 Malmö".',
         },
         lan: {
           type: 'string',
@@ -585,7 +581,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         plats: {
           type: 'string',
-          description: 'Plats eller väg (wildcard). Exempel: "E6", "Göteborg".',
+          description: 'Plats eller väg (fritextsökning). Exempel: "E6", "Göteborg".',
         },
         lan: {
           type: 'string',
@@ -667,15 +663,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     category: 'prognos',
     objecttype: 'TrainAnnouncement',
     schemaVersion: '1.9',
-    filterField: 'LocationSignature',
+    filterField: 'AdvertisedLocationName',
     filterType: 'station',
-    orderBy: 'AdvertisedTimeAtLocation',
     inputSchema: {
       type: 'object',
       properties: {
         station: {
           type: 'string',
-          description: 'Stationsnamn (wildcard-sökning). Exempel: "Stockholm C", "Göteborg C".',
+          description: 'Stationsnamn (fritextsökning). Exempel: "Stockholm C", "Göteborg C".',
         },
         limit: limitProperty,
       },
