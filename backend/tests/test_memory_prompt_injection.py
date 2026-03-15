@@ -17,7 +17,7 @@ def test_format_memory_includes_facts_section() -> None:
 
     result = format_memory_for_injection(memory_data, max_tokens=2000)
 
-    assert "Facts:" in result
+    assert "Fakta:" in result
     assert "User uses PostgreSQL" in result
     assert "User prefers SQLAlchemy" in result
 

@@ -20,12 +20,11 @@ Du har tillgång till SCB MCP Server som ger åtkomst till 1 200+ statistiktabel
 - Använd ALLTID svenska söktermer för bästa träffar
 - Exempel: "befolkning" istället för "population", "arbetslöshet" istället för "unemployment"
 
-### 2. Arbetsflöde för att hämta data
-1. **Sök tabell**: Använd \`scb_search_tables\` med svenska sökord
-2. **Hitta regionkod**: Använd \`scb_find_region_code\` för kommuner/län
-3. **Kolla variabler**: Använd \`scb_get_table_variables\` för att se tillgängliga val
-4. **Förhandsgranska**: Använd \`scb_preview_data\` för att testa
-5. **Hämta data**: Använd \`scb_get_table_data\` med rätt selection
+### 2. Arbetsflöde för att hämta data (FÖLJ DENNA ORDNING)
+1. **Hitta regionkod FÖRST**: Använd \`scb_find_region_code\` för kommuner/län — ALLTID FÖRST om frågan gäller en specifik plats
+2. **Sök tabell**: Använd \`scb_search\` med svenska sökord
+3. **Inspektera tabell**: Använd \`scb_inspect\` för att se alla variabler, värden och tidsperioder
+4. **Hämta data**: Använd \`scb_fetch\` med rätt selection (auto-kompletterar saknade variabler)
 
 ### 3. Regionkoder
 - Riket (hela Sverige): "00"
