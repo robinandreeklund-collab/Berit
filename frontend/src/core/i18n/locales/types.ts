@@ -216,6 +216,7 @@ export interface Translations {
       memory: string;
       tools: string;
       skills: string;
+      prompts: string;
       notification: string;
       about: string;
     };
@@ -276,6 +277,14 @@ export interface Translations {
       emptyTitle: string;
       emptyDescription: string;
       emptyButton: string;
+    };
+    prompts: {
+      title: string;
+      description: string;
+      loadError: string;
+      reset: string;
+      saved: string;
+      runtimeNote: string;
     };
     notification: {
       title: string;

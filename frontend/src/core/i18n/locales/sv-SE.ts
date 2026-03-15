@@ -282,6 +282,7 @@ export const svSE: Translations = {
       memory: "Minne",
       tools: "Verktyg",
       skills: "Färdigheter",
+      prompts: "Promptar",
       notification: "Aviseringar",
       about: "Om",
     },
@@ -348,6 +349,16 @@ export const svSE: Translations = {
       emptyDescription:
         "Lägg dina agentfärdighetsmappar under mappen `/skills/custom` i DeerFlows rotmapp.",
       emptyButton: "Skapa din första färdighet",
+    },
+    prompts: {
+      title: "Promptar",
+      description:
+        "Visa och redigera alla promptmallar som används i agentflödet. Ändringar gäller direkt men återställs vid omstart.",
+      loadError: "Kunde inte ladda promptar.",
+      reset: "Återställ",
+      saved: "Sparat!",
+      runtimeNote:
+        "Ändringar sparas i minnet och gäller direkt. De återställs vid omstart av servern.",
     },
     notification: {
       title: "Aviseringar",
