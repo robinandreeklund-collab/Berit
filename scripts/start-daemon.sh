@@ -94,21 +94,26 @@ trap cleanup_on_failure INT TERM
 
 mkdir -p logs
 
+# Only start local Lightpanda browser if MCP is NOT using a remote instance.
 LIGHTPANDA_PORT="${LIGHTPANDA_PORT:-9222}"
-echo "Starting Lightpanda headless browser..."
-if command -v docker >/dev/null 2>&1; then
-    docker run -d --name deer-flow-lightpanda -p "${LIGHTPANDA_PORT}:9222" \
-        --restart unless-stopped lightpanda/browser:nightly > /dev/null 2>&1
-    ./scripts/wait-for-port.sh "$LIGHTPANDA_PORT" 15 "Lightpanda" || {
-        echo "  ⚠ Lightpanda failed to start. Web fetch/search will not work."
-        echo "  Continuing without Lightpanda..."
-    }
-    echo "✓ Lightpanda started on localhost:${LIGHTPANDA_PORT}"
+if [ -n "${LIGHTPANDA_MCP_URL:-}" ] && ! echo "${LIGHTPANDA_MCP_URL}" | grep -q "localhost"; then
+    echo "✓ Lightpanda browser skipped — remote MCP instance has its own browser"
 else
-    echo "  ⚠ Docker not found — skipping Lightpanda."
+    echo "Starting Lightpanda headless browser..."
+    if command -v docker >/dev/null 2>&1; then
+        docker run -d --name deer-flow-lightpanda -p "${LIGHTPANDA_PORT}:9222" \
+            --restart unless-stopped lightpanda/browser:nightly > /dev/null 2>&1
+        ./scripts/wait-for-port.sh "$LIGHTPANDA_PORT" 15 "Lightpanda" || {
+            echo "  ⚠ Lightpanda failed to start. Web fetch/search will not work."
+            echo "  Continuing without Lightpanda..."
+        }
+        echo "✓ Lightpanda started on localhost:${LIGHTPANDA_PORT}"
+    else
+        echo "  ⚠ Docker not found — skipping Lightpanda."
+    fi
+    export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
+    export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 fi
-export LIGHTPANDA_URL="http://localhost:${LIGHTPANDA_PORT}"
-export LIGHTPANDA_CDP_URL="ws://localhost:${LIGHTPANDA_PORT}"
 
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
