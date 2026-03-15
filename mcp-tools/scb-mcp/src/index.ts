@@ -27,6 +27,7 @@ import { SCBApiClient } from './api-client.js';
 import { resources, getResourceContent } from './resources.js';
 import { ALL_REGIONS, searchRegions, findRegion, REGION_STATS, normalizeForSearch } from './regions.js';
 import { LLM_INSTRUCTIONS, STATISTICS_CATEGORIES, WORKFLOW_TEMPLATES, USAGE_TIPS, getCategoryDescriptions } from './instructions.js';
+import { SUBJECT_TREE, findSubjectNode, getSubjectChildren, getSearchKeywords, formatSubjectTree } from './subjects.js';
 
 // ============================================================================
 // CONSTANTS AND HELPERS
@@ -162,16 +163,24 @@ export class SCBMCPServer {
       },
       {
         name: 'scb_browse',
-        description: 'Utforska SCB:s statistikträd. Bläddra bland ämnesområden (t.ex. "BE" = befolkning, "AM" = arbetsmarknad, "NR" = nationalräkenskaper).',
+        description:
+          'Navigera SCB:s ämnesområdesträd i 3 nivåer. REKOMMENDERAT arbetsflöde:\n' +
+          '1. Utan subjectCode → visa alla 20+ ämnesområden (nivå 1)\n' +
+          '2. Med t.ex. "BE" → visa underområden (nivå 2: BE0101=Befolkningsstatistik, BE0401=Framskrivningar)\n' +
+          '3. Med t.ex. "BE0101A" → visa tabeller i det ämnet (Folkmängd)\n\n' +
+          'Vanliga koder: BE=Befolkning, AM=Arbetsmarknad, NR=Nationalräkenskaper, HE=Hushållens ekonomi, BO=Boende, UF=Utbildning, MI=Miljö, PR=Priser, OE=Offentlig ekonomi, TK=Transport',
         inputSchema: {
           type: 'object',
           properties: {
-            subjectCode: { type: 'string', description: 'Ämnesområdeskod (t.ex. "BE", "AM", "NR", "MI"). Utelämna för alla.' },
-            pageSize: { type: 'number', description: 'Max antal tabeller', default: 20 },
+            subjectCode: {
+              type: 'string',
+              description: 'Ämnesområdeskod. Nivå 1: "BE", "AM". Nivå 2: "BE0101". Nivå 3: "BE0101A". Utelämna för att se alla nivå 1.',
+            },
+            pageSize: { type: 'number', description: 'Max antal tabeller vid nivå 3', default: 50 },
             language: { type: 'string', description: '"sv" (standard) eller "en"', default: 'sv' },
           },
         },
-        annotations: { title: 'Bläddra statistik', readOnlyHint: true, openWorldHint: true },
+        annotations: { title: 'Bläddra ämnesområden', readOnlyHint: true, openWorldHint: true },
       },
       // ---- INSPECTION ----
       {
@@ -395,39 +404,99 @@ export class SCBMCPServer {
   private async handleBrowse(args: any) {
     const langValidation = validateLanguage(args.language);
     const language = langValidation.language;
-    const pageSize = Math.min(args.pageSize || 20, MAX_PAGE_SIZE);
+    const pageSize = Math.min(args.pageSize || 50, MAX_PAGE_SIZE);
+    const subjectCode = args.subjectCode?.toUpperCase();
+
+    // --- No subject code: show all level-1 areas ---
+    if (!subjectCode) {
+      return jsonResponse({
+        level: 1,
+        description: 'SCB:s ämnesområden — välj ett för att navigera djupare',
+        subjects: SUBJECT_TREE.map(s => ({
+          code: s.id,
+          label: s.label,
+          sub_areas: (s.children || []).length,
+          keywords: (s.keywords || []).slice(0, 5),
+        })),
+        total: SUBJECT_TREE.length,
+        tips: [
+          'Välj ett ämnesområde, t.ex. scb_browse({subjectCode: "BE"}) för Befolkning',
+          'Frågor om invånare/folkmängd → BE, arbetsmarknad → AM, ekonomi → NR eller HE',
+        ],
+      });
+    }
+
+    // --- Look up subject in tree ---
+    const found = findSubjectNode(subjectCode);
+
+    if (found && found.node.children && found.node.children.length > 0) {
+      // Show children of this node (level 1→2 or level 2→3)
+      const nextLevel = found.depth + 2;
+      return jsonResponse({
+        level: nextLevel,
+        parent: { code: found.node.id, label: found.node.label },
+        path: found.path.map(n => ({ code: n.id, label: n.label })),
+        children: found.node.children.map(c => ({
+          code: c.id,
+          label: c.label,
+          sub_areas: (c.children || []).length,
+          keywords: (c.keywords || []).slice(0, 5),
+        })),
+        tips: found.depth === 0
+          ? [`Bläddra djupare, t.ex. scb_browse({subjectCode: "${found.node.children[0].id}"})`]
+          : [`Hämta tabeller: scb_browse({subjectCode: "${found.node.children[0].id}"})`],
+      });
+    }
+
+    // --- Leaf node or deep code: fetch tables from API ---
+    // Use the label + keywords as search query for better API results
+    const keywords = getSearchKeywords(subjectCode);
+    const searchLabel = found?.node.label || subjectCode;
 
     const result = await this.apiClient.browseTables({
-      subjectCode: args.subjectCode,
+      subjectCode,
+      searchLabel: keywords.length > 0 ? keywords.slice(0, 3).join(' ') : searchLabel,
       pageSize,
       lang: language,
     });
 
-    // Group by subject code path
-    const grouped: Record<string, any[]> = {};
-    for (const table of result.tables) {
-      const subject = table.subjectCode || table.paths?.[0]?.[0]?.id || 'Övrigt';
-      if (!grouped[subject]) grouped[subject] = [];
-      grouped[subject].push({
-        id: table.id,
-        title: table.label,
-        period: { start: table.firstPeriod, end: table.lastPeriod },
-        updated: table.updated,
-      });
-    }
+    // Sort tables: prefer non-discontinued, recent data, and region variable
+    const sortedTables = [...result.tables].sort((a, b) => {
+      let scoreA = 0, scoreB = 0;
+      if (!a.discontinued) scoreA += 10;
+      if (!b.discontinued) scoreB += 10;
+      if (a.variableNames?.some(v => v.toLowerCase() === 'region')) scoreA += 5;
+      if (b.variableNames?.some(v => v.toLowerCase() === 'region')) scoreB += 5;
+      if (a.lastPeriod) {
+        const y = parseInt(a.lastPeriod.replace(/\D.*/, ''), 10);
+        if (!isNaN(y) && y >= 2023) scoreA += 5;
+      }
+      if (b.lastPeriod) {
+        const y = parseInt(b.lastPeriod.replace(/\D.*/, ''), 10);
+        if (!isNaN(y) && y >= 2023) scoreB += 5;
+      }
+      return scoreB - scoreA;
+    });
 
     return jsonResponse({
-      subject_filter: args.subjectCode || null,
-      language: language,
-      subjects: Object.entries(grouped).map(([code, tables]) => ({
-        code,
-        tables: tables.slice(0, 10),
-        total_tables: tables.length,
+      level: 'tables',
+      subject: {
+        code: subjectCode,
+        label: found?.node.label || subjectCode,
+        path: found?.path.map(n => ({ code: n.id, label: n.label })) || [],
+      },
+      tables: sortedTables.slice(0, pageSize).map(t => ({
+        id: t.id,
+        title: t.label,
+        period: { start: t.firstPeriod || null, end: t.lastPeriod || null },
+        variables: t.variableNames || [],
+        updated: t.updated || null,
+        discontinued: t.discontinued || false,
       })),
       total_tables: result.tables.length,
       tips: [
-        'Använd subjectCode för att bläddra djupare: "BE" = befolkning, "AM" = arbetsmarknad',
         'Använd scb_inspect med ett tabell-ID för att se variabler och värden',
+        'Sedan scb_fetch för att hämta data',
       ],
     });
   }

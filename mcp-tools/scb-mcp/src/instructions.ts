@@ -12,31 +12,67 @@ export const LLM_INSTRUCTIONS = `
 # SCB MCP Server - Instruktioner för AI-assistenter
 
 ## Översikt
-Du har tillgång till SCB MCP Server som ger åtkomst till 1 200+ statistiktabeller från Statistiska centralbyrån (SCB). Data omfattar befolkning, ekonomi, miljö, arbetsmarknad och utbildning för Sverige.
+Du har tillgång till SCB MCP Server som ger åtkomst till 5 000+ statistiktabeller från Statistiska centralbyrån (SCB). Data omfattar befolkning, ekonomi, miljö, arbetsmarknad och utbildning för Sverige.
 
-## Viktiga principer
+## REKOMMENDERAT ARBETSFLÖDE — Ämnesområdesnavigering
 
-### 1. Svenska söktermer ger bäst resultat
-- Använd ALLTID svenska söktermer för bästa träffar
-- Exempel: "befolkning" istället för "population", "arbetslöshet" istället för "unemployment"
+Det BÄSTA sättet att hitta rätt tabell är att navigera via ämnesområden (inte textsökning):
 
-### 2. Arbetsflöde för att hämta data (FÖLJ DENNA ORDNING)
-1. **Hitta regionkod FÖRST**: Använd \`scb_find_region_code\` för kommuner/län — ALLTID FÖRST om frågan gäller en specifik plats
-2. **Sök tabell**: Använd \`scb_search\` med svenska sökord
-3. **Inspektera tabell**: Använd \`scb_inspect\` för att se alla variabler, värden och tidsperioder
-4. **Hämta data**: Använd \`scb_fetch\` med rätt selection (auto-kompletterar saknade variabler)
+### Steg 1: Tolka frågan → Välj ämnesområde
+Bestäm vilken ämnesområdeskod som matchar frågan:
+- **BE** = Befolkning (folkmängd, invånare, födslar, dödsfall, migration)
+- **AM** = Arbetsmarknad (sysselsättning, arbetslöshet, löner, yrken)
+- **NR** = Nationalräkenskaper (BNP, ekonomisk tillväxt)
+- **HE** = Hushållens ekonomi (inkomst, skatt, disponibel inkomst)
+- **BO** = Boende, byggande (bostäder, hyror, fastighetspriser)
+- **UF** = Utbildning och forskning (skola, universitet, utbildningsnivå)
+- **MI** = Miljö (utsläpp, vatten, avfall, klimat)
+- **PR** = Priser och konsumtion (KPI, inflation)
+- **OE** = Offentlig ekonomi (kommunekonomi, skattesats)
+- **ME** = Demokrati (val, förtroendevalda)
+- **TK** = Transport (fordon, trafik)
 
-### 3. Regionkoder
+### Steg 2: Navigera djupare med scb_browse
+1. \`scb_browse({subjectCode: "BE"})\` → Visar underområden (BE0101, BE0401...)
+2. \`scb_browse({subjectCode: "BE0101"})\` → Visar ämnen (Folkmängd, Döda, Flyttningar...)
+3. \`scb_browse({subjectCode: "BE0101A"})\` → Visar alla tabeller under Folkmängd
+
+### Steg 3: Välj rätt tabell
+Modellen ser nu ALLA tabeller i ämnet och väljer den som bäst matchar frågan.
+
+### Steg 4: Hämta data
+1. \`scb_find_region_code\` om frågan gäller en specifik plats
+2. \`scb_inspect\` för att se tabellens variabler
+3. \`scb_fetch\` för att hämta data
+
+### Snabbguide: Fråga → Ämnesområde → Tabell
+| Fråga | Ämnesområde | Sökväg |
+|-------|-------------|--------|
+| Hur många bor i X? | BE | BE → BE0101 → BE0101A (Folkmängd) |
+| Befolkningsutveckling | BE | BE → BE0101 → BE0101G (Befolkningsförändringar) |
+| Arbetslöshet i X | AM | AM → AM0401 → AM0401A (AKU) |
+| Sysselsättning | AM | AM → AM0206 → AM0206A (RAMS) |
+| Löner i X | AM | AM → AM0110 → AM0110A (Lönestruktur) |
+| BNP/tillväxt | NR | NR → NR0103 → NR0103B (BNP år) |
+| Inkomster | HE | HE → HE0110 → HE0110A (Förvärvsinkomst) |
+| Bostadspriser | BO | BO → BO0104 → BO0104A (Fastighetspriser) |
+| Utsläpp/klimat | MI | MI → MI1301 → MI1301B (Utsläpp till luft) |
+| Valresultat | ME | ME → ME0104 → ME0104A (Riksdagsval) |
+
+## Alternativt arbetsflöde — Textsökning
+Om du redan vet vad du söker kan du använda \`scb_search\` med svenska söktermer.
+
+## Regionkoder
 - Riket (hela Sverige): "00"
 - Län: 2-siffriga koder (01-25), t.ex. "14" = Västra Götalands län
 - Kommuner: 4-siffriga koder, t.ex. "1480" = Göteborg, "1482" = Kungälv
 - Fuzzy matching: "Goteborg" fungerar för "Göteborg"
 
-### 4. Selection-syntax
+## Selection-syntax
 - Specifika värden: {"Region": ["1480", "1482"]}
 - Alla värden: {"Region": ["*"]}
 - Senaste N värden: {"Tid": ["TOP(5)"]}
-- Måste inkludera ALLA obligatoriska variabler (ofta: Region, Tid, ContentsCode)
+- Saknade variabler auto-kompletteras av scb_fetch
 
 ## Vanliga fel och lösningar
 - "Missing mandatory variables" → Lägg till saknade variabler (ofta ContentsCode)

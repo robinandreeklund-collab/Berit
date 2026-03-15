@@ -349,22 +349,30 @@ export class SCBApiClient {
   }
 
   /**
-   * Browse tables by subject code (exploratory navigation)
+   * Browse tables by subject code (exploratory navigation).
+   *
+   * Uses the subject node's label as API search text (much better than code),
+   * then filters client-side by exact path matching.
+   *
+   * @param searchLabel - The human-readable label for the subject (e.g., "Folkmängd")
+   *   Used as the API query parameter for better results than the code itself.
    */
   async browseTables(params: {
     subjectCode?: string;
+    searchLabel?: string;
     pageSize?: number;
     lang?: string;
   } = {}): Promise<TablesResponse> {
     const searchParams = new URLSearchParams();
-    // Use subjectCode as query when available to avoid wildcard queries that can 500
-    searchParams.set('query', params.subjectCode || '*');
-    if (params.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    // Use the label as query text — much better API results than searching by code
+    const queryText = params.searchLabel || params.subjectCode || '*';
+    searchParams.set('query', queryText);
+    searchParams.set('pageSize', String(params.pageSize || 100));
     if (params.lang) searchParams.set('lang', params.lang);
 
     const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
 
-    // Further filter client-side for exact subject code prefix matching
+    // Client-side filter by exact path matching
     if (params.subjectCode) {
       const code = params.subjectCode.toUpperCase();
       result.tables = result.tables.filter(t =>
