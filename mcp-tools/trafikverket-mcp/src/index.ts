@@ -78,23 +78,27 @@ function buildFilter(
   const lan = (args.lan as string)?.trim();
   const id = (args.id as string)?.trim();
 
+  // Trafikverket API v2 LIKE uses regex patterns, not SQL/glob wildcards.
+  // Use .*value.* for substring matching (not *value*).
+  const likePattern = (value: string): string => `.*${escapeRegex(value)}.*`;
+
   switch (tool.filterType) {
     case 'location':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
       if (lan) return { operator: 'EQ', name: 'Deviation.CountyNo', value: lan };
       return null;
 
     case 'station':
-      if (station) return { operator: 'LIKE', name: tool.filterField, value: `*${station}*` };
+      if (station) return { operator: 'LIKE', name: tool.filterField, value: likePattern(station) };
       return null;
 
     case 'weather':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
       if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
       return null;
 
     case 'camera':
-      if (plats) return { operator: 'LIKE', name: tool.filterField, value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: tool.filterField, value: likePattern(plats) };
       if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
       return null;
 
@@ -104,12 +108,17 @@ function buildFilter(
 
     case 'county':
       if (lan) return { operator: 'EQ', name: 'CountyNo', value: lan };
-      if (plats) return { operator: 'LIKE', name: 'LocationText', value: `*${plats}*` };
+      if (plats) return { operator: 'LIKE', name: 'LocationText', value: likePattern(plats) };
       return null;
 
     default:
       return null;
   }
+}
+
+/** Escape special regex characters in user input for safe LIKE patterns. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 

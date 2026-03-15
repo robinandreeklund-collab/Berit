@@ -58,14 +58,14 @@ describe('buildQueryXml', () => {
       filter: {
         operator: 'LIKE',
         name: 'Deviation.LocationDescriptor',
-        value: '*Stockholm*',
+        value: '.*Stockholm.*',
       },
     });
 
     expect(xml).toContain('<FILTER>');
     expect(xml).toContain('<LIKE');
     expect(xml).toContain('name="Deviation.LocationDescriptor"');
-    expect(xml).toContain('value="*Stockholm*"');
+    expect(xml).toContain('value=".*Stockholm.*"');
     expect(xml).toContain('</FILTER>');
   });
 
