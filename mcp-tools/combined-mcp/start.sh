@@ -23,6 +23,9 @@ echo "KB MCP:           internal :3014 → /kb/"
 echo "Upphandlingsdata: internal :3015 → /upphandlingsdata/"
 echo "OECD MCP:         internal :3016 → /oecd/"
 echo "Trafikanalys MCP: internal :3017 → /trafikanalys/"
+echo "Visit Sweden MCP: internal :3018 → /visitsweden/"
+echo "Krisinformation:  internal :3019 → /krisinformation/"
+echo "Polisen MCP:      internal :3020 → /polisen/"
 
 # Generate nginx config with actual PORT
 envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
@@ -114,6 +117,21 @@ echo "Starting Trafikanalys MCP on :3017..."
 PORT=3017 node /app/trafikanalys/dist/http-server.js &
 TRAFIKANALYS_PID=$!
 
+# Start Visit Sweden MCP on port 3018
+echo "Starting Visit Sweden MCP on :3018..."
+PORT=3018 node /app/visitsweden/dist/http-server.js &
+VISITSWEDEN_PID=$!
+
+# Start Krisinformation MCP on port 3019
+echo "Starting Krisinformation MCP on :3019..."
+PORT=3019 node /app/krisinformation/dist/http-server.js &
+KRISINFORMATION_PID=$!
+
+# Start Polisen MCP on port 3020
+echo "Starting Polisen MCP on :3020..."
+PORT=3020 node /app/polisen/dist/http-server.js &
+POLISEN_PID=$!
+
 # Wait for all to be ready
 echo "Waiting for services..."
 for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -133,7 +151,10 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
        wget -qO- http://127.0.0.1:3014/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3015/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3016/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3017/health >/dev/null 2>&1; then
+       wget -qO- http://127.0.0.1:3017/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3018/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3019/health >/dev/null 2>&1 && \
+       wget -qO- http://127.0.0.1:3020/health >/dev/null 2>&1; then
         echo "All services healthy!"
         break
     fi
@@ -179,11 +200,17 @@ echo "  OECD MCP:          http://localhost:$PORT/oecd/mcp"
 echo "  OECD health:       http://localhost:$PORT/oecd/health"
 echo "  Trafikanalys MCP:  http://localhost:$PORT/trafikanalys/mcp"
 echo "  Trafikanalys health: http://localhost:$PORT/trafikanalys/health"
+echo "  Visit Sweden MCP:   http://localhost:$PORT/visitsweden/mcp"
+echo "  Visit Sweden health: http://localhost:$PORT/visitsweden/health"
+echo "  Krisinformation MCP: http://localhost:$PORT/krisinformation/mcp"
+echo "  Krisinformation health: http://localhost:$PORT/krisinformation/health"
+echo "  Polisen MCP:        http://localhost:$PORT/polisen/mcp"
+echo "  Polisen health:     http://localhost:$PORT/polisen/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID 2>/dev/null || true
 exit 1

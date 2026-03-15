@@ -45,7 +45,7 @@ pkill -9 -f "next-server" 2>/dev/null || true
 pkill -9 nginx 2>/dev/null || true
 killall -9 nginx 2>/dev/null || true
 # Kill any remaining processes on service ports (catches zombie python processes)
-for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117; do
+for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117 3118 3119 3120; do
     fuser -k "$port/tcp" 2>/dev/null || true
 done
 docker stop deer-flow-google-maps-mcp 2>/dev/null || true
@@ -68,6 +68,12 @@ docker stop deer-flow-oecd-mcp 2>/dev/null || true
 docker rm deer-flow-oecd-mcp 2>/dev/null || true
 docker stop deer-flow-trafikanalys-mcp 2>/dev/null || true
 docker rm deer-flow-trafikanalys-mcp 2>/dev/null || true
+docker stop deer-flow-visitsweden-mcp 2>/dev/null || true
+docker rm deer-flow-visitsweden-mcp 2>/dev/null || true
+docker stop deer-flow-krisinformation-mcp 2>/dev/null || true
+docker rm deer-flow-krisinformation-mcp 2>/dev/null || true
+docker stop deer-flow-polisen-mcp 2>/dev/null || true
+docker rm deer-flow-polisen-mcp 2>/dev/null || true
 docker stop deer-flow-lightpanda 2>/dev/null || true
 docker rm deer-flow-lightpanda 2>/dev/null || true
 docker stop deer-flow-lightpanda-mcp 2>/dev/null || true
@@ -201,6 +207,21 @@ if [ -z "${TRAFIKANALYS_MCP_URL:-}" ]; then
     echo "  → Trafikanalys MCP: Transport Statistics (local)"
 else
     echo "  → Trafikanalys MCP: Transport Statistics (remote)"
+fi
+if [ -z "${VISITSWEDEN_MCP_URL:-}" ]; then
+    echo "  → Visit Sweden MCP: Swedish Tourism (local)"
+else
+    echo "  → Visit Sweden MCP: Swedish Tourism (remote)"
+fi
+if [ -z "${KRISINFORMATION_MCP_URL:-}" ]; then
+    echo "  → Krisinformation MCP: Crisis Information (local)"
+else
+    echo "  → Krisinformation MCP: Crisis Information (remote)"
+fi
+if [ -z "${POLISEN_MCP_URL:-}" ]; then
+    echo "  → Polisen MCP: Police Events (local)"
+else
+    echo "  → Polisen MCP: Police Events (remote)"
 fi
 echo "  → Backend: LangGraph + Gateway"
 echo "  → Frontend: Next.js"
@@ -337,8 +358,20 @@ cleanup() {
     if [ -n "${TRAFIKANALYS_MCP_PID:-}" ] && kill -0 "$TRAFIKANALYS_MCP_PID" 2>/dev/null; then
         kill "$TRAFIKANALYS_MCP_PID" 2>/dev/null || true
     fi
+    # Kill Visit Sweden MCP Node.js process if running
+    if [ -n "${VISITSWEDEN_MCP_PID:-}" ] && kill -0 "$VISITSWEDEN_MCP_PID" 2>/dev/null; then
+        kill "$VISITSWEDEN_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Krisinformation MCP Node.js process if running
+    if [ -n "${KRISINFORMATION_MCP_PID:-}" ] && kill -0 "$KRISINFORMATION_MCP_PID" 2>/dev/null; then
+        kill "$KRISINFORMATION_MCP_PID" 2>/dev/null || true
+    fi
+    # Kill Polisen MCP Node.js process if running
+    if [ -n "${POLISEN_MCP_PID:-}" ] && kill -0 "$POLISEN_MCP_PID" 2>/dev/null; then
+        kill "$POLISEN_MCP_PID" 2>/dev/null || true
+    fi
     # Kill any remaining processes on service ports (catches zombie python processes)
-    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117; do
+    for port in 2024 8001 3000 2026 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112 3113 3114 3115 3116 3117 3118 3119 3120; do
         fuser -k "$port/tcp" 2>/dev/null || true
     done
     echo "Cleaning up containers..."
@@ -380,6 +413,12 @@ cleanup() {
     docker rm deer-flow-oecd-mcp 2>/dev/null || true
     docker stop deer-flow-trafikanalys-mcp 2>/dev/null || true
     docker rm deer-flow-trafikanalys-mcp 2>/dev/null || true
+    docker stop deer-flow-visitsweden-mcp 2>/dev/null || true
+    docker rm deer-flow-visitsweden-mcp 2>/dev/null || true
+    docker stop deer-flow-krisinformation-mcp 2>/dev/null || true
+    docker rm deer-flow-krisinformation-mcp 2>/dev/null || true
+    docker stop deer-flow-polisen-mcp 2>/dev/null || true
+    docker rm deer-flow-polisen-mcp 2>/dev/null || true
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
     exit 0
@@ -1499,6 +1538,186 @@ elif [ -z "${TRAFIKANALYS_MCP_URL:-}" ]; then
 fi
 export TRAFIKANALYS_MCP_URL="${TRAFIKANALYS_MCP_URL:-}"
 
+# Visit Sweden MCP Server — Swedish tourism data
+VISITSWEDEN_MCP_PORT="${VISITSWEDEN_MCP_PORT:-3118}"
+VISITSWEDEN_MCP_DIR="$REPO_ROOT/mcp-tools/visitsweden-mcp"
+if [ -n "${VISITSWEDEN_MCP_URL:-}" ]; then
+    echo "✓ Visit Sweden MCP using remote instance: ${VISITSWEDEN_MCP_URL}"
+elif [ -z "${VISITSWEDEN_MCP_URL:-}" ]; then
+    echo "Starting Visit Sweden MCP server..."
+    VISITSWEDEN_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $VISITSWEDEN_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-visitsweden-mcp >/dev/null 2>&1; then
+            echo "  Building Visit Sweden MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-visitsweden-mcp -f docker/visitsweden-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-visitsweden-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-visitsweden-mcp -p "${VISITSWEDEN_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-visitsweden-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$VISITSWEDEN_MCP_PORT" 30 "Visit Sweden MCP" || true
+            if docker ps --filter name=deer-flow-visitsweden-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export VISITSWEDEN_MCP_URL="http://localhost:${VISITSWEDEN_MCP_PORT}/mcp"
+                echo "✓ Visit Sweden MCP started via Docker on localhost:${VISITSWEDEN_MCP_PORT}"
+                VISITSWEDEN_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $VISITSWEDEN_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Visit Sweden MCP with Node.js..."
+        if [ ! -f "$VISITSWEDEN_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Visit Sweden MCP from local source (first time)..."
+            (cd "$VISITSWEDEN_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Visit Sweden MCP build failed. Tourism tools will not be available."
+            }
+        fi
+        if [ -f "$VISITSWEDEN_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$VISITSWEDEN_MCP_PORT" \
+                node "$VISITSWEDEN_MCP_DIR/dist/http-server.js" > logs/visitsweden-mcp.log 2>&1 &
+            VISITSWEDEN_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$VISITSWEDEN_MCP_PORT" 15 "Visit Sweden MCP" || {
+                echo "  ⚠ Visit Sweden MCP failed to start."
+                kill "$VISITSWEDEN_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$VISITSWEDEN_MCP_PID" 2>/dev/null; then
+                export VISITSWEDEN_MCP_URL="http://localhost:${VISITSWEDEN_MCP_PORT}/mcp"
+                echo "✓ Visit Sweden MCP started via Node.js on localhost:${VISITSWEDEN_MCP_PORT}"
+                VISITSWEDEN_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $VISITSWEDEN_MCP_STARTED; then
+        echo "  ⚠ Visit Sweden MCP could not be started. Tourism tools will not be available."
+        echo "  Install Docker or Node.js to enable Visit Sweden MCP."
+    fi
+fi
+export VISITSWEDEN_MCP_URL="${VISITSWEDEN_MCP_URL:-}"
+
+# Krisinformation MCP Server — Swedish crisis information
+KRISINFORMATION_MCP_PORT="${KRISINFORMATION_MCP_PORT:-3119}"
+KRISINFORMATION_MCP_DIR="$REPO_ROOT/mcp-tools/krisinformation-mcp"
+if [ -n "${KRISINFORMATION_MCP_URL:-}" ]; then
+    echo "✓ Krisinformation MCP using remote instance: ${KRISINFORMATION_MCP_URL}"
+elif [ -z "${KRISINFORMATION_MCP_URL:-}" ]; then
+    echo "Starting Krisinformation MCP server..."
+    KRISINFORMATION_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $KRISINFORMATION_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-krisinformation-mcp >/dev/null 2>&1; then
+            echo "  Building Krisinformation MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-krisinformation-mcp -f docker/krisinformation-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-krisinformation-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-krisinformation-mcp -p "${KRISINFORMATION_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-krisinformation-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$KRISINFORMATION_MCP_PORT" 30 "Krisinformation MCP" || true
+            if docker ps --filter name=deer-flow-krisinformation-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export KRISINFORMATION_MCP_URL="http://localhost:${KRISINFORMATION_MCP_PORT}/mcp"
+                echo "✓ Krisinformation MCP started via Docker on localhost:${KRISINFORMATION_MCP_PORT}"
+                KRISINFORMATION_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $KRISINFORMATION_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Krisinformation MCP with Node.js..."
+        if [ ! -f "$KRISINFORMATION_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Krisinformation MCP from local source (first time)..."
+            (cd "$KRISINFORMATION_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Krisinformation MCP build failed. Crisis information tools will not be available."
+            }
+        fi
+        if [ -f "$KRISINFORMATION_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$KRISINFORMATION_MCP_PORT" \
+                node "$KRISINFORMATION_MCP_DIR/dist/http-server.js" > logs/krisinformation-mcp.log 2>&1 &
+            KRISINFORMATION_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$KRISINFORMATION_MCP_PORT" 15 "Krisinformation MCP" || {
+                echo "  ⚠ Krisinformation MCP failed to start."
+                kill "$KRISINFORMATION_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$KRISINFORMATION_MCP_PID" 2>/dev/null; then
+                export KRISINFORMATION_MCP_URL="http://localhost:${KRISINFORMATION_MCP_PORT}/mcp"
+                echo "✓ Krisinformation MCP started via Node.js on localhost:${KRISINFORMATION_MCP_PORT}"
+                KRISINFORMATION_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $KRISINFORMATION_MCP_STARTED; then
+        echo "  ⚠ Krisinformation MCP could not be started. Crisis information tools will not be available."
+        echo "  Install Docker or Node.js to enable Krisinformation MCP."
+    fi
+fi
+export KRISINFORMATION_MCP_URL="${KRISINFORMATION_MCP_URL:-}"
+
+# Polisen MCP Server — Swedish police events
+POLISEN_MCP_PORT="${POLISEN_MCP_PORT:-3120}"
+POLISEN_MCP_DIR="$REPO_ROOT/mcp-tools/polisen-mcp"
+if [ -n "${POLISEN_MCP_URL:-}" ]; then
+    echo "✓ Polisen MCP using remote instance: ${POLISEN_MCP_URL}"
+elif [ -z "${POLISEN_MCP_URL:-}" ]; then
+    echo "Starting Polisen MCP server..."
+    POLISEN_MCP_STARTED=false
+
+    # Strategy 1: Docker container
+    if ! $POLISEN_MCP_STARTED && command -v docker >/dev/null 2>&1; then
+        if ! docker image inspect deer-flow-polisen-mcp >/dev/null 2>&1; then
+            echo "  Building Polisen MCP Docker image (first time, may take a minute)..."
+            docker build -t deer-flow-polisen-mcp -f docker/polisen-mcp/Dockerfile . > /dev/null 2>&1 || true
+        fi
+        if docker image inspect deer-flow-polisen-mcp >/dev/null 2>&1; then
+            docker run -d --name deer-flow-polisen-mcp -p "${POLISEN_MCP_PORT}:3000" \
+                -e PORT=3000 -e NODE_ENV=production \
+                --restart unless-stopped deer-flow-polisen-mcp > /dev/null 2>&1
+            ./scripts/wait-for-port.sh "$POLISEN_MCP_PORT" 30 "Polisen MCP" || true
+            if docker ps --filter name=deer-flow-polisen-mcp --format '{{.Status}}' | grep -q "Up"; then
+                export POLISEN_MCP_URL="http://localhost:${POLISEN_MCP_PORT}/mcp"
+                echo "✓ Polisen MCP started via Docker on localhost:${POLISEN_MCP_PORT}"
+                POLISEN_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    # Strategy 2: Native Node.js (fallback when Docker unavailable)
+    if ! $POLISEN_MCP_STARTED && command -v node >/dev/null 2>&1; then
+        echo "  Docker unavailable, starting Polisen MCP with Node.js..."
+        if [ ! -f "$POLISEN_MCP_DIR/dist/http-server.js" ]; then
+            echo "  Building Polisen MCP from local source (first time)..."
+            (cd "$POLISEN_MCP_DIR" && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1) || {
+                echo "  ⚠ Polisen MCP build failed. Police event tools will not be available."
+            }
+        fi
+        if [ -f "$POLISEN_MCP_DIR/dist/http-server.js" ]; then
+            PORT="$POLISEN_MCP_PORT" \
+                node "$POLISEN_MCP_DIR/dist/http-server.js" > logs/polisen-mcp.log 2>&1 &
+            POLISEN_MCP_PID=$!
+            ./scripts/wait-for-port.sh "$POLISEN_MCP_PORT" 15 "Polisen MCP" || {
+                echo "  ⚠ Polisen MCP failed to start."
+                kill "$POLISEN_MCP_PID" 2>/dev/null || true
+            }
+            if kill -0 "$POLISEN_MCP_PID" 2>/dev/null; then
+                export POLISEN_MCP_URL="http://localhost:${POLISEN_MCP_PORT}/mcp"
+                echo "✓ Polisen MCP started via Node.js on localhost:${POLISEN_MCP_PORT}"
+                POLISEN_MCP_STARTED=true
+            fi
+        fi
+    fi
+
+    if ! $POLISEN_MCP_STARTED; then
+        echo "  ⚠ Polisen MCP could not be started. Police event tools will not be available."
+        echo "  Install Docker or Node.js to enable Polisen MCP."
+    fi
+fi
+export POLISEN_MCP_URL="${POLISEN_MCP_URL:-}"
+
 # Export filesystem allowed path for MCP filesystem server (per-thread workspaces live here)
 DEER_FLOW_BASE="${DEER_FLOW_HOME:-$REPO_ROOT/backend/.deer-flow}"
 mkdir -p "$DEER_FLOW_BASE"
@@ -1658,6 +1877,21 @@ if [ -n "${TRAFIKANALYS_MCP_URL:-}" ]; then
 else
     echo "  🚗 Trafikanalys: (ej konfigurerad)"
 fi
+if [ -n "${VISITSWEDEN_MCP_URL:-}" ]; then
+    echo "  🏔️ Visit Sweden: ${VISITSWEDEN_MCP_URL}"
+else
+    echo "  🏔️ Visit Sweden: (ej konfigurerad)"
+fi
+if [ -n "${KRISINFORMATION_MCP_URL:-}" ]; then
+    echo "  🚨 Krisinformation: ${KRISINFORMATION_MCP_URL}"
+else
+    echo "  🚨 Krisinformation: (ej konfigurerad)"
+fi
+if [ -n "${POLISEN_MCP_URL:-}" ]; then
+    echo "  👮 Polisen:      ${POLISEN_MCP_URL}"
+else
+    echo "  👮 Polisen:      (ej konfigurerad)"
+fi
 echo ""
 echo "  📋 Logs:"
 echo "     - LangGraph:   logs/langgraph.log"
@@ -1754,6 +1988,21 @@ if [ -n "${TRAFIKANALYS_MCP_PID:-}" ]; then
     echo "     - Trafikanalys: logs/trafikanalys-mcp.log"
 elif [ -z "${TRAFIKANALYS_MCP_URL:-}" ] || echo "${TRAFIKANALYS_MCP_URL}" | grep -q "localhost"; then
     echo "     - Trafikanalys: docker logs deer-flow-trafikanalys-mcp"
+fi
+if [ -n "${VISITSWEDEN_MCP_PID:-}" ]; then
+    echo "     - Visit Sweden: logs/visitsweden-mcp.log"
+elif [ -z "${VISITSWEDEN_MCP_URL:-}" ] || echo "${VISITSWEDEN_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Visit Sweden: docker logs deer-flow-visitsweden-mcp"
+fi
+if [ -n "${KRISINFORMATION_MCP_PID:-}" ]; then
+    echo "     - Krisinformation: logs/krisinformation-mcp.log"
+elif [ -z "${KRISINFORMATION_MCP_URL:-}" ] || echo "${KRISINFORMATION_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Krisinformation: docker logs deer-flow-krisinformation-mcp"
+fi
+if [ -n "${POLISEN_MCP_PID:-}" ]; then
+    echo "     - Polisen:     logs/polisen-mcp.log"
+elif [ -z "${POLISEN_MCP_URL:-}" ] || echo "${POLISEN_MCP_URL}" | grep -q "localhost"; then
+    echo "     - Polisen:     docker logs deer-flow-polisen-mcp"
 fi
 echo ""
 echo "Press Ctrl+C to stop all services"

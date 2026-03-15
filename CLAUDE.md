@@ -31,6 +31,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Upphandlingsdata MCP v1.0** (port 3000, Docker sidecar): Offentlig upphandling — LOV, hållbarhetskriterier, EU TED, frågeportal. 7 verktyg.
 - **OECD MCP v1.0** (port 3000, Docker sidecar): Internationell statistik via SDMX — ekonomi, hälsa, utbildning, handel, miljö, 30+ dataset. 9 verktyg.
 - **Trafikanalys MCP v1.0** (port 3000, Docker sidecar): Svensk transportstatistik — fordon, registreringar, fordonskilometer, järnväg, flyg. 8 verktyg.
+- **Visit Sweden MCP v1.0** (port 3000, Docker sidecar): Svensk turism — sevärdheter, boenden, restauranger, evenemang via Visit Swedens öppna dataplattform. 4 verktyg.
+- **Krisinformation MCP v1.0** (port 3000, Docker sidecar): Krisinformation — krisnyheter, VMA-varningar från Krisinformation.se (MSB). 2 verktyg.
+- **Polisen MCP v1.0** (port 3000, Docker sidecar): Polishändelser — brott, olyckor, störningar i realtid från Polisen.se. 1 verktyg.
 
 ## Project Structure
 
@@ -81,7 +84,10 @@ Berit/
 │   ├── kb-mcp/              # KB MCP v1.0 — 10 verktyg för Libris, K-samsök, Swepub
 │   ├── upphandlingsdata-mcp/ # Upphandlingsdata MCP v1.0 — 7 verktyg för offentlig upphandling
 │   ├── oecd-mcp/            # OECD MCP v1.0 — 9 verktyg för internationell statistik
-│   └── trafikanalys-mcp/    # Trafikanalys MCP v1.0 — 8 verktyg för transportstatistik
+│   ├── trafikanalys-mcp/    # Trafikanalys MCP v1.0 — 8 verktyg för transportstatistik
+│   ├── visitsweden-mcp/     # Visit Sweden MCP v1.0 — 4 verktyg för turism
+│   ├── krisinformation-mcp/ # Krisinformation MCP v1.0 — 2 verktyg för krisnyheter, VMA
+│   └── polisen-mcp/         # Polisen MCP v1.0 — 1 verktyg för polishändelser
 ├── docker/                     # Docker Compose & Nginx configs
 │   ├── scb-mcp/               # SCB MCP server Dockerfile (builds from mcp-tools/scb-mcp/)
 │   ├── trafikverket-mcp/      # Trafikverket MCP server Dockerfile
@@ -99,7 +105,10 @@ Berit/
 │   ├── kb-mcp/              # KB MCP server Dockerfile
 │   ├── upphandlingsdata-mcp/ # Upphandlingsdata MCP server Dockerfile
 │   ├── oecd-mcp/            # OECD MCP server Dockerfile
-│   └── trafikanalys-mcp/    # Trafikanalys MCP server Dockerfile
+│   ├── trafikanalys-mcp/    # Trafikanalys MCP server Dockerfile
+│   ├── visitsweden-mcp/     # Visit Sweden MCP server Dockerfile
+│   ├── krisinformation-mcp/ # Krisinformation MCP server Dockerfile
+│   └── polisen-mcp/         # Polisen MCP server Dockerfile
 └── scripts/                    # Automation scripts (check, serve, deploy, etc.)
 ```
 

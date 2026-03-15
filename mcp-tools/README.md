@@ -1,6 +1,6 @@
 # Berit MCP Tools
 
-Berit inkluderar **18 MCP-servrar** (Model Context Protocol) som ger agenten tillgång till svenska och internationella datakällor. Alla körs som Docker-sidecars på port 3000 och exponerar HTTP MCP-endpoints.
+Berit inkluderar **21 MCP-servrar** (Model Context Protocol) som ger agenten tillgång till svenska och internationella datakällor. Alla körs som Docker-sidecars på port 3000 och exponerar HTTP MCP-endpoints.
 
 ## Översikt
 
@@ -24,8 +24,11 @@ Berit inkluderar **18 MCP-servrar** (Model Context Protocol) som ger agenten til
 | **Upphandlingsdata** | 7 | Upphandlingsmyndigheten | Offentlig upphandling, LOV, hållbarhetskriterier, EU TED |
 | **OECD** | 9 | OECD SDMX API | Internationell statistik — ekonomi, hälsa, utbildning, handel, miljö |
 | **Trafikanalys** | 8 | Trafikanalys (trafa.se) | Fordon i trafik, registreringar, fordonskilometer, järnväg, flyg |
+| **Visit Sweden** | 4 | Visit Sweden Data | Turism — sevärdheter, boenden, restauranger, evenemang |
+| **Krisinformation** | 2 | Krisinformation.se (MSB) | Krisnyheter och VMA-varningar |
+| **Polisen** | 1 | Polisen.se | Polishändelser i realtid — brott, olyckor, störningar |
 
-**Totalt: ~270 verktyg**
+**Totalt: ~277 verktyg**
 
 ## Arkitektur
 
@@ -66,6 +69,9 @@ mcp-tools/
 ├── upphandlingsdata-mcp/   # Upphandlingsdata — 7 verktyg
 ├── oecd-mcp/               # OECD — 9 verktyg
 ├── trafikanalys-mcp/       # Trafikanalys — 8 verktyg
+├── visitsweden-mcp/        # Visit Sweden — 4 verktyg
+├── krisinformation-mcp/    # Krisinformation — 2 verktyg
+├── polisen-mcp/            # Polisen — 1 verktyg
 ├── combined-mcp/           # Nginx reverse proxy (Render-deploy)
 ├── ADDING_NEW_MCP.md       # Guide för att lägga till nya MCP-servrar
 └── README.md               # Denna fil

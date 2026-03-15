@@ -243,6 +243,39 @@
       "headers": {},
       "oauth": null,
       "description": "Trafikanalys — Svensk transportstatistik. Fordon, registreringar, fordonskilometer, järnväg, flyg. 8 verktyg."
+    },
+    "visitsweden": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$VISITSWEDEN_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Visit Sweden — Svensk turism. Sevärdheter, boenden, restauranger, evenemang. 4 verktyg."
+    },
+    "krisinformation": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$KRISINFORMATION_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Krisinformation — Krisnyheter och VMA-varningar från Krisinformation.se (MSB). 2 verktyg."
+    },
+    "polisen": {
+      "enabled": true,
+      "type": "http",
+      "command": null,
+      "args": [],
+      "env": {},
+      "url": "$POLISEN_MCP_URL",
+      "headers": {},
+      "oauth": null,
+      "description": "Polisen — Polishändelser i realtid. Brott, olyckor, störningar med plats och typ. 1 verktyg."
     }
   },
   "skills": {}

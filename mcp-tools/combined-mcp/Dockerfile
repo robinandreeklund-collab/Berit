@@ -1,4 +1,4 @@
-# Combined MCP Server — 18 MCP servers on one Render instance
+# Combined MCP Server — 21 MCP servers on one Render instance
 # SCB:              / (backwards compatible)
 # Skolverket:       /skolverket/
 # Trafikverket:     /trafikverket/
@@ -16,6 +16,9 @@
 # Upphandlingsdata: /upphandlingsdata/
 # OECD:             /oecd/
 # Trafikanalys:     /trafikanalys/
+# Visit Sweden:     /visitsweden/
+# Krisinformation:  /krisinformation/
+# Polisen:          /polisen/
 
 # ============ Stage 1: Build SCB ============
 FROM node:22-alpine AS build-scb
@@ -136,7 +139,28 @@ COPY trafikanalys-mcp/package.json trafikanalys-mcp/package-lock.json trafikanal
 COPY trafikanalys-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 18: Production ============
+# ============ Stage 18: Build Visit Sweden ============
+FROM node:22-alpine AS build-visitsweden
+WORKDIR /app
+COPY visitsweden-mcp/package.json visitsweden-mcp/package-lock.json visitsweden-mcp/tsconfig.json ./
+COPY visitsweden-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 19: Build Krisinformation ============
+FROM node:22-alpine AS build-krisinformation
+WORKDIR /app
+COPY krisinformation-mcp/package.json krisinformation-mcp/package-lock.json krisinformation-mcp/tsconfig.json ./
+COPY krisinformation-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 20: Build Polisen ============
+FROM node:22-alpine AS build-polisen
+WORKDIR /app
+COPY polisen-mcp/package.json polisen-mcp/package-lock.json polisen-mcp/tsconfig.json ./
+COPY polisen-mcp/src ./src
+RUN npm ci --ignore-scripts && npm run build
+
+# ============ Stage 21: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -232,6 +256,21 @@ COPY --from=build-oecd /app/dist /app/oecd/dist
 COPY trafikanalys-mcp/package.json trafikanalys-mcp/package-lock.json /app/trafikanalys/
 RUN cd /app/trafikanalys && npm ci --omit=dev --ignore-scripts
 COPY --from=build-trafikanalys /app/dist /app/trafikanalys/dist
+
+# Visit Sweden production install
+COPY visitsweden-mcp/package.json visitsweden-mcp/package-lock.json /app/visitsweden/
+RUN cd /app/visitsweden && npm ci --omit=dev --ignore-scripts
+COPY --from=build-visitsweden /app/dist /app/visitsweden/dist
+
+# Krisinformation production install
+COPY krisinformation-mcp/package.json krisinformation-mcp/package-lock.json /app/krisinformation/
+RUN cd /app/krisinformation && npm ci --omit=dev --ignore-scripts
+COPY --from=build-krisinformation /app/dist /app/krisinformation/dist
+
+# Polisen production install
+COPY polisen-mcp/package.json polisen-mcp/package-lock.json /app/polisen/
+RUN cd /app/polisen && npm ci --omit=dev --ignore-scripts
+COPY --from=build-polisen /app/dist /app/polisen/dist
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template
