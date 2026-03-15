@@ -96,6 +96,9 @@ services:
       - UPPHANDLINGSDATA_MCP_URL=http://upphandlingsdata-mcp:3000/mcp
       - OECD_MCP_URL=http://oecd-mcp:3000/mcp
       - TRAFIKANALYS_MCP_URL=http://trafikanalys-mcp:3000/mcp
+      - VISITSWEDEN_MCP_URL=http://visitsweden-mcp:3000/mcp
+      - KRISINFORMATION_MCP_URL=http://krisinformation-mcp:3000/mcp
+      - POLISEN_MCP_URL=http://polisen-mcp:3000/mcp
     env_file:
       - ../.env
     extra_hosts:
@@ -148,6 +151,9 @@ services:
       - UPPHANDLINGSDATA_MCP_URL=http://upphandlingsdata-mcp:3000/mcp
       - OECD_MCP_URL=http://oecd-mcp:3000/mcp
       - TRAFIKANALYS_MCP_URL=http://trafikanalys-mcp:3000/mcp
+      - VISITSWEDEN_MCP_URL=http://visitsweden-mcp:3000/mcp
+      - KRISINFORMATION_MCP_URL=http://krisinformation-mcp:3000/mcp
+      - POLISEN_MCP_URL=http://polisen-mcp:3000/mcp
       # Disable LangSmith tracing — LANGSMITH_API_KEY is not required.
       # Set LANGCHAIN_TRACING_V2=true and LANGSMITH_API_KEY in .env to enable.
       - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
@@ -462,6 +468,57 @@ services:
       context: ../
       dockerfile: docker/trafikanalys-mcp/Dockerfile
     container_name: deer-flow-trafikanalys-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Visit Sweden MCP Server (Swedish tourism data) ───────────────────
+  visitsweden-mcp:
+    build:
+      context: ../
+      dockerfile: docker/visitsweden-mcp/Dockerfile
+    container_name: deer-flow-visitsweden-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Krisinformation MCP Server (Swedish crisis information) ─────────
+  krisinformation-mcp:
+    build:
+      context: ../
+      dockerfile: docker/krisinformation-mcp/Dockerfile
+    container_name: deer-flow-krisinformation-mcp
+    environment:
+      - PORT=3000
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Polisen MCP Server (Swedish police events) ─────────────────────
+  polisen-mcp:
+    build:
+      context: ../
+      dockerfile: docker/polisen-mcp/Dockerfile
+    container_name: deer-flow-polisen-mcp
     environment:
       - PORT=3000
     networks:
