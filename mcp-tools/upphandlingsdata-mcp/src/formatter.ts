@@ -40,8 +40,12 @@ export function formatSearchResults(
   data: unknown,
 ): { markdown: string; count: number; raw: unknown[] } {
   const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.hits) ? response.hits : Array.isArray(data) ? data : [];
-  const totalHits = (response.totalHits as number) || items.length;
+  const items = Array.isArray(response.results)
+    ? response.results
+    : Array.isArray(response.hits)
+      ? response.hits
+      : Array.isArray(data) ? data : [];
+  const totalHits = (response.numberOfHits as number) || (response.totalHits as number) || items.length;
 
   if (items.length === 0) return { markdown: '_Inga sökresultat._', count: 0, raw: [] };
 
@@ -51,8 +55,8 @@ export function formatSearchResults(
   for (const item of items) {
     const hit = item as Record<string, unknown>;
     rows.push([
-      truncate(hit.title as string, 60),
-      truncate(hit.description as string, 80),
+      truncate((hit.heading || hit.title) as string, 60),
+      truncate((hit.excerpt || hit.description) as string, 80),
       String(hit.type || '—'),
       String(hit.url || '—'),
     ]);
@@ -70,8 +74,12 @@ export function formatQuestionResults(
   data: unknown,
 ): { markdown: string; count: number; raw: unknown[] } {
   const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.hits) ? response.hits : Array.isArray(data) ? data : [];
-  const totalHits = (response.totalHits as number) || items.length;
+  const items = Array.isArray(response.results)
+    ? response.results
+    : Array.isArray(response.hits)
+      ? response.hits
+      : Array.isArray(data) ? data : [];
+  const totalHits = (response.numberOfHits as number) || (response.totalHits as number) || items.length;
 
   if (items.length === 0) return { markdown: '_Inga frågor hittades._', count: 0, raw: [] };
 
@@ -81,8 +89,8 @@ export function formatQuestionResults(
   for (const item of items) {
     const hit = item as Record<string, unknown>;
     rows.push([
-      truncate(hit.title as string, 60),
-      truncate(hit.description as string, 80),
+      truncate((hit.heading || hit.title) as string, 60),
+      truncate((hit.excerpt || hit.description) as string, 80),
       String(hit.category || '—'),
       String(hit.url || '—'),
     ]);
@@ -100,8 +108,12 @@ export function formatLOVResults(
   data: unknown,
 ): { markdown: string; count: number; raw: unknown[] } {
   const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.hits) ? response.hits : Array.isArray(data) ? data : [];
-  const totalHits = (response.totalHits as number) || items.length;
+  const items = Array.isArray(response.results)
+    ? response.results
+    : Array.isArray(response.hits)
+      ? response.hits
+      : Array.isArray(data) ? data : [];
+  const totalHits = (response.numberOfHits as number) || (response.totalHits as number) || items.length;
 
   if (items.length === 0) return { markdown: '_Inga LOV-annonser hittades._', count: 0, raw: [] };
 
@@ -132,8 +144,12 @@ export function formatCriteriaResults(
   data: unknown,
 ): { markdown: string; count: number; raw: unknown[] } {
   const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.hits) ? response.hits : Array.isArray(data) ? data : [];
-  const totalHits = (response.totalHits as number) || items.length;
+  const items = Array.isArray(response.results)
+    ? response.results
+    : Array.isArray(response.hits)
+      ? response.hits
+      : Array.isArray(data) ? data : [];
+  const totalHits = (response.numberOfHits as number) || (response.totalHits as number) || items.length;
 
   if (items.length === 0) return { markdown: '_Inga kriterier hittades._', count: 0, raw: [] };
 

@@ -20,11 +20,14 @@ describe('markdownTable', () => {
 });
 
 describe('formatProducts', () => {
-  it('formats product list', () => {
-    const data = [
-      { code: 't10016', name: 'Personbilar', description: 'Fordonsstatistik' },
-      { code: 't0501', name: 'Flygtrafik', description: 'Flygstatistik' },
-    ];
+  it('formats product list from StructureItems', () => {
+    const data = {
+      StructureItems: [
+        { Name: 't10016', Label: 'Personbilar', Type: 'P', Description: 'Fordonsstatistik', UniqueId: 'T10016' },
+        { Name: 't0501', Label: 'Flygtrafik', Type: 'P', Description: 'Flygstatistik', UniqueId: 'T0501' },
+        { Name: 'ar', Label: 'År', Type: 'D' }, // Dimension, should be filtered out
+      ],
+    };
     const result = formatProducts(data);
     expect(result.count).toBe(2);
     expect(result.markdown).toContain('t10016');
@@ -32,8 +35,14 @@ describe('formatProducts', () => {
     expect(result.markdown).toContain('t0501');
   });
 
-  it('handles empty array', () => {
-    const result = formatProducts([]);
+  it('handles empty StructureItems', () => {
+    const result = formatProducts({ StructureItems: [] });
+    expect(result.count).toBe(0);
+    expect(result.markdown).toContain('Inga produkter');
+  });
+
+  it('handles null data', () => {
+    const result = formatProducts(null);
     expect(result.count).toBe(0);
     expect(result.markdown).toContain('Inga produkter');
   });
@@ -42,15 +51,25 @@ describe('formatProducts', () => {
 describe('formatProductStructure', () => {
   it('formats product structure with dimensions and measures', () => {
     const data = {
-      code: 't10016',
-      name: 'Personbilar',
-      dimensions: [
-        { code: 'ar', name: 'År', values: [{ code: '2023' }, { code: '2024' }] },
-        { code: 'drivm', name: 'Drivmedel', values: [{ code: 'bensin' }, { code: 'diesel' }, { code: 'el' }] },
-      ],
-      measures: [
-        { code: 'itrfslut', name: 'I trafik' },
-        { code: 'nyregunder', name: 'Nyregistreringar' },
+      StructureItems: [
+        { Name: 't10016', Label: 'Personbilar', Type: 'P' },
+        {
+          Name: 'ar', Label: 'År', Type: 'D',
+          StructureItems: [
+            { Name: 'senaste', Label: 'Senaste' },
+            { Name: '2024', Label: '2024' },
+          ],
+        },
+        {
+          Name: 'drivm', Label: 'Drivmedel', Type: 'D',
+          StructureItems: [
+            { Name: 'bensin', Label: 'Bensin' },
+            { Name: 'diesel', Label: 'Diesel' },
+            { Name: 'el', Label: 'El' },
+          ],
+        },
+        { Name: 'itrfslut', Label: 'I trafik', Type: 'M', Description: 'Antal i slutet av perioden' },
+        { Name: 'nyregunder', Label: 'Nyregistreringar', Type: 'M', Description: 'Under perioden' },
       ],
     };
     const result = formatProductStructure(data);
@@ -70,20 +89,44 @@ describe('formatProductStructure', () => {
 });
 
 describe('formatDataResults', () => {
-  it('formats data with columns and rows', () => {
+  it('formats data with Rows and Cells (Trafikanalys format)', () => {
     const data = {
-      columns: ['År', 'Drivmedel', 'Antal'],
-      data: [
-        { key: ['2024', 'Bensin'], values: [{ value: 3500000 }] },
-        { key: ['2024', 'Diesel'], values: [{ value: 1200000 }] },
-        { key: ['2024', 'El'], values: [{ value: 800000 }] },
+      Header: { Column: [{ Name: 'itrfslut', Value: 'Antal i trafik' }] },
+      Rows: [
+        {
+          Cell: [
+            { Name: '2024', Column: 'ar', Value: '2024', FormattedValue: '2024', IsMeasure: false },
+            { Name: 'Bensin', Column: 'drivm', Value: 'Bensin', FormattedValue: 'Bensin', IsMeasure: false },
+            { Name: '3500000', Column: 'itrfslut', Value: '3500000', FormattedValue: '3500000', IsMeasure: true },
+          ],
+        },
+        {
+          Cell: [
+            { Name: '2024', Column: 'ar', Value: '2024', FormattedValue: '2024', IsMeasure: false },
+            { Name: 'Diesel', Column: 'drivm', Value: 'Diesel', FormattedValue: 'Diesel', IsMeasure: false },
+            { Name: '1200000', Column: 'itrfslut', Value: '1200000', FormattedValue: '1200000', IsMeasure: true },
+          ],
+        },
       ],
+      Errors: null,
+      Name: 'Personbilar',
     };
     const result = formatDataResults(data);
-    expect(result.count).toBe(3);
-    expect(result.markdown).toContain('År');
+    expect(result.count).toBe(2);
     expect(result.markdown).toContain('2024');
     expect(result.markdown).toContain('Bensin');
+    expect(result.markdown).toContain('Personbilar');
+  });
+
+  it('formats Errors from API', () => {
+    const data = {
+      Header: { Column: [] },
+      Rows: [],
+      Errors: ['Entiten hittades inte i strukturen.'],
+    };
+    const result = formatDataResults(data);
+    expect(result.count).toBe(0);
+    expect(result.markdown).toContain('Fel från API');
   });
 
   it('formats plain array response', () => {
@@ -104,23 +147,14 @@ describe('formatDataResults', () => {
     expect(result.markdown).toContain('Inga data');
   });
 
-  it('handles empty object', () => {
-    const result = formatDataResults({});
-    // Should fallback to JSON dump
-    expect(result.count).toBe(1);
-    expect(result.markdown).toContain('json');
-  });
-
-  it('formats numbers with Swedish locale', () => {
-    const data = {
-      columns: ['År', 'Antal'],
-      data: [
-        { key: ['2024'], values: [{ value: 1234567 }] },
-      ],
-    };
-    const result = formatDataResults(data);
-    expect(result.count).toBe(1);
-    // Should contain the formatted number (locale-dependent)
-    expect(result.markdown).toContain('2024');
+  it('handles empty object with no rows', () => {
+    const result = formatDataResults({
+      Header: { Column: [{ Name: 'test' }] },
+      Rows: [],
+      Errors: null,
+      Name: 'TestProduct',
+    });
+    expect(result.count).toBe(0);
+    expect(result.markdown).toContain('Inga rader');
   });
 });

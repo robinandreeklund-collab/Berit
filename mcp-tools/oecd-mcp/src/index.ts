@@ -313,8 +313,10 @@ export class OECDMCPServer {
           }
 
           // Fetch structure by querying data with lastNObservations=1 to get structure
+          const known = DATAFLOW_MAP[dataflowId];
+          const ref = known?.sdmxRef || `OECD.SDD.NAD,DSD_NAMAIN1@DF_${dataflowId}`;
           const { data } = await client.sdmx(
-            `/data/OECD.SDD.NAD,DSD_NAMAIN10@${dataflowId}/all?lastNObservations=1&format=jsondata`,
+            `/data/${ref}/all?lastNObservations=1&format=jsondata`,
             undefined,
           );
 
@@ -404,9 +406,10 @@ export class OECDMCPServer {
             lastN = 100;
           }
 
-          // Build SDMX data query URL
-          // Format: /data/{agency},{DSD_ID}@{DF_ID}/{filter}?format=jsondata&startPeriod=...
-          let path = `/data/OECD.SDD.NAD,DSD_NAMAIN10@${dataflowId}/${filter}?format=jsondata`;
+          // Build SDMX data query URL using known reference or default pattern
+          const known = DATAFLOW_MAP[dataflowId];
+          const ref = known?.sdmxRef || `OECD.SDD.NAD,DSD_NAMAIN1@DF_${dataflowId}`;
+          let path = `/data/${ref}/${filter}?format=jsondata`;
           path += `&startPeriod=${startPeriod}`;
           if (endPeriod) {
             path += `&endPeriod=${endPeriod}`;

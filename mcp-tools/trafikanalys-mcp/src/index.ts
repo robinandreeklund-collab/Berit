@@ -181,7 +181,7 @@ export class TrafikanalysMCPServer {
 
         case 'trafa_cars_in_traffic': {
           const filters: Record<string, string | undefined> = {};
-          if (params.ar) filters.ar = params.ar as string;
+          filters.ar = (params.ar as string) || 'senaste';
           if (params.drivm !== undefined) filters.drivm = (params.drivm as string) || '';
           if (params.agarkat !== undefined) filters.agarkat = (params.agarkat as string) || '';
           const query = buildQuery('t10016', 'itrfslut', filters);
@@ -192,7 +192,7 @@ export class TrafikanalysMCPServer {
 
         case 'trafa_new_registrations': {
           const filters: Record<string, string | undefined> = {};
-          if (params.ar) filters.ar = params.ar as string;
+          filters.ar = (params.ar as string) || 'senaste';
           if (params.drivm !== undefined) filters.drivm = (params.drivm as string) || '';
           const query = buildQuery('t10016', 'nyregunder', filters);
           const { data } = await client.data(query, lang);
@@ -202,7 +202,7 @@ export class TrafikanalysMCPServer {
 
         case 'trafa_vehicle_km': {
           const filters: Record<string, string | undefined> = {};
-          if (params.ar) filters.ar = params.ar as string;
+          filters.ar = (params.ar as string) || 'senaste';
           const query = buildQuery('t0401', 'fordonkm', filters);
           const { data } = await client.data(query, lang);
           result = formatDataResults(data);
@@ -211,7 +211,7 @@ export class TrafikanalysMCPServer {
 
         case 'trafa_rail_transport': {
           const filters: Record<string, string | undefined> = {};
-          if (params.ar) filters.ar = params.ar as string;
+          filters.ar = (params.ar as string) || 'senaste';
           const query = buildQuery('t0603', '', filters);
           const { data } = await client.data(query, lang);
           result = formatDataResults(data);
@@ -220,7 +220,7 @@ export class TrafikanalysMCPServer {
 
         case 'trafa_air_traffic': {
           const filters: Record<string, string | undefined> = {};
-          if (params.ar) filters.ar = params.ar as string;
+          filters.ar = (params.ar as string) || 'senaste';
           const query = buildQuery('t0501', '', filters);
           const { data } = await client.data(query, lang);
           result = formatDataResults(data);

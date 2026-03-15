@@ -143,6 +143,8 @@ export const CATEGORY_MAP: Record<string, OECDCategory> = Object.fromEntries(
 
 export interface KnownDataflow {
   id: string;
+  /** Full SDMX reference: "AGENCY,DSD@DF" for data queries */
+  sdmxRef?: string;
   name: string;
   nameEn: string;
   description: string;
@@ -153,6 +155,7 @@ export interface KnownDataflow {
 export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   {
     id: 'QNA',
+    sdmxRef: 'OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA',
     name: 'Kvartalsvisa nationalräkenskaper',
     nameEn: 'Quarterly National Accounts',
     description: 'BNP, konsumtion, investeringar kvartalsvis per land',
@@ -161,6 +164,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'MEI',
+    sdmxRef: 'OECD.SDD.SDPS,DF_TEST_MEI',
     name: 'Huvudsakliga ekonomiska indikatorer',
     nameEn: 'Main Economic Indicators',
     description: 'Inflation, produktion, handel, räntor — nyckeltal för alla OECD-länder',
@@ -169,6 +173,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'HEALTH_STAT',
+    sdmxRef: 'OECD.ELS.HD,DSD_HEALTH_STAT@DF_AM',
     name: 'Hälsostatistik',
     nameEn: 'Health Statistics',
     description: 'Sjukvårdsutgifter, läkartäthet, livslängd, dödsorsaker',
@@ -185,6 +190,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'FDI',
+    sdmxRef: 'OECD.DAF.INV,DSD_FDI@DF_FDI_AGGR_SUMM',
     name: 'Utländska direktinvesteringar',
     nameEn: 'Foreign Direct Investment',
     description: 'FDI-flöden och -bestånd per land, bransch och partnerland',
@@ -193,6 +199,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'GREEN_GROWTH',
+    sdmxRef: 'OECD.ENV.EPI,DSD_GG@DF_GREEN_GROWTH',
     name: 'Grön tillväxt',
     nameEn: 'Green Growth Indicators',
     description: 'Miljöeffektivitet, naturresurser, grön innovation',
@@ -201,6 +208,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'HPI',
+    sdmxRef: 'OECD.SDD.TPS,DSD_RHPI@DF_RHPI_ALL',
     name: 'Bostadsprisindex',
     nameEn: 'House Price Indices',
     description: 'Nominella och reala bostadspriser, kvot pris/inkomst',
@@ -209,6 +217,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'IDD',
+    sdmxRef: 'OECD.WISE.INE,DSD_WISE_IDD@DF_IDD',
     name: 'Inkomstfördelning',
     nameEn: 'Income Distribution Database',
     description: 'Gini-koefficient, fattigdom, inkomstkvintiler',
@@ -217,6 +226,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'AV_AN_WAGE',
+    sdmxRef: 'OECD.ELS.SAE,DSD_EARNINGS@AV_AN_WAGE',
     name: 'Genomsnittliga löner',
     nameEn: 'Average Annual Wages',
     description: 'Genomsnittlig årslön per land, köpkraftsparitetsjusterad',
@@ -233,6 +243,7 @@ export const KNOWN_DATAFLOWS: KnownDataflow[] = [
   },
   {
     id: 'AIR_GHG',
+    sdmxRef: 'OECD.ENV.EPI,DSD_AIR_GHG@DF_AIR_GHG',
     name: 'Växthusgasutsläpp',
     nameEn: 'Air and GHG Emissions',
     description: 'CO2 och andra växthusgasutsläpp per land och sektor',
