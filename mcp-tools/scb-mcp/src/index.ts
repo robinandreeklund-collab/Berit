@@ -62,7 +62,7 @@ function errorResponse(type: string, message: string, suggestions: string[] = []
 // ============================================================================
 
 // Per-tool call counter to prevent infinite loops from LLMs
-const MAX_CALLS_PER_TOOL = 3;
+const MAX_CALLS_PER_TOOL = 8;
 
 class CallTracker {
   private calls: Map<string, number> = new Map();
@@ -276,8 +276,9 @@ export class SCBMCPServer {
   public async callTool(name: string, args: any) {
     try {
       // Track calls to prevent infinite loops from LLMs
-      const tableId = args?.tableId || args?.table_id;
-      const { allowed, count } = this.callTracker.track(name, tableId);
+      // Use tableId for data tools, subjectCode for browse, query for search/region
+      const contextKey = args?.tableId || args?.table_id || args?.subjectCode || args?.query;
+      const { allowed, count } = this.callTracker.track(name, contextKey);
       if (!allowed) {
         return jsonResponse({
           error: 'STOPP — du har redan anropat detta verktyg flera gånger med samma tabell.',
