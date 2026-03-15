@@ -223,7 +223,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta detaljerad metadata om ett nyckeltal (KPI).\n\n' +
       '**Användningsfall:** Förstå vad ett nyckeltal mäter, vem som är ansvarig, publiceringsdata.\n' +
       '**Returnerar:** ID, namn, beskrivning, verksamhetsområde, ansvarig, perspektiv.\n' +
-      '**Exempel:** "Vad mäter N00945?", "Beskriv nyckeltal U09400"',
+      '**Exempel:** "Vad mäter N01951?", "Beskriv nyckeltal N02267"',
     category: 'data',
     api: 'kolada',
     endpoint: '/kpi/{kpi_id}',
@@ -232,7 +232,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: {
         kpi_id: {
           type: 'string',
-          description: 'Nyckeltal-ID (t.ex. "N00945"). ' + KPI_DESCRIPTION,
+          description: 'Nyckeltal-ID (t.ex. "N01951"). ' + KPI_DESCRIPTION,
         },
       },
       required: ['kpi_id'],

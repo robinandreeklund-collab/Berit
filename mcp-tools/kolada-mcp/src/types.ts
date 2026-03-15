@@ -81,34 +81,34 @@ export const SokEnhetSchema = z.object({
 });
 
 export const DataKommunSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N00945" för invånarantal)'),
+  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N01951" för invånarantal)'),
   kommun_id: z.string().describe('Kommun-ID (t.ex. "0180" för Stockholm)'),
   from_year: z.string().optional().describe('Startår (t.ex. "2020")'),
   to_year: z.string().optional().describe('Slutår (t.ex. "2024")'),
 });
 
 export const DataAllaKommunerSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N00945")'),
+  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N01951")'),
   year: z.string().describe('År att hämta data för (t.ex. "2023")'),
 });
 
 export const DataEnhetSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "U09400")'),
+  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N15006")'),
   year: z.string().describe('År att hämta data för (t.ex. "2023")'),
 });
 
 export const NyckeltalDetaljSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N00945")'),
+  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N01951")'),
 });
 
 export const JamforKommunerSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID att jämföra (t.ex. "N00945")'),
+  kpi_id: z.string().describe('Nyckeltal-ID att jämföra (t.ex. "N01951")'),
   kommun_ids: z.string().describe('Kommun-ID:n, kommaseparerade (t.ex. "0180,1280,1480")'),
   year: z.string().optional().describe('År (standard: senaste tillgängliga)'),
 });
 
 export const TrendSchema = z.object({
-  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N00945")'),
+  kpi_id: z.string().describe('Nyckeltal-ID (t.ex. "N01951")'),
   kommun_id: z.string().describe('Kommun-ID (t.ex. "0180")'),
   years: z.number().optional().describe('Antal år bakåt (standard: 5)'),
 });
@@ -118,16 +118,16 @@ export const TrendSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const POPULAR_KPIS: Record<string, string> = {
-  N00945: 'Invånare totalt',
-  N01951: 'Nettokostnadsavvikelse, kr/inv',
-  U09400: 'Elever i åk 9 som uppnått kunskapskraven i alla ämnen',
-  N07900: 'Resultat av medborgarundersökning',
-  N00941: 'Befolkningsökning/-minskning',
-  N00914: 'Invånare 0-17 år',
-  N00928: 'Invånare 65+ år',
-  N15033: 'Kommunalskatt, kr/skattekrona',
-  U40501: 'Brukarbedömning hemtjänst',
-  N15818: 'Kostnad per elev i grundskola, kr',
+  N01951: 'Invånare totalt, antal',
+  N01963: 'Befolkningsförändring sedan föregående år (%)',
+  N01920: 'Invånare 0-18 år, antal',
+  N00980: 'Äldre äldre av invånare 65+, andel (%)',
+  N02267: 'Sysselsättningsgrad 20-64 år, andel (%)',
+  N02280: 'Arbetslöshet 20-64 år, andel (%)',
+  N00901: 'Skattesats till kommun (%)',
+  N15006: 'Kostnad grundskola åk 1-9, kr/elev',
+  N15504: 'Meritvärde åk 9, genomsnitt (17 ämnen)',
+  N20891: 'Invånare 65+ i särskilt boende/hemtjänst, andel (%)',
 };
 
 /** Common municipality IDs for quick reference. */

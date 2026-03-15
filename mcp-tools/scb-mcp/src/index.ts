@@ -338,6 +338,37 @@ export class SCBMCPServer {
       });
     }
 
+    // Relevance ranking: boost tables where query appears in title, prefer recent and non-discontinued
+    if (args.query) {
+      const queryLower = args.query.toLowerCase();
+      const queryTerms = queryLower.split(/\s+/).filter((t: string) => t.length > 2);
+      filteredTables = [...filteredTables].sort((a, b) => {
+        const scoreTable = (t: typeof a) => {
+          let score = 0;
+          const title = (t.label || '').toLowerCase();
+          // Strong boost for title starting with query
+          if (title.startsWith(queryLower)) score += 100;
+          // Boost for exact query match in title
+          if (title.includes(queryLower)) score += 50;
+          // Boost per query term found in title
+          for (const term of queryTerms) {
+            if (title.includes(term)) score += 20;
+          }
+          // Boost for recent data (still active)
+          if (!t.discontinued) score += 10;
+          // Boost for tables with region variable (commonly wanted)
+          if (t.variableNames?.some((v: string) => v.toLowerCase() === 'region')) score += 5;
+          // Slight boost for newer last period
+          if (t.lastPeriod) {
+            const year = parseInt(t.lastPeriod.replace(/\D.*/, ''), 10);
+            if (!isNaN(year) && year >= 2023) score += 5;
+          }
+          return score;
+        };
+        return scoreTable(b) - scoreTable(a);
+      });
+    }
+
     const displayTables = filteredTables.slice(0, pageSize);
 
     return jsonResponse({
