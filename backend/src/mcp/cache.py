@@ -1,8 +1,13 @@
-"""Cache for MCP tools to avoid repeated loading."""
+"""Cache for MCP tools to avoid repeated loading.
+
+Supports eager background initialization so the first chat message
+is not blocked by MCP tool loading (20+ servers can take 30-60 s).
+"""
 
 import asyncio
 import logging
 import os
+import threading
 
 from langchain_core.tools import BaseTool
 
@@ -12,6 +17,8 @@ _mcp_tools_cache: list[BaseTool] | None = None
 _cache_initialized = False
 _initialization_lock = asyncio.Lock()
 _config_mtime: float | None = None  # Track config file modification time
+_bg_init_started = False  # Whether background initialization has been kicked off
+_bg_init_thread: threading.Thread | None = None
 
 
 def _get_config_mtime() -> float | None:
@@ -79,16 +86,56 @@ async def initialize_mcp_tools() -> list[BaseTool]:
         return _mcp_tools_cache
 
 
-def get_cached_mcp_tools() -> list[BaseTool]:
-    """Get cached MCP tools with lazy initialization.
+def _run_background_init() -> None:
+    """Run MCP initialization in a background thread with its own event loop."""
+    try:
+        asyncio.run(initialize_mcp_tools())
+    except Exception as e:
+        logger.error(f"Background MCP initialization failed: {e}")
 
-    If tools are not initialized, automatically initializes them.
-    This ensures MCP tools work in both FastAPI and LangGraph Studio contexts.
+
+def start_background_initialization() -> None:
+    """Start MCP tool initialization in a background thread.
+
+    This should be called early (e.g. at module import or server start)
+    so that tools are ready by the time the first chat message arrives.
+    Safe to call multiple times — only the first call starts the thread.
+    """
+    global _bg_init_started, _bg_init_thread
+
+    if _bg_init_started or _cache_initialized:
+        return
+
+    # Quick check: are there even any enabled MCP servers?
+    try:
+        from src.config.extensions_config import ExtensionsConfig
+
+        extensions_config = ExtensionsConfig.from_file()
+        if not extensions_config.get_enabled_mcp_servers():
+            logger.info("No enabled MCP servers — skipping background initialization")
+            return
+    except Exception:
+        return
+
+    _bg_init_started = True
+    logger.info("Starting background MCP tools initialization...")
+    _bg_init_thread = threading.Thread(target=_run_background_init, daemon=True, name="mcp-init")
+    _bg_init_thread.start()
+
+
+def get_cached_mcp_tools() -> list[BaseTool]:
+    """Get cached MCP tools, non-blocking.
+
+    If background initialization is still running, returns whatever is
+    available (empty list) so the agent can respond immediately with its
+    built-in tools.  MCP tools will appear on subsequent requests once
+    the background init completes.
+
+    If no background init was started, falls back to synchronous init
+    (original behaviour).
 
     Also checks if the config file has been modified since last initialization,
-    and re-initializes if needed. This ensures that changes made through the
-    Gateway API (which runs in a separate process) are reflected in the
-    LangGraph Server.
+    and re-initializes if needed.
 
     Returns:
         List of cached MCP tools.
@@ -100,28 +147,35 @@ def get_cached_mcp_tools() -> list[BaseTool]:
         logger.info("MCP cache is stale, resetting for re-initialization...")
         reset_mcp_tools_cache()
 
-    if not _cache_initialized:
-        logger.info("MCP tools not initialized, performing lazy initialization...")
-        try:
-            # Try to initialize in the current event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is already running (e.g., in LangGraph Studio),
-                # we need to create a new loop in a thread
-                import concurrent.futures
+    if _cache_initialized:
+        return _mcp_tools_cache or []
 
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, initialize_mcp_tools())
-                    future.result()
-            else:
-                # If no loop is running, we can use the current loop
-                loop.run_until_complete(initialize_mcp_tools())
-        except RuntimeError:
-            # No event loop exists, create one
-            asyncio.run(initialize_mcp_tools())
-        except Exception as e:
-            logger.error(f"Failed to lazy-initialize MCP tools: {e}")
-            return []
+    # If background init is running, don't block — return empty for now
+    if _bg_init_started and _bg_init_thread is not None and _bg_init_thread.is_alive():
+        logger.info("MCP tools still loading in background — agent will use built-in tools for now")
+        return []
+
+    # If background init finished (thread done but cache set), return cache
+    if _bg_init_started and _cache_initialized:
+        return _mcp_tools_cache or []
+
+    # Fallback: synchronous initialization (no background init was started)
+    logger.info("MCP tools not initialized, performing lazy initialization...")
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, initialize_mcp_tools())
+                future.result()
+        else:
+            loop.run_until_complete(initialize_mcp_tools())
+    except RuntimeError:
+        asyncio.run(initialize_mcp_tools())
+    except Exception as e:
+        logger.error(f"Failed to lazy-initialize MCP tools: {e}")
+        return []
 
     return _mcp_tools_cache or []
 
@@ -131,8 +185,9 @@ def reset_mcp_tools_cache() -> None:
 
     This is useful for testing or when you want to reload MCP tools.
     """
-    global _mcp_tools_cache, _cache_initialized, _config_mtime
+    global _mcp_tools_cache, _cache_initialized, _config_mtime, _bg_init_started
     _mcp_tools_cache = None
     _cache_initialized = False
     _config_mtime = None
+    _bg_init_started = False
     logger.info("MCP tools cache reset")
