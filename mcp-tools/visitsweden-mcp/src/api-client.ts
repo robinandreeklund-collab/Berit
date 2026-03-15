@@ -74,19 +74,18 @@ export class VisitSwedenApiClient {
     fromDate?: string;
     toDate?: string;
   }): Promise<{ data: unknown; cached: boolean }> {
-    const searchParams = new URLSearchParams();
-    searchParams.set('type', 'solr');
-
-    // Build the Solr query
-    const queryParts: string[] = [`public:true`];
+    // Build Solr query parts
+    // EntryStore requires escaped colons in URIs: http\://
+    const queryParts: string[] = ['public:true'];
     if (params.query) {
-      queryParts.push(`title:*${params.query}* OR description:*${params.query}*`);
+      queryParts.push(`title:*${params.query}*`);
     }
     if (params.type) {
-      queryParts.push(`rdfType:*schema.org/${params.type}`);
+      // rdfType must use escaped colon — http\://schema.org/Type
+      queryParts.push(`rdfType:http\\://schema.org/${params.type}`);
     }
     if (params.region) {
-      queryParts.push(`metadata.predicate_*region*:"${params.region}"`);
+      queryParts.push(`metadata.predicate_*region*:*${params.region}*`);
     }
     if (params.fromDate) {
       queryParts.push(`metadata.predicate_*startDate*:[${params.fromDate}T00:00:00Z TO *]`);
@@ -95,17 +94,26 @@ export class VisitSwedenApiClient {
       queryParts.push(`metadata.predicate_*endDate*:[* TO ${params.toDate}T23:59:59Z]`);
     }
 
-    searchParams.set('query', queryParts.join(' AND '));
-    searchParams.set('limit', String(params.limit || 20));
-    searchParams.set('rdfFormat', 'application/ld+json');
+    const query = queryParts.join(' AND ');
+    const limit = String(params.limit || 20);
 
-    const url = `${this.baseUrl}/store/search?${searchParams.toString()}`;
+    // Build URL manually to control encoding (Solr needs specific escaping)
+    const url = `${this.baseUrl}/store/search?type=solr&query=${encodeURIComponent(query)}&limit=${limit}&rdfFormat=${encodeURIComponent('application/ld+json')}`;
     return this._fetch(url, CACHE_TTL_SEARCH_MS);
   }
 
-  /** Get details for a specific entry by ID. */
+  /** Get details for a specific entry by ID.
+   *  entryId can be "contextId/entryId" or just "entryId" (defaults to context 9).
+   */
   async getDetails(entryId: string): Promise<{ data: unknown; cached: boolean }> {
-    const url = `${this.baseUrl}/store/9/metadata/${entryId}?format=application/ld+json`;
+    let contextId = '9';
+    let eid = entryId;
+    if (entryId.includes('/')) {
+      const parts = entryId.split('/');
+      contextId = parts[0];
+      eid = parts[1];
+    }
+    const url = `${this.baseUrl}/store/${contextId}/metadata/${eid}?format=application/ld+json`;
     return this._fetch(url, CACHE_TTL_DETAILS_MS);
   }
 

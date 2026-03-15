@@ -29,9 +29,22 @@ function extractField(entry: Record<string, unknown>, ...keys: string[]): string
   for (const key of keys) {
     const val = entry[key];
     if (typeof val === 'string' && val.trim()) return val.trim();
+    if (Array.isArray(val)) {
+      // LD+JSON arrays: [{"@value": "text", "@language": "sv"}, ...]
+      // Prefer Swedish, fallback to first
+      const sv = val.find((v) => typeof v === 'object' && v !== null && v['@language'] === 'sv');
+      const first = val[0];
+      const pick = sv || first;
+      if (typeof pick === 'object' && pick !== null) {
+        if (typeof pick['@value'] === 'string') return pick['@value'].trim();
+        if (typeof pick['@id'] === 'string') return pick['@id'];
+      }
+      if (typeof pick === 'string') return pick.trim();
+    }
     if (typeof val === 'object' && val !== null) {
       const obj = val as Record<string, unknown>;
-      if (typeof obj['@value'] === 'string') return obj['@value'];
+      if (typeof obj['@value'] === 'string') return obj['@value'].trim();
+      if (typeof obj['@id'] === 'string') return obj['@id'];
       if (typeof obj['name'] === 'string') return obj['name'];
     }
   }
@@ -57,7 +70,7 @@ export function formatSearchResults(
     const type = extractField(entry, '@type', 'rdfType');
     const typeName = mapTypeName(type);
     const desc = truncate(extractField(entry, 'schema:description', 'description'), 80);
-    const id = extractField(entry, 'entryId', '@id', 'uri');
+    const id = (entry._entryId as string) || extractField(entry, '@id', 'uri');
 
     rows.push([String(i + 1), name, typeName, desc, id]);
   }
@@ -128,14 +141,44 @@ export function formatEvents(
 
 function extractEntries(data: unknown): unknown[] {
   if (Array.isArray(data)) return data;
-  if (typeof data === 'object' && data !== null) {
-    const obj = data as Record<string, unknown>;
-    if (Array.isArray(obj.results)) return obj.results;
-    if (Array.isArray(obj.resource)) return obj.resource;
-    if (Array.isArray(obj['@graph'])) return obj['@graph'];
-    if (Array.isArray(obj.entries)) return obj.entries;
-    if (Array.isArray(obj.items)) return obj.items;
+  if (typeof data !== 'object' || data === null) return [];
+
+  const obj = data as Record<string, unknown>;
+
+  // EntryStore search response: { resource: { children: [...] } }
+  // Each child has: { metadata: { "@graph": [...] }, entryId, contextId }
+  const resource = obj.resource as Record<string, unknown> | undefined;
+  if (resource && Array.isArray(resource.children)) {
+    const entries: unknown[] = [];
+    for (const child of resource.children) {
+      const c = child as Record<string, unknown>;
+      const meta = c.metadata as Record<string, unknown> | undefined;
+      if (meta && Array.isArray(meta['@graph'])) {
+        // Find the main entity in the graph (not PostalAddress, GeoCoordinates, etc.)
+        const mainTypes = ['LodgingBusiness', 'FoodEstablishment', 'Place', 'Event',
+          'TouristAttraction', 'Hotel', 'Restaurant', 'Landform', 'AdministrativeArea'];
+        const mainEntity = (meta['@graph'] as Record<string, unknown>[]).find((node) => {
+          const nodeType = node['@type'] as string || '';
+          return mainTypes.some((t) => nodeType.includes(t));
+        });
+        if (mainEntity) {
+          // Attach entryId and contextId for reference
+          entries.push({
+            ...mainEntity,
+            _entryId: c.entryId,
+            _contextId: c.contextId,
+          });
+        }
+      }
+    }
+    return entries;
   }
+
+  // Fallback for other formats
+  if (Array.isArray(obj['@graph'])) return obj['@graph'];
+  if (Array.isArray(obj.results)) return obj.results;
+  if (Array.isArray(obj.entries)) return obj.entries;
+  if (Array.isArray(obj.items)) return obj.items;
   return [];
 }
 

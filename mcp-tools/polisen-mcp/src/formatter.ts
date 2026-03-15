@@ -26,9 +26,21 @@ function truncate(text: string | undefined | null, maxLen = 120): string {
 function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '—';
   try {
-    // Polisen format: "2026-03-15 10:00:14 +01:00"
-    const d = new Date(dateStr.replace(' ', 'T').replace(' +', '+'));
-    return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    // Polisen format: "2026-03-15 10:00:14 +01:00" or "2026-03-15 8:53:06 +01:00"
+    // Convert to ISO 8601: replace first space with T, then handle timezone
+    const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}:\d{2})\s+([+-]\d{2}:\d{2})$/);
+    if (match) {
+      const d = new Date(`${match[1]}T${match[2]}${match[3]}`);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    // Fallback: try direct parse
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('sv-SE') + ' ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    }
+    return dateStr;
   } catch {
     return dateStr;
   }
