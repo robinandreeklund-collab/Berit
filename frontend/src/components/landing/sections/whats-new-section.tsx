@@ -9,42 +9,42 @@ const COLOR = "#0a0a0a";
 const features: BentoCardProps[] = [
   {
     color: COLOR,
-    label: "Context Engineering",
-    title: "Long/Short-term Memory",
-    description: "Now the agent can better understand you",
+    label: "Kontextdesign",
+    title: "Lång- och korttidsminne",
+    description: "Nu kan agenten förstå dig bättre",
   },
   {
     color: COLOR,
-    label: "Long Task Running",
-    title: "Planning and Sub-tasking",
+    label: "Långa uppgifter",
+    title: "Planering och deluppgifter",
     description:
-      "Plans ahead, reasons through complexity, then executes sequentially or in parallel",
+      "Planerar, resonerar genom komplexitet, och exekverar sekventiellt eller parallellt",
   },
   {
     color: COLOR,
-    label: "Extensible",
-    title: "Skills and Tools",
+    label: "Utbyggbar",
+    title: "Färdigheter och verktyg",
     description:
-      "Plug, play, or even swap built-in tools. Build the agent you want.",
+      "Koppla in, byt ut eller anpassa inbyggda verktyg. Bygg agenten du vill ha.",
   },
 
   {
     color: COLOR,
     label: "Persistent",
-    title: "Sandbox with File System",
-    description: "Read, write, run — like a real computer",
+    title: "Sandlåda med filsystem",
+    description: "Läs, skriv, kör — som en riktig dator",
   },
   {
     color: COLOR,
-    label: "Flexible",
-    title: "Multi-Model Support",
-    description: "Doubao, DeepSeek, OpenAI, Gemini, etc.",
+    label: "Flexibel",
+    title: "Stöd för flera modeller",
+    description: "Nemotron, DeepSeek, OpenAI, Gemini m.fl.",
   },
   {
     color: COLOR,
-    label: "Free",
-    title: "Open Source",
-    description: "MIT License, self-hosted, full control",
+    label: "Gratis",
+    title: "Öppen källkod",
+    description: "MIT-licens, egen hosting, full kontroll",
   },
 ];
 
@@ -52,8 +52,8 @@ export function WhatsNewSection({ className }: { className?: string }) {
   return (
     <Section
       className={cn("", className)}
-      title="Whats New in DeerFlow 2.0"
-      subtitle="DeerFlow is now evolving from a Deep Research agent into a full-stack Super Agent"
+      title="Nyheter i Berit 2.0"
+      subtitle="Berit utvecklas från en djupforskningsagent till en fullfjädrad superagent"
     >
       <div className="flex w-full items-center justify-center">
         <MagicBento data={features} />

@@ -9,14 +9,14 @@ export function SkillsSection({ className }: { className?: string }) {
   return (
     <Section
       className={cn("h-[calc(100vh-64px)] w-full bg-white/2", className)}
-      title="Agent Skills"
+      title="Agentfärdigheter"
       subtitle={
         <div>
-          Agent Skills are loaded progressively — only what&apos;s needed, when
-          it&apos;s needed.
+          Agentfärdigheter laddas progressivt — bara det som behövs, när det
+          behövs.
           <br />
-          Extend DeerFlow with your own skill files, or use our built-in
-          library.
+          Utöka Berit med egna färdighetsfiler eller använd det inbyggda
+          biblioteket.
         </div>
       }
     >
