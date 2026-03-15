@@ -56,7 +56,11 @@ describe('autoCompleteSelection', () => {
     expect(result.selection.Tid).toEqual(['2024']);
     expect(result.selection.ContentsCode).toEqual(['BE0101A9', 'BE0101A0']);
     expect(result.addedVariables).toHaveLength(3);
-    expect(result.addedVariables[0].reason).toContain('elimination');
+    // Region uses elimination default, Kon uses smart gender total detection
+    const regionAdded = result.addedVariables.find(v => v.code === 'Region');
+    expect(regionAdded?.reason).toContain('elimination');
+    const konAdded = result.addedVariables.find(v => v.code === 'Kon');
+    expect(konAdded?.reason).toContain('kön');
   });
 
   it('should not modify already provided variables', () => {
@@ -88,6 +92,43 @@ describe('autoCompleteSelection', () => {
     expect(result.selection.Region).toEqual(['0180']);
     expect(result.selection.Tid).toEqual(['2024']);
     expect(result.selection.region).toBeUndefined();
+  });
+
+  it('should prefer "tot" for age variable instead of eliminationValueCode "0"', () => {
+    const metadata = makeMetadata();
+    // Add Alder dimension with elimination code "0" (0 years old — NOT total!)
+    metadata.id = ['Region', 'Alder', 'Kon', 'Tid', 'ContentsCode'];
+    metadata.size = [3, 5, 3, 10, 2];
+    metadata.dimension['Alder'] = {
+      label: 'Ålder',
+      category: {
+        index: { '0': 0, '10': 1, '20': 2, '65': 3, 'tot': 4 },
+        label: { '0': '0 år', '10': '10 år', '20': '20 år', '65': '65 år', 'tot': 'Totalt' },
+      },
+      extension: { elimination: true, eliminationValueCode: '0' },
+    };
+
+    const result = autoCompleteSelection(metadata, {
+      Region: ['1480'],
+      Tid: ['2024'],
+    });
+
+    // Should pick "tot" (totalt) NOT "0" (0 år)
+    expect(result.selection.Alder).toEqual(['tot']);
+    const alderAdded = result.addedVariables.find(v => v.code === 'Alder');
+    expect(alderAdded?.reason).toContain('ålder');
+  });
+
+  it('should prefer "1+2" for gender variable via smart detection', () => {
+    const result = autoCompleteSelection(makeMetadata(), {
+      Region: ['1480'],
+      Tid: ['2024'],
+    });
+
+    // Should pick "1+2" (Totalt) for Kön
+    expect(result.selection.Kon).toEqual(['1+2']);
+    const konAdded = result.addedVariables.find(v => v.code === 'Kon');
+    expect(konAdded?.reason).toContain('kön');
   });
 
   it('should use TOP(1) for Tid if missing and no elimination', () => {
