@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 # Maximum number of times the same tool can be called in a single conversation.
 # After this limit the tool call is silently replaced with an error ToolMessage.
-MAX_CALLS_PER_TOOL = 5
+MAX_CALLS_PER_TOOL = 10
 
 # Maximum total MCP/external tool calls per turn. Prevents the model
-# from calling 5 different MCP tools × 5 times each = 25 tool calls total.
+# from calling many different MCP tools excessively in a single turn.
 # Sandbox tools (bash, read_file, etc.) and built-in tools are exempt.
-MAX_TOTAL_MCP_CALLS = 12
+MAX_TOTAL_MCP_CALLS = 30
 
 # Tools that are exempt from the loop guard (they are expected to be called
 # many times in a single conversation by design).
