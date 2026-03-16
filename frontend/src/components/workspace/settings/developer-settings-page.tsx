@@ -78,15 +78,18 @@ export function DeveloperSettingsPage() {
 
   const handleClearThreads = useCallback(async () => {
     const apiClient = getAPIClient();
-    const threads = (await apiClient.threads.search({
-      limit: 100,
-    })) as AgentThread[];
-    await Promise.all(threads.map((t) => apiClient.threads.delete(t.thread_id)));
-    queryClient.setQueriesData(
-      { queryKey: ["threads", "search"], exact: false },
-      () => [],
-    );
-  }, [queryClient]);
+    // Paginate through all threads and delete them
+    while (true) {
+      const threads = (await apiClient.threads.search({
+        limit: 100,
+      })) as AgentThread[];
+      if (threads.length === 0) break;
+      await Promise.all(threads.map((t) => apiClient.threads.delete(t.thread_id)));
+      if (threads.length < 100) break;
+    }
+    // Reload page to fully reset UI state (current thread, sidebar, etc.)
+    window.location.href = "/";
+  }, []);
 
   const handleClearAll = useCallback(async () => {
     await handleClearMemory();
