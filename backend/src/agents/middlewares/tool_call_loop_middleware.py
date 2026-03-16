@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # After this limit the tool call is silently replaced with an error ToolMessage.
 MAX_CALLS_PER_TOOL = 5
 
-# Maximum total MCP/external tool calls per conversation. Prevents the model
+# Maximum total MCP/external tool calls per turn. Prevents the model
 # from calling 5 different MCP tools × 5 times each = 25 tool calls total.
 # Sandbox tools (bash, read_file, etc.) and built-in tools are exempt.
 MAX_TOTAL_MCP_CALLS = 12
@@ -53,10 +53,23 @@ EXEMPT_TOOLS = frozenset({
 })
 
 
-def _count_tool_calls_in_history(messages: list) -> Counter:
-    """Count how many times each tool has been called in the conversation so far."""
+def _count_tool_calls_since_last_human(messages: list) -> Counter:
+    """Count tool calls since the last HumanMessage (i.e. the current turn).
+
+    When a user sends a follow-up question a new HumanMessage is appended to the
+    history.  We only want to count tool calls that happened *after* the most
+    recent HumanMessage so that the per-tool and total-MCP limits reset between
+    turns.
+    """
+    # Walk backwards to find the last HumanMessage
+    start_idx = 0
+    for i in range(len(messages) - 1, -1, -1):
+        if getattr(messages[i], "type", None) == "human":
+            start_idx = i + 1
+            break
+
     counts: Counter = Counter()
-    for msg in messages:
+    for msg in messages[start_idx:]:
         if getattr(msg, "type", None) != "ai":
             continue
         tool_calls = getattr(msg, "tool_calls", None)
@@ -70,12 +83,14 @@ def _count_tool_calls_in_history(messages: list) -> Counter:
 
 
 class ToolCallLoopMiddleware(AgentMiddleware[AgentState]):
-    """Strip tool calls that exceed the per-tool limit within a conversation.
+    """Strip tool calls that exceed the per-tool limit within a turn.
 
-    Inspects the full message history to count how many times each tool has
-    already been called. If a new tool call in the model's response would
-    exceed MAX_CALLS_PER_TOOL, it is removed and replaced with an error
-    ToolMessage telling the model to stop retrying.
+    Inspects the message history since the last HumanMessage (current turn)
+    to count how many times each tool has been called. If a new tool call in
+    the model's response would exceed MAX_CALLS_PER_TOOL, it is removed and
+    replaced with an error ToolMessage telling the model to stop retrying.
+    Counters reset on each new user message so follow-up questions are not
+    penalised by tool calls from earlier turns.
 
     Tools listed in EXEMPT_TOOLS are not affected.
     """
@@ -98,9 +113,9 @@ class ToolCallLoopMiddleware(AgentMiddleware[AgentState]):
         if not tool_calls:
             return None
 
-        # Count existing calls in history (excluding the current message)
+        # Count existing calls since the last HumanMessage (excluding the current AI message)
         history = messages[:-1]
-        existing_counts = _count_tool_calls_in_history(history)
+        existing_counts = _count_tool_calls_since_last_human(history)
 
         # Count total non-exempt (MCP) calls in history
         total_mcp_calls = sum(count for name, count in existing_counts.items() if name not in EXEMPT_TOOLS)
@@ -130,7 +145,7 @@ class ToolCallLoopMiddleware(AgentMiddleware[AgentState]):
                 blocked_messages.append(
                     ToolMessage(
                         content=(
-                            f"STOPP: Totalt {self.max_total_mcp_calls} MCP-verktygsanrop har redan gjorts i denna konversation. "
+                            f"STOPP: Totalt {self.max_total_mcp_calls} MCP-verktygsanrop har redan gjorts för denna fråga. "
                             "Du har nått maxgränsen. Du MÅSTE nu presentera den information du har samlat för användaren. "
                             "Sammanfatta resultaten i en tydlig tabell eller text. Gör INGA fler verktygsanrop."
                         ),
@@ -156,7 +171,7 @@ class ToolCallLoopMiddleware(AgentMiddleware[AgentState]):
                 blocked_messages.append(
                     ToolMessage(
                         content=(
-                            f"STOPP: Verktyget '{name}' har redan anropats {self.max_calls_per_tool} gånger i denna konversation. "
+                            f"STOPP: Verktyget '{name}' har redan anropats {self.max_calls_per_tool} gånger för denna fråga. "
                             "Du FÅR INTE anropa detta verktyg igen. "
                             "Presentera den information du redan har för användaren, eller förklara att verktyget inte kunde ge ett svar. "
                             "Försök INTE med andra varianter av samma anrop."
