@@ -1,12 +1,17 @@
-"""ChatOpenAI wrapper that sanitizes tool schemas for LM Studio compatibility.
+"""ChatOpenAI wrapper that sanitizes and hardens tool schemas for LM Studio.
 
-LM Studio's JavaScript Jinja template engine crashes with
-"Cannot read properties of null (reading 'description')" when any tool
-parameter (or nested schema property) has a null/missing description field.
+Two responsibilities:
 
-This module provides a drop-in ChatOpenAI replacement that recursively walks
-the entire tool JSON schema and ensures every property has a non-null
-description before sending the request to LM Studio.
+1. **Description sanitization** — LM Studio's JavaScript Jinja template engine
+   crashes with "Cannot read properties of null (reading 'description')" when
+   any tool parameter (or nested schema property) has a null/missing description
+   field.  We recursively ensure every property has a non-null description.
+
+2. **Strict mode enforcement** — Setting ``strict: true`` on each tool
+   definition tells LM Studio to use grammar-based constrained decoding
+   (GBNF for GGUF models, Outlines for MLX) so the model's output is
+   guaranteed to match the JSON schema.  This dramatically improves
+   tool-call reliability with local models like Nemotron 3 Nano.
 """
 
 import logging
@@ -52,8 +57,44 @@ def _sanitize_schema(schema: Any, path: str = "") -> Any:
     return schema
 
 
+def _make_strict_compatible(schema: dict) -> dict:
+    """Prepare a JSON Schema for strict mode.
+
+    OpenAI strict mode requires:
+    - ``additionalProperties: false`` on every object
+    - All properties listed in ``required``
+    - No unsupported keywords (``default`` is stripped)
+
+    The schema is modified **in-place** and returned for convenience.
+    """
+    if not isinstance(schema, dict):
+        return schema
+
+    if schema.get("type") == "object" or "properties" in schema:
+        schema["additionalProperties"] = False
+        if "properties" in schema:
+            schema["required"] = list(schema["properties"].keys())
+            for prop in schema["properties"].values():
+                if isinstance(prop, dict):
+                    prop.pop("default", None)
+                    _make_strict_compatible(prop)
+
+    # Recurse into nested schemas
+    for key in ("items", "additionalProperties"):
+        if key in schema and isinstance(schema[key], dict):
+            _make_strict_compatible(schema[key])
+
+    for key in ("allOf", "anyOf", "oneOf"):
+        if key in schema and isinstance(schema[key], list):
+            for sub in schema[key]:
+                if isinstance(sub, dict):
+                    _make_strict_compatible(sub)
+
+    return schema
+
+
 def _sanitize_tools(tools: list[dict]) -> list[dict]:
-    """Sanitize all tool definitions in an OpenAI-format tools list."""
+    """Sanitize all tool definitions and enable strict mode."""
     for tool in tools:
         if not isinstance(tool, dict):
             continue
@@ -67,6 +108,9 @@ def _sanitize_tools(tools: list[dict]) -> list[dict]:
         params = func.get("parameters")
         if isinstance(params, dict):
             _sanitize_schema(params, "parameters")
+            _make_strict_compatible(params)
+        # Enable strict mode for grammar-based constrained decoding
+        func["strict"] = True
     return tools
 
 

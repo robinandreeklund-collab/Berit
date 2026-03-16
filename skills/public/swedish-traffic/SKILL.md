@@ -1,6 +1,7 @@
 ---
 name: swedish-traffic
 description: Använd denna färdighet när användaren frågar om svensk trafik, trafikstörningar, tågförseningar, väglag, vägarbeten, trafikolyckor, köer, vägavstängningar, trafikkameror, trafikprognoser, väderförhållanden på vägar, halka, vind, temperatur, plogning, saltning, eller annan trafikdata från Trafikverket. Denna färdighet använder Trafikverket MCP-verktygen för att hämta realtidsdata direkt från Trafikverkets öppna API.
+mcp-servers: [trafikverket]
 ---
 
 # Svensk Trafik (Trafikverket MCP v1.0)

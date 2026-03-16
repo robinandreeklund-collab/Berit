@@ -1,6 +1,7 @@
 ---
 name: swedish-police-events
 description: Använd denna färdighet när användaren frågar om polishändelser, brott, polisen, brottslighet, olyckor, trafikolyckor, misshandel, stöld, inbrott, rån, skjutningar, polisrapporter, brottsstatistik i realtid, rattfylleri, narkotikabrott, brand, ordningsstörning, försvunnen person, eller vad som händer i en svensk stad enligt polisen. Denna färdighet använder Polisen MCP-verktyget för att hämta data direkt från Polisen.se API.
+mcp-servers: [polisen]
 ---
 
 # Polishändelser (Polisen MCP v1.0)

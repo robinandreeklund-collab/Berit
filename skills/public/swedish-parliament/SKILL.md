@@ -1,6 +1,7 @@
 ---
 name: swedish-parliament
 description: Använd denna färdighet när användaren frågar om Sveriges riksdag, riksdagen, riksdagsledamöter, motioner, propositioner, betänkanden, interpellationer, skriftliga frågor, voteringar, omröstningar, riksdagsval, regeringen, regering, departement, SOU, statens offentliga utredningar, pressmeddelanden, regeringsbeslut, lagstiftning, lagförslag, utskott, debatter, anföranden, riksmöte, kammarens protokoll, svensk politik, politiska partier, statsminister, eller parlamentarisk data i Sverige.
+mcp-servers: [riksdag]
 ---
 
 # Riksdag & Regering MCP (v1.0)

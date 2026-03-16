@@ -1,6 +1,7 @@
 ---
 name: swedish-weather
 description: Använd denna färdighet när användaren frågar om svenskt väder, väderprognos, temperatur, vind, nederbörd, regn, snö, snöprognos, SMHI, väderanalys, MESAN, väderobservationer, mätstation, vattenstånd, vattenföring, hydrologi, havsnivå, havstemperatur, våghöjd, oceanografi, brandrisk, skogsbrand, gräsbrand, FWI, eldningsförbud, meteorologi, klimatdata, eller väderleksrapport i Sverige. Denna färdighet använder SMHI MCP-verktygen för att hämta data direkt från SMHI:s öppna API:er.
+mcp-servers: [smhi]
 ---
 
 # Svenskt Väder (SMHI MCP v1.1)

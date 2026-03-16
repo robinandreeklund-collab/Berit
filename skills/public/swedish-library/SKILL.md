@@ -1,6 +1,7 @@
 ---
 name: swedish-library
 description: Använd denna färdighet när användaren frågar om svenska böcker, bibliotek, Libris, Kungliga Biblioteket, KB, bokssökning, författare, ISBN, kulturarv, K-samsök, kulturarvsdata, museiföremål, runstenar, fotografier, historiska objekt, Swepub, forskningspublikationer, akademiska artiklar, avhandlingar, svenska universitet, bibliografi, eller svenskt kulturarv.
+mcp-servers: [kb]
 ---
 
 # Svenska bibliotek & kulturarv (KB MCP v1.0)

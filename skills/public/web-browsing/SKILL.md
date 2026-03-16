@@ -1,6 +1,7 @@
 ---
 name: web-browsing
 description: Använd denna färdighet när användaren frågar om webbsurfning, webbsökning, hämta webbsida, läsa webbsida, scraping, web fetch, web search, websida, hemsida, URL, länk, Google, DuckDuckGo, söka på internet, hämta data från webb, JavaScript-rendering, headless browser, Lightpanda, extrahera data från webbsida, fylla i formulär, klicka på knapp, ta screenshot, API-anrop via webbläsare, eller navigera till en webbadress.
+mcp-servers: [lightpanda]
 ---
 
 # Webbsurfning (Lightpanda MCP v1.0)

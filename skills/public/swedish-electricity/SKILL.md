@@ -1,6 +1,7 @@
 ---
 name: swedish-electricity
 description: Använd denna färdighet när användaren frågar om elpriser, elpris, spotpris, spotpriser, elkostnad, elkostnader, elräkning, kilowattimme, kWh, priszon, priszoner, SE1, SE2, SE3, SE4, elpriset just nu, elprisetjustnu, billig el, dyr el, elprisjämförelse, zonjämförelse, elprishistorik, elprisutveckling, elavtal, rörligt elavtal, timpriser, timpris, energipris, energipriser, elmarknad, nordpool, elspot, svensk el, elnät, elnätsavgift, elförbrukning. Denna färdighet använder Elpris MCP-verktygen för att hämta spotpriser direkt från elprisetjustnu.se.
+mcp-servers: [elpris]
 ---
 
 # Svenska Elpriser (Elpris MCP v1.0)

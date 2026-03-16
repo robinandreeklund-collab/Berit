@@ -1,6 +1,7 @@
 ---
 name: swedish-transport-statistics
 description: Använd denna färdighet när användaren frågar om Trafikanalys, transportstatistik, fordon i trafik, bilregistreringar, nyregistreringar, fordonskilometer, järnvägstransport, flygtrafik, sjöfart, punktlighet tåg, drivmedel fordon, elbilsstatistik, trafikutveckling, svenska transporter, trafa.se, eller fordonsflotta Sverige.
+mcp-servers: [trafikanalys]
 ---
 
 # Svensk transportstatistik (Trafikanalys MCP v1.0)
