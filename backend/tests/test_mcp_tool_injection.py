@@ -18,7 +18,9 @@ for mod_name in (
 
 
 from src.agents.middlewares.mcp_tool_injection_middleware import (
+    McpToolInjectionMiddleware,
     _extract_activated_skills,
+    _get_all_mcp_tools,
     _get_mcp_servers_for_skills,
 )
 from src.skills.parser import parse_skill_file
@@ -243,3 +245,93 @@ class TestMcpCachePerServer:
         finally:
             cache._mcp_tools_cache = old_cache
             cache._cache_initialized = old_init
+
+
+# ---------------------------------------------------------------------------
+# Test: wait_for_mcp_tools
+# ---------------------------------------------------------------------------
+
+class TestWaitForMcpTools:
+    def setup_method(self):
+        from src.mcp.cache import reset_mcp_tools_cache
+        reset_mcp_tools_cache()
+
+    def test_returns_immediately_when_cache_populated(self):
+        import time
+        from src.mcp import cache
+
+        mock_tool = MagicMock(spec=["name"])
+        mock_tool.name = "test_tool"
+        cache._mcp_tools_cache = {"server": [mock_tool]}
+        cache._cache_initialized = True
+
+        start = time.monotonic()
+        result = cache.wait_for_mcp_tools(timeout=5.0)
+        elapsed = time.monotonic() - start
+
+        assert len(result) == 1
+        assert result[0].name == "test_tool"
+        assert elapsed < 1.0
+
+    def test_waits_for_background_thread(self):
+        import threading
+        import time
+        from src.mcp import cache
+
+        mock_tool = MagicMock(spec=["name"])
+        mock_tool.name = "delayed_tool"
+
+        def slow_init():
+            time.sleep(0.3)
+            cache._mcp_tools_cache = {"server": [mock_tool]}
+            cache._cache_initialized = True
+
+        cache._bg_init_started = True
+        cache._bg_init_thread = threading.Thread(target=slow_init, daemon=True)
+        cache._bg_init_thread.start()
+
+        result = cache.wait_for_mcp_tools(timeout=5.0)
+        assert len(result) == 1
+        assert result[0].name == "delayed_tool"
+
+    def test_returns_empty_on_timeout(self):
+        import threading
+        import time
+        from src.mcp import cache
+
+        cache._bg_init_started = True
+        cache._bg_init_thread = threading.Thread(target=lambda: time.sleep(10), daemon=True)
+        cache._bg_init_thread.start()
+
+        start = time.monotonic()
+        result = cache.wait_for_mcp_tools(timeout=0.2)
+        elapsed = time.monotonic() - start
+
+        assert result == []
+        assert elapsed < 1.0
+
+        cache._bg_init_thread = None
+
+
+# ---------------------------------------------------------------------------
+# Test: McpToolInjectionMiddleware registers tools via self.tools
+# ---------------------------------------------------------------------------
+
+class TestMiddlewareToolsAttribute:
+    def test_init_registers_tools_from_cache(self):
+        """Middleware __init__ should populate self.tools with all MCP tools."""
+        mock_tool = MagicMock(spec=["name"])
+        mock_tool.name = "scb_search"
+
+        with patch("src.agents.middlewares.mcp_tool_injection_middleware._get_all_mcp_tools", return_value=[mock_tool]):
+            mw = McpToolInjectionMiddleware()
+
+        assert len(mw.tools) == 1
+        assert mw.tools[0].name == "scb_search"
+
+    def test_init_empty_when_no_tools(self):
+        """Middleware should gracefully handle empty MCP cache."""
+        with patch("src.agents.middlewares.mcp_tool_injection_middleware._get_all_mcp_tools", return_value=[]):
+            mw = McpToolInjectionMiddleware()
+
+        assert mw.tools == []

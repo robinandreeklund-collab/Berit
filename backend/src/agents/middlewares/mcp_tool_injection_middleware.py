@@ -92,13 +92,45 @@ def _get_tools_for_servers(server_names: list[str]) -> list[BaseTool]:
     return tools
 
 
+def _get_all_mcp_tools() -> list[BaseTool]:
+    """Return all cached MCP tools (sanitized) for ToolNode registration.
+
+    Called once at middleware init to populate ``self.tools`` so that
+    LangGraph's ``create_agent`` knows about every MCP tool that might
+    be injected later.  Blocks (up to 120 s) for background MCP
+    initialization to finish so that all tools are available.
+    """
+    from src.mcp.cache import wait_for_mcp_tools
+    from src.tools.tools import _sanitize_tool_schemas
+
+    tools = wait_for_mcp_tools(timeout=120.0)
+    if tools:
+        tools = _sanitize_tool_schemas(tools)
+    return tools
+
+
 class McpToolInjectionMiddleware(AgentMiddleware[AgentState]):
     """Injects MCP tools on-demand based on which skills the model has activated.
 
     Scans conversation history for read_file calls on SKILL.md files,
     resolves which MCP servers those skills require, and adds those
     servers' tools to the model request.
+
+    All cached MCP tools are registered via ``self.tools`` so that
+    ``create_agent()`` includes them in its ``ToolNode``.  This is
+    required by LangGraph — any tool name that appears in a
+    ``ModelRequest`` must be known to the ToolNode, otherwise a
+    ``ValueError`` is raised.  Only the *subset* of tools matching
+    activated skills is actually sent to the LLM on each turn.
     """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Register ALL cached MCP tools so ToolNode knows about them.
+        # The tools are loaded eagerly in the background at startup;
+        # if they aren't ready yet this returns an empty list and
+        # the ToolNode simply won't have them (graceful degradation).
+        self.tools: list[BaseTool] = _get_all_mcp_tools()
 
     def _inject_tools(self, request: ModelRequest) -> ModelRequest:
         """Conditionally add MCP tools to the request based on activated skills."""

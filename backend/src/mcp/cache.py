@@ -164,6 +164,46 @@ def _ensure_cache_fresh() -> None:
         logger.error(f"Failed to lazy-initialize MCP tools: {e}")
 
 
+def wait_for_mcp_tools(timeout: float = 120.0) -> list[BaseTool]:
+    """Wait for background MCP initialization to complete and return all tools.
+
+    Unlike ``get_cached_mcp_tools`` which returns immediately (possibly empty)
+    when background init is running, this function blocks until the tools are
+    available or the timeout expires.  Used by ``McpToolInjectionMiddleware``
+    at construction time to register tools with LangGraph's ToolNode.
+
+    Args:
+        timeout: Maximum seconds to wait for background initialization.
+
+    Returns:
+        List of all cached MCP tools, or empty list on timeout.
+    """
+    global _bg_init_thread
+
+    # If already initialized, return immediately
+    if _cache_initialized and _mcp_tools_cache is not None:
+        return [tool for tools in _mcp_tools_cache.values() for tool in tools]
+
+    # Wait for background thread if running
+    if _bg_init_thread is not None and _bg_init_thread.is_alive():
+        logger.info("Waiting for background MCP initialization to complete (timeout=%.1fs)...", timeout)
+        _bg_init_thread.join(timeout=timeout)
+        if _bg_init_thread.is_alive():
+            logger.warning("Background MCP initialization did not complete within %.1fs", timeout)
+            return []
+
+    # After join, cache should be populated
+    if _cache_initialized and _mcp_tools_cache is not None:
+        return [tool for tools in _mcp_tools_cache.values() for tool in tools]
+
+    # Fallback to lazy init
+    _ensure_cache_fresh()
+    if _mcp_tools_cache is not None:
+        return [tool for tools in _mcp_tools_cache.values() for tool in tools]
+
+    return []
+
+
 def get_cached_mcp_tools() -> list[BaseTool]:
     """Get all cached MCP tools as a flat list (backward compatible).
 
