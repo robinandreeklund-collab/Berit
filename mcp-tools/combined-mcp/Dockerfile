@@ -160,11 +160,18 @@ COPY polisen-mcp/package.json polisen-mcp/package-lock.json polisen-mcp/tsconfig
 COPY polisen-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 21: Production ============
+# ============ Stage 21a: Download Lightpanda browser binary ============
+FROM alpine:3.20 AS browser
+RUN apk add --no-cache curl
+RUN curl -fSL -o /lightpanda \
+    https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux && \
+    chmod +x /lightpanda
+
+# ============ Stage 22: Production ============
 FROM node:22-alpine
 
-# Install nginx and envsubst (from gettext)
-RUN apk add --no-cache nginx gettext
+# Install nginx, envsubst, and gcompat (glibc compatibility for Lightpanda/Zig binary)
+RUN apk add --no-cache nginx gettext gcompat
 
 WORKDIR /app
 
@@ -271,6 +278,9 @@ COPY --from=build-krisinformation /app/dist /app/krisinformation/dist
 COPY polisen-mcp/package.json polisen-mcp/package-lock.json /app/polisen/
 RUN cd /app/polisen && npm ci --omit=dev --ignore-scripts
 COPY --from=build-polisen /app/dist /app/polisen/dist
+
+# Lightpanda browser binary (for lightpanda-mcp to connect to via CDP)
+COPY --from=browser /lightpanda /usr/local/bin/lightpanda
 
 # Nginx config template + start script
 COPY combined-mcp/nginx.conf /etc/nginx/nginx.conf.template

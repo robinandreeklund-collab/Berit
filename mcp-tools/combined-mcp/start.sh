@@ -55,11 +55,26 @@ echo "Starting SMHI MCP on :3005..."
 PORT=3005 node /app/smhi/dist/http-server.js &
 SMHI_PID=$!
 
-# Start Lightpanda MCP on port 3006
-# NOTE: Lightpanda MCP requires LIGHTPANDA_CDP_URL pointing to a Lightpanda browser.
-# In combined-mcp, the browser is NOT included — set LIGHTPANDA_CDP_URL externally.
+# Start Lightpanda browser on port 9222 (CDP)
+echo "Starting Lightpanda browser on :9222..."
+lightpanda --host 127.0.0.1 --port 9222 &
+LIGHTPANDA_BROWSER_PID=$!
+
+# Wait for Lightpanda browser to be ready (up to 10 seconds)
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    if wget -qO- http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+        echo "Lightpanda browser ready (PID=$LIGHTPANDA_BROWSER_PID)"
+        break
+    fi
+    if [ "$i" = "20" ]; then
+        echo "WARNING: Lightpanda browser did not start in 10s, MCP tools will fail"
+    fi
+    sleep 0.5
+done
+
+# Start Lightpanda MCP on port 3006 (connects to browser on :9222)
 echo "Starting Lightpanda MCP on :3006..."
-PORT=3006 node /app/lightpanda/dist/http-server.js &
+LIGHTPANDA_CDP_URL=ws://127.0.0.1:9222 LIGHTPANDA_URL=http://127.0.0.1:9222 PORT=3006 node /app/lightpanda/dist/http-server.js &
 LIGHTPANDA_PID=$!
 
 # Start Elpris MCP on port 3007
@@ -208,9 +223,9 @@ echo "  Polisen MCP:        http://localhost:$PORT/polisen/mcp"
 echo "  Polisen health:     http://localhost:$PORT/polisen/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_BROWSER_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_BROWSER_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID 2>/dev/null || true
 exit 1
