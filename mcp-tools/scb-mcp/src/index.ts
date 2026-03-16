@@ -403,101 +403,150 @@ export class SCBMCPServer {
 
   // ---- scb_browse ----
   private async handleBrowse(args: any) {
-    const langValidation = validateLanguage(args.language);
-    const language = langValidation.language;
     const pageSize = Math.min(args.pageSize || 50, MAX_PAGE_SIZE);
-    const subjectCode = args.subjectCode?.toUpperCase();
+    const subjectCode = args.subjectCode?.trim();
 
-    // --- No subject code: show all level-1 areas ---
-    if (!subjectCode) {
+    // Build the v1 navigation path from the subject code
+    // e.g. "BE0101A" → ["BE", "BE0101", "BE0101A"]
+    const pathSegments = this.buildNavPath(subjectCode);
+
+    // Call v1 navigation API
+    const items = await this.apiClient.navigateV1(pathSegments);
+
+    // Separate folders and tables
+    const folders = items.filter(i => i.type === 'l');
+    const tables = items.filter(i => i.type === 't');
+
+    if (tables.length > 0) {
+      // Leaf node — return table listing
+      // For each v1 table, try to find the v2 table ID via search
+      const v2Tables = await this.mapV1TablesToV2(tables.slice(0, pageSize), pathSegments);
+
       return jsonResponse({
-        level: 1,
-        description: 'SCB:s ämnesområden — välj ett för att navigera djupare',
-        subjects: SUBJECT_TREE.map(s => ({
-          code: s.id,
-          label: s.label,
-          sub_areas: (s.children || []).length,
-          keywords: (s.keywords || []).slice(0, 5),
-        })),
-        total: SUBJECT_TREE.length,
+        level: 'tables',
+        subject_code: subjectCode || null,
+        path: pathSegments,
+        tables: v2Tables,
+        total_tables: tables.length,
         tips: [
-          'Välj ett ämnesområde, t.ex. scb_browse({subjectCode: "BE"}) för Befolkning',
-          'Frågor om invånare/folkmängd → BE, arbetsmarknad → AM, ekonomi → NR eller HE',
+          'Använd scb_inspect med ett tabell-ID (TABxxx) för att se variabler och värden',
+          'Sedan scb_fetch för att hämta data',
         ],
       });
     }
 
-    // --- Look up subject in tree ---
-    const found = findSubjectNode(subjectCode);
-
-    if (found && found.node.children && found.node.children.length > 0) {
-      // Show children of this node (level 1→2 or level 2→3)
-      const nextLevel = found.depth + 2;
+    if (folders.length > 0) {
+      // Non-leaf node — return child folders
       return jsonResponse({
-        level: nextLevel,
-        parent: { code: found.node.id, label: found.node.label },
-        path: found.path.map(n => ({ code: n.id, label: n.label })),
-        children: found.node.children.map(c => ({
-          code: c.id,
-          label: c.label,
-          sub_areas: (c.children || []).length,
-          keywords: (c.keywords || []).slice(0, 5),
+        level: pathSegments.length + 1,
+        parent: subjectCode || 'root',
+        path: pathSegments,
+        children: folders.map(f => ({
+          code: f.id,
+          label: f.text,
         })),
-        tips: found.depth === 0
-          ? [`Bläddra djupare, t.ex. scb_browse({subjectCode: "${found.node.children[0].id}"})`]
-          : [`Hämta tabeller: scb_browse({subjectCode: "${found.node.children[0].id}"})`],
+        total: folders.length,
+        tips: pathSegments.length === 0
+          ? ['Välj ett ämnesområde, t.ex. scb_browse({subjectCode: "BE"}) för Befolkning']
+          : [`Bläddra djupare, t.ex. scb_browse({subjectCode: "${folders[0].id}"})`],
       });
     }
 
-    // --- Leaf node or deep code: fetch tables from API ---
-    // Use the node label + "region" as query for best API results
-    const searchLabel = found?.node.label || subjectCode;
-
-    const result = await this.apiClient.browseTables({
-      subjectCode,
-      searchLabel: `${searchLabel} region`,
-      pageSize: 100, // Fetch many results so client-side filtering has enough to work with
-      lang: language,
-    });
-
-    // Sort tables: prefer non-discontinued, recent data, and region variable
-    const sortedTables = [...result.tables].sort((a, b) => {
-      let scoreA = 0, scoreB = 0;
-      if (!a.discontinued) scoreA += 10;
-      if (!b.discontinued) scoreB += 10;
-      if (a.variableNames?.some(v => v.toLowerCase() === 'region')) scoreA += 5;
-      if (b.variableNames?.some(v => v.toLowerCase() === 'region')) scoreB += 5;
-      if (a.lastPeriod) {
-        const y = parseInt(a.lastPeriod.replace(/\D.*/, ''), 10);
-        if (!isNaN(y) && y >= 2023) scoreA += 5;
-      }
-      if (b.lastPeriod) {
-        const y = parseInt(b.lastPeriod.replace(/\D.*/, ''), 10);
-        if (!isNaN(y) && y >= 2023) scoreB += 5;
-      }
-      return scoreB - scoreA;
-    });
-
     return jsonResponse({
-      level: 'tables',
-      subject: {
-        code: subjectCode,
-        label: found?.node.label || subjectCode,
-        path: found?.path.map(n => ({ code: n.id, label: n.label })) || [],
-      },
-      tables: sortedTables.slice(0, pageSize).map(t => ({
-        id: t.id,
-        title: t.label,
-        period: { start: t.firstPeriod || null, end: t.lastPeriod || null },
-        variables: t.variableNames || [],
-        updated: t.updated || null,
-        discontinued: t.discontinued || false,
-      })),
-      total_tables: result.tables.length,
-      tips: [
-        'Använd scb_inspect med ett tabell-ID för att se variabler och värden',
-        'Sedan scb_fetch för att hämta data',
-      ],
+      error: `Inga resultat hittades för "${subjectCode}". Kontrollera koden.`,
+      tips: ['Börja med scb_browse() utan argument för att se alla ämnesområden'],
+    });
+  }
+
+  /**
+   * Build v1 navigation path segments from a subject code.
+   * "BE0101A" → ["BE", "BE0101", "BE0101A"]
+   * "BE0101"  → ["BE", "BE0101"]
+   * "BE"      → ["BE"]
+   * undefined → []
+   */
+  private buildNavPath(code?: string): string[] {
+    if (!code) return [];
+    const parts: string[] = [];
+    // Level 1: first 2 chars (e.g. "BE")
+    if (code.length >= 2) parts.push(code.slice(0, 2));
+    // Level 2: first 6 chars (e.g. "BE0101")
+    if (code.length >= 4) parts.push(code.slice(0, 6).replace(/0+$/, '') || code.slice(0, 4));
+    // Level 3+: full code (e.g. "BE0101A")
+    if (code.length > 6) parts.push(code);
+    // Deduplicate in case of short codes
+    return [...new Set(parts)];
+  }
+
+  /**
+   * Map v1 table items to v2 table IDs via v2 search API.
+   * Uses title-based matching with path filtering.
+   */
+  private async mapV1TablesToV2(
+    v1Tables: Array<{ id: string; text: string; updated?: string }>,
+    subjectPath: string[]
+  ): Promise<Array<{ v1_id: string; v2_id: string | null; title: string; updated: string | null }>> {
+    const leafCode = subjectPath[subjectPath.length - 1]?.toUpperCase();
+
+    // Collect all v2 tables matching this subject by doing a few targeted searches
+    const v2Candidates: Array<{ id: string; label: string; paths?: any[] }> = [];
+    const seen = new Set<string>();
+
+    // Extract unique search terms from v1 titles
+    const searchTerms = new Set<string>();
+    for (const t of v1Tables) {
+      // Use first meaningful words from title, e.g. "Folkmängden" from "Folkmängden efter region..."
+      const firstWord = t.text.split(/\s+/)[0];
+      if (firstWord && firstWord.length > 3) searchTerms.add(firstWord);
+    }
+
+    // Search v2 API with each unique term
+    for (const term of [...searchTerms].slice(0, 4)) {
+      try {
+        const result = await this.apiClient.searchTables({ query: term, pageSize: 100, lang: 'sv' });
+        for (const t of result.tables) {
+          if (seen.has(t.id)) continue;
+          // Only keep tables matching our subject path
+          const matchesPath = leafCode && t.paths?.some(p =>
+            p.some(segment => segment.id?.toUpperCase() === leafCode)
+          );
+          if (matchesPath) {
+            v2Candidates.push(t);
+            seen.add(t.id);
+          }
+        }
+      } catch {
+        // Ignore failed searches
+      }
+    }
+
+    // Now match each v1 table to a v2 candidate by title similarity
+    return v1Tables.map(v1 => {
+      const v1Title = v1.text.replace(/\s+/g, ' ').trim();
+      // Normalize: strip year ranges like "År 1968 - 2024" for matching
+      const v1Norm = v1Title.replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
+
+      let bestMatch: { id: string; score: number } | null = null;
+      for (const v2 of v2Candidates) {
+        const v2Norm = (v2.label || '').replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
+        // Score: how many characters match from start
+        let matchLen = 0;
+        for (let i = 0; i < Math.min(v1Norm.length, v2Norm.length); i++) {
+          if (v1Norm[i] === v2Norm[i]) matchLen++;
+          else break;
+        }
+        const score = matchLen / Math.max(v1Norm.length, v2Norm.length, 1);
+        if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { id: v2.id, score };
+        }
+      }
+
+      return {
+        v1_id: v1.id,
+        v2_id: bestMatch?.id || null,
+        title: v1Title,
+        updated: v1.updated || null,
+      };
     });
   }
 
