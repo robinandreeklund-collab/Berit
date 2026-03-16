@@ -31,28 +31,8 @@ tool_groups:
 # Tools Configuration
 # ============================================================================
 tools:
-  # Web search tool (Lightpanda headless browser — no API key, full JS rendering)
-  - name: web_search
-    group: web
-    use: src.community.lightpanda.tools:web_search_tool
-    max_results: 5
-    timeout: 30
-
-  # Web fetch tool (Lightpanda headless browser — no API key, full JS rendering)
-  - name: web_fetch
-    group: web
-    use: src.community.lightpanda.tools:web_fetch_tool
-    timeout: 30
-
-  # Alternative: API-based tools (require API keys in .env)
-  # - name: web_search
-  #   group: web
-  #   use: src.community.tavily.tools:web_search_tool
-  #   max_results: 5
-  # - name: web_fetch
-  #   group: web
-  #   use: src.community.jina_ai.tools:web_fetch_tool
-  #   timeout: 10
+  # Web search and fetch are provided by Lightpanda MCP server (see extensions_config.json)
+  # The MCP server connects to the Render-hosted Lightpanda instance via $LIGHTPANDA_MCP_URL
 
   # Image search tool (uses DuckDuckGo)
   - name: image_search
