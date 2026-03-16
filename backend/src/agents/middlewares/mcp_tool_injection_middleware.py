@@ -117,38 +117,57 @@ class McpToolInjectionMiddleware(AgentMiddleware[AgentState]):
     servers' tools to the model request.
 
     All cached MCP tools are registered via ``self.tools`` so that
-    ``create_agent()`` includes them in its ``ToolNode``.  This is
-    required by LangGraph — any tool name that appears in a
-    ``ModelRequest`` must be known to the ToolNode, otherwise a
-    ``ValueError`` is raised.  Only the *subset* of tools matching
-    activated skills is actually sent to the LLM on each turn.
+    ``create_agent()`` includes them in its ``ToolNode`` (required for
+    tool execution).  However, the middleware **strips** all MCP tools
+    from ``request.tools`` by default and only re-adds the subset
+    matching activated skills.  This keeps the LLM prompt small while
+    still allowing execution of any MCP tool once its skill is loaded.
     """
 
     def __init__(self) -> None:
         super().__init__()
         # Register ALL cached MCP tools so ToolNode knows about them.
-        # The tools are loaded eagerly in the background at startup;
-        # if they aren't ready yet this returns an empty list and
-        # the ToolNode simply won't have them (graceful degradation).
         self.tools: list[BaseTool] = _get_all_mcp_tools()
+        # Keep a set of MCP tool names for fast filtering.
+        self._mcp_tool_names: set[str] = {t.name for t in self.tools}
+        logger.info(f"Registered {len(self.tools)} MCP tool(s) in ToolNode ({len(self._mcp_tool_names)} unique names)")
 
-    def _inject_tools(self, request: ModelRequest) -> ModelRequest:
-        """Conditionally add MCP tools to the request based on activated skills."""
+    def _filter_and_inject_tools(self, request: ModelRequest) -> ModelRequest:
+        """Strip MCP tools from request, then re-add only those for activated skills."""
+        # Step 1: Remove all MCP tools from request.tools (they were added
+        # by default because they're in ToolNode).  This keeps the LLM
+        # prompt small — only base tools are sent unless a skill is active.
+        if self._mcp_tool_names:
+            base_tools = [
+                t for t in request.tools
+                if isinstance(t, dict) or (hasattr(t, "name") and t.name not in self._mcp_tool_names)
+            ]
+        else:
+            base_tools = list(request.tools)
+
+        # Step 2: Check which skills have been activated in this conversation.
         activated = _extract_activated_skills(request.messages)
         if not activated:
+            if len(base_tools) != len(request.tools):
+                return request.override(tools=base_tools)
             return request
 
+        # Step 3: Look up which MCP servers those skills need and get their tools.
         server_names = _get_mcp_servers_for_skills(activated)
         if not server_names:
+            if len(base_tools) != len(request.tools):
+                return request.override(tools=base_tools)
             return request
 
         mcp_tools = _get_tools_for_servers(server_names)
         if not mcp_tools:
+            if len(base_tools) != len(request.tools):
+                return request.override(tools=base_tools)
             return request
 
-        # Merge: keep existing tools + add MCP tools (avoid duplicates by name)
+        # Step 4: Merge base tools + skill-specific MCP tools (avoid duplicates).
         existing_names: set[str] = set()
-        for t in request.tools:
+        for t in base_tools:
             if isinstance(t, dict):
                 func = t.get("function", t)
                 existing_names.add(func.get("name", ""))
@@ -156,11 +175,9 @@ class McpToolInjectionMiddleware(AgentMiddleware[AgentState]):
                 existing_names.add(t.name)
 
         new_tools = [t for t in mcp_tools if t.name not in existing_names]
-        if not new_tools:
-            return request
 
         logger.info(f"Injecting {len(new_tools)} MCP tool(s) for skills {activated} (servers: {server_names})")
-        return request.override(tools=list(request.tools) + new_tools)
+        return request.override(tools=base_tools + new_tools)
 
     @override
     def wrap_model_call(
@@ -168,7 +185,7 @@ class McpToolInjectionMiddleware(AgentMiddleware[AgentState]):
         request: ModelRequest,
         handler: Callable[[ModelRequest], ModelResponse],
     ) -> ModelCallResult:
-        request = self._inject_tools(request)
+        request = self._filter_and_inject_tools(request)
         return handler(request)
 
     @override
@@ -177,5 +194,5 @@ class McpToolInjectionMiddleware(AgentMiddleware[AgentState]):
         request: ModelRequest,
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> ModelCallResult:
-        request = self._inject_tools(request)
+        request = self._filter_and_inject_tools(request)
         return await handler(request)

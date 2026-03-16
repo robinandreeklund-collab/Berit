@@ -17,6 +17,8 @@ for mod_name in (
         sys.modules[mod_name] = MagicMock()
 
 
+from langchain_core.tools import BaseTool
+
 from src.agents.middlewares.mcp_tool_injection_middleware import (
     McpToolInjectionMiddleware,
     _extract_activated_skills,
@@ -335,3 +337,93 @@ class TestMiddlewareToolsAttribute:
             mw = McpToolInjectionMiddleware()
 
         assert mw.tools == []
+
+
+# ---------------------------------------------------------------------------
+# Test: Middleware strips MCP tools from request by default
+# ---------------------------------------------------------------------------
+
+class TestMiddlewareFiltering:
+    """Verify that MCP tools are stripped from request.tools and only re-added for activated skills."""
+
+    @staticmethod
+    def _make_ai_msg(tool_calls):
+        msg = MagicMock()
+        msg.type = "ai"
+        msg.tool_calls = tool_calls
+        return msg
+
+    @staticmethod
+    def _make_tool(name: str) -> MagicMock:
+        t = MagicMock(spec=BaseTool)
+        t.name = name
+        return t
+
+    def _make_middleware(self, mcp_tool_names: list[str]) -> McpToolInjectionMiddleware:
+        mcp_tools = [self._make_tool(n) for n in mcp_tool_names]
+        with patch("src.agents.middlewares.mcp_tool_injection_middleware._get_all_mcp_tools", return_value=mcp_tools):
+            return McpToolInjectionMiddleware()
+
+    def test_strips_mcp_tools_when_no_skill_activated(self):
+        """Without any activated skill, MCP tools should be stripped from request."""
+        mw = self._make_middleware(["smhi_weather", "scb_search"])
+
+        base = self._make_tool("bash")
+        mcp = self._make_tool("smhi_weather")
+        request = MagicMock()
+        request.tools = [base, mcp]
+        request.messages = []  # No skill activated
+        request.override = MagicMock(return_value="overridden_request")
+
+        result = mw._filter_and_inject_tools(request)
+
+        # Should call override to strip the MCP tool
+        request.override.assert_called_once()
+        tools_arg = request.override.call_args[1]["tools"]
+        tool_names = [t.name for t in tools_arg]
+        assert "bash" in tool_names
+        assert "smhi_weather" not in tool_names
+
+    def test_keeps_only_activated_skill_tools(self):
+        """When a skill is activated, only its MCP tools should be added."""
+        mw = self._make_middleware(["smhi_weather", "scb_search", "scb_browse"])
+
+        base = self._make_tool("bash")
+        mcp1 = self._make_tool("smhi_weather")
+        mcp2 = self._make_tool("scb_search")
+
+        # Simulate: model read swedish-weather SKILL.md
+        ai_msg = self._make_ai_msg([
+            {"name": "read_file", "args": {"path": "/mnt/skills/public/swedish-weather/SKILL.md"}, "id": "1"}
+        ])
+
+        request = MagicMock()
+        request.tools = [base, mcp1, mcp2]
+        request.messages = [ai_msg]
+
+        smhi_tool = self._make_tool("smhi_weather")
+        with patch("src.agents.middlewares.mcp_tool_injection_middleware._get_mcp_servers_for_skills", return_value=["smhi"]):
+            with patch("src.agents.middlewares.mcp_tool_injection_middleware._get_tools_for_servers", return_value=[smhi_tool]):
+                request.override = MagicMock(return_value="overridden")
+                result = mw._filter_and_inject_tools(request)
+
+        request.override.assert_called_once()
+        tools_arg = request.override.call_args[1]["tools"]
+        tool_names = [t.name for t in tools_arg]
+        assert "bash" in tool_names
+        assert "smhi_weather" in tool_names
+        # scb_search should NOT be included (not in activated skill)
+        assert "scb_search" not in tool_names
+
+    def test_passthrough_when_no_mcp_tools_registered(self):
+        """When no MCP tools are registered, request should pass through unchanged."""
+        mw = self._make_middleware([])
+
+        base = self._make_tool("bash")
+        request = MagicMock()
+        request.tools = [base]
+        request.messages = []
+
+        result = mw._filter_and_inject_tools(request)
+        # Should return original request, no override
+        assert result is request
