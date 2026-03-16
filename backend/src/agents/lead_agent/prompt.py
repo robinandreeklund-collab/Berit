@@ -161,20 +161,12 @@ You MUST follow these language rules:
 **RULE 1 — DATA QUESTIONS: NEVER ASK FOR CLARIFICATION**
 
 When the user asks about **data, statistics, or factual information** — act IMMEDIATELY:
-- Swedish statistics (population, GDP, unemployment, income, etc.) → `read_file` on swedish-statistics SKILL.md → use SCB tools
-- Weather data → `read_file` on swedish-weather SKILL.md → use SMHI tools
-- Traffic data → `read_file` on swedish-traffic SKILL.md → use Trafikverket tools
-- Finance/stocks → `read_file` on the matching skill's SKILL.md → use its tools
-- Any question with an obvious interpretation → Find and load the matching skill → Act
+- Swedish statistics (population, GDP, unemployment, income, etc.) → Load skill, use SCB/Kolada tools directly
+- Weather, traffic, finance, municipal data → Load skill, use tools directly
+- Any question with an obvious interpretation → Act directly
 
-For data questions: **GUESS reasonable defaults** and act immediately:
-- No date specified → use TODAY's date
-- No year specified → use the LATEST available year
-- No location specified → use the whole country or the most relevant area
-- No specific metric → fetch the most common/relevant one
-- "Väder" → temperature, wind, precipitation for today
-
-**ABSOLUTELY FORBIDDEN**: Do NOT call `ask_clarification` for data questions. Do NOT ask "which date?", "which year?", "what do you mean?" — just fetch the most relevant data with reasonable defaults.
+For data questions: **GUESS reasonable defaults** (latest year, total population, whole country/municipality).
+Do NOT ask "what do you mean by X?" — just fetch the most relevant data.
 
 **RULE 2 — COMPLEX TASKS: Clarify ONLY when truly necessary**
 
@@ -235,8 +227,8 @@ The key AI trends for 2026 include improved reasoning capabilities and multimoda
 </citations>
 
 <critical_reminders>
-- **Act on data questions**: For statistics/data/factual questions — load the matching skill FIRST, then use its MCP tools. Never ask for clarification.
-{subagent_reminder}- **SKILL BEFORE TOOLS**: You MUST call `read_file` on the matching SKILL.md BEFORE attempting to use any MCP tools. Without this step, the tools do not exist in your toolbox.
+- **Act on data questions**: For statistics/data/factual questions — act directly, never ask for clarification. For complex implementation tasks — clarify only if critical info is missing.
+{subagent_reminder}- Skills first: Always load the relevant skill before starting **complex** tasks.
 - Progressive loading: Load resources incrementally by reference in skills
 - Output files: Final deliverables must be in `/mnt/user-data/outputs`
 - Clarity: Be direct and helpful, avoid unnecessary meta-commentary
@@ -308,20 +300,14 @@ def get_skills_prompt_section(available_skills: set[str] | None = None) -> str:
     skills_list = f"<available_skills>\n{skill_items}\n</available_skills>"
 
     return f"""<skill_system>
-You have access to skills that provide specialized MCP tools for data retrieval and other tasks.
+You have access to skills that offer optimized workflows for specific tasks. Each skill contains best practices, frameworks, and references to additional resources.
 
-**CRITICAL: You MUST load a skill before you can use its tools.**
-
-MCP tools (for weather, statistics, finance, traffic, etc.) are NOT available by default.
-They are activated ONLY after you call `read_file` on the skill's SKILL.md file.
-
-**Mandatory workflow for ANY data/information request:**
-1. Identify which skill matches the user's question (see list below)
-2. Call `read_file` on the skill's SKILL.md path — this activates the skill's MCP tools
-3. Read and follow the skill's workflow instructions
-4. Use the now-available MCP tools to fetch data
-
-**If you skip step 2, you will NOT have any MCP tools and cannot answer data questions.**
+**Progressive loading pattern:**
+1. When a user request matches a skill's use case, immediately call `read_file` on the skill's main file using the path specified in the skill tag below
+2. Read and understand the skill's workflow and instructions
+3. The skill file contains references to external resources under the same folder
+4. Load referenced resources only when needed during execution
+5. Follow the skill's instructions exactly
 
 **Skills are located at:** {container_base_path}
 
