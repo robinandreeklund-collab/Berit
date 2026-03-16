@@ -40,6 +40,8 @@ EXEMPT_TOOLS = frozenset({
     "ask_clarification",
     "view_image",
     "setup_agent",
+    # Creative/output tools that are used multiple times per report
+    "chart-visualization",
     # Browser tools that are used in multi-step navigation
     "goto",
     "click",
