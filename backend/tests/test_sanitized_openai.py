@@ -1,10 +1,11 @@
-"""Tests for SanitizedChatOpenAI tool schema sanitization.
+"""Tests for SanitizedChatOpenAI tool schema sanitization and strict mode.
 
 Verifies that all tool schemas sent to LM Studio have non-null descriptions
-at every level of the JSON Schema tree.
+at every level of the JSON Schema tree, and that strict mode is enabled with
+the required schema constraints (additionalProperties, required, no defaults).
 """
 
-from src.models.sanitized_openai import _sanitize_schema, _sanitize_tools
+from src.models.sanitized_openai import _make_strict_compatible, _sanitize_schema, _sanitize_tools
 
 
 class TestSanitizeSchema:
@@ -83,6 +84,70 @@ class TestSanitizeSchema:
         assert "description" in schema["additionalProperties"]
 
 
+class TestMakeStrictCompatible:
+    def test_sets_additional_properties_false(self):
+        schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+        _make_strict_compatible(schema)
+        assert schema["additionalProperties"] is False
+
+    def test_sets_required_to_all_properties(self):
+        schema = {"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "integer"}}}
+        _make_strict_compatible(schema)
+        assert set(schema["required"]) == {"a", "b"}
+
+    def test_strips_default_values(self):
+        schema = {"type": "object", "properties": {"lang": {"type": "string", "default": "sv"}}}
+        _make_strict_compatible(schema)
+        assert "default" not in schema["properties"]["lang"]
+
+    def test_recurses_into_nested_objects(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "nested": {
+                    "type": "object",
+                    "properties": {
+                        "inner": {"type": "string", "default": "x"},
+                    },
+                },
+            },
+        }
+        _make_strict_compatible(schema)
+        nested = schema["properties"]["nested"]
+        assert nested["additionalProperties"] is False
+        assert nested["required"] == ["inner"]
+        assert "default" not in nested["properties"]["inner"]
+
+    def test_recurses_into_array_items(self):
+        schema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"val": {"type": "string"}},
+            },
+        }
+        _make_strict_compatible(schema)
+        assert schema["items"]["additionalProperties"] is False
+
+    def test_recurses_into_anyof(self):
+        schema = {
+            "anyOf": [
+                {"type": "object", "properties": {"x": {"type": "string"}}},
+                {"type": "string"},
+            ]
+        }
+        _make_strict_compatible(schema)
+        assert schema["anyOf"][0]["additionalProperties"] is False
+
+    def test_handles_non_dict(self):
+        assert _make_strict_compatible("not a dict") == "not a dict"
+
+    def test_handles_schema_without_properties(self):
+        schema = {"type": "string"}
+        _make_strict_compatible(schema)
+        assert "additionalProperties" not in schema
+
+
 class TestSanitizeTools:
     def test_sanitizes_openai_format_tools(self):
         tools = [
@@ -103,6 +168,64 @@ class TestSanitizeTools:
         _sanitize_tools(tools)
         params = tools[0]["function"]["parameters"]
         assert params["properties"]["language"]["description"] == "language"
+
+    def test_enables_strict_mode(self):
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "my_tool",
+                    "description": "A tool",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"q": {"type": "string", "description": "query"}},
+                    },
+                },
+            }
+        ]
+        _sanitize_tools(tools)
+        assert tools[0]["function"]["strict"] is True
+
+    def test_strict_mode_adds_required_and_no_additional(self):
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "my_tool",
+                    "description": "A tool",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "a": {"type": "string", "description": "a"},
+                            "b": {"type": "integer", "description": "b"},
+                        },
+                    },
+                },
+            }
+        ]
+        _sanitize_tools(tools)
+        params = tools[0]["function"]["parameters"]
+        assert params["additionalProperties"] is False
+        assert set(params["required"]) == {"a", "b"}
+
+    def test_strict_mode_strips_defaults(self):
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "my_tool",
+                    "description": "A tool",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "lang": {"type": "string", "description": "language", "default": "sv"},
+                        },
+                    },
+                },
+            }
+        ]
+        _sanitize_tools(tools)
+        assert "default" not in tools[0]["function"]["parameters"]["properties"]["lang"]
 
     def test_fixes_null_function_description(self):
         tools = [
