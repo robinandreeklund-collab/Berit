@@ -1,8 +1,11 @@
 """Tool for retrieving MCP tools associated with a specific skill."""
 
 import logging
+from typing import Annotated
 
 from langchain.tools import tool
+from langchain_core.messages import ToolMessage
+from langchain_core.tools import InjectedToolCallId
 from langgraph.types import Command
 
 from src.mcp.cache import get_cached_mcp_tools_by_server, get_tools_for_servers
@@ -22,7 +25,10 @@ def _get_skill_server_mapping() -> dict[str, str]:
 
 
 @tool("retrieve_skill_tools", parse_docstring=True)
-def retrieve_skill_tools_tool(skill_name: str) -> Command:
+def retrieve_skill_tools_tool(
+    skill_name: str,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+) -> Command:
     """Hämta MCP-verktyg för en specifik skill. Anropa detta INNAN du använder MCP-verktyg.
 
     När du identifierar att en fråga kräver en specifik skill (t.ex. swedish-weather för väderfrågor),
@@ -46,10 +52,12 @@ def retrieve_skill_tools_tool(skill_name: str) -> Command:
             available_server_names = sorted(available_servers.keys())
             return Command(
                 update={
-                    "messages": [{
-                        "role": "tool",
-                        "content": f"Fel: Skill '{skill_name}' hittades inte. Tillgängliga skills med MCP-verktyg: {available_skills}. Tillgängliga MCP-servrar: {available_server_names}",
-                    }],
+                    "messages": [
+                        ToolMessage(
+                            content=f"Fel: Skill '{skill_name}' hittades inte. Tillgängliga skills med MCP-verktyg: {available_skills}. Tillgängliga MCP-servrar: {available_server_names}",
+                            tool_call_id=tool_call_id,
+                        ),
+                    ],
                 },
             )
 
@@ -60,10 +68,12 @@ def retrieve_skill_tools_tool(skill_name: str) -> Command:
     if not tool_names:
         return Command(
             update={
-                "messages": [{
-                    "role": "tool",
-                    "content": f"MCP-server '{server_name}' har inga laddade verktyg. Servern kanske inte är igång.",
-                }],
+                "messages": [
+                    ToolMessage(
+                        content=f"MCP-server '{server_name}' har inga laddade verktyg. Servern kanske inte är igång.",
+                        tool_call_id=tool_call_id,
+                    ),
+                ],
             },
         )
 
@@ -72,10 +82,12 @@ def retrieve_skill_tools_tool(skill_name: str) -> Command:
     return Command(
         update={
             "active_mcp_servers": [server_name],
-            "messages": [{
-                "role": "tool",
-                "name": "retrieve_skill_tools",
-                "content": f"Aktiverade {len(tool_names)} verktyg från {server_name}: {', '.join(tool_names)}. Du kan nu använda dessa verktyg.",
-            }],
+            "messages": [
+                ToolMessage(
+                    content=f"Aktiverade {len(tool_names)} verktyg från {server_name}: {', '.join(tool_names)}. Du kan nu använda dessa verktyg.",
+                    tool_call_id=tool_call_id,
+                    name="retrieve_skill_tools",
+                ),
+            ],
         },
     )
