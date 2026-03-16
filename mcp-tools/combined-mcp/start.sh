@@ -11,21 +11,20 @@ echo "Skolverket MCP:   internal :3002 → /skolverket/"
 echo "Trafikverket MCP: internal :3003 → /trafikverket/"
 echo "Riksbank MCP:     internal :3004 → /riksbank/"
 echo "SMHI MCP:         internal :3005 → /smhi/"
-echo "Lightpanda MCP:   internal :3006 → /lightpanda/"
-echo "Elpris MCP:       internal :3007 → /elpris/"
-echo "Bolagsverket MCP: internal :3008 → /bolagsverket/"
-echo "Google Maps MCP:  internal :3009 → /google-maps/"
-echo "Blocket/Tradera:  internal :3010 → /blocket-tradera/"
-echo "Riksdag MCP:      internal :3011 → /riksdag/"
-echo "NVV MCP:          internal :3012 → /nvv/"
-echo "Kolada MCP:       internal :3013 → /kolada/"
-echo "KB MCP:           internal :3014 → /kb/"
-echo "Upphandlingsdata: internal :3015 → /upphandlingsdata/"
-echo "OECD MCP:         internal :3016 → /oecd/"
-echo "Trafikanalys MCP: internal :3017 → /trafikanalys/"
-echo "Visit Sweden MCP: internal :3018 → /visitsweden/"
-echo "Krisinformation:  internal :3019 → /krisinformation/"
-echo "Polisen MCP:      internal :3020 → /polisen/"
+echo "Elpris MCP:       internal :3006 → /elpris/"
+echo "Bolagsverket MCP: internal :3007 → /bolagsverket/"
+echo "Google Maps MCP:  internal :3008 → /google-maps/"
+echo "Blocket/Tradera:  internal :3009 → /blocket-tradera/"
+echo "Riksdag MCP:      internal :3010 → /riksdag/"
+echo "NVV MCP:          internal :3011 → /nvv/"
+echo "Kolada MCP:       internal :3012 → /kolada/"
+echo "KB MCP:           internal :3013 → /kb/"
+echo "Upphandlingsdata: internal :3014 → /upphandlingsdata/"
+echo "OECD MCP:         internal :3015 → /oecd/"
+echo "Trafikanalys MCP: internal :3016 → /trafikanalys/"
+echo "Visit Sweden MCP: internal :3017 → /visitsweden/"
+echo "Krisinformation:  internal :3018 → /krisinformation/"
+echo "Polisen MCP:      internal :3019 → /polisen/"
 
 # Generate nginx config with actual PORT
 envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
@@ -55,96 +54,74 @@ echo "Starting SMHI MCP on :3005..."
 PORT=3005 node /app/smhi/dist/http-server.js &
 SMHI_PID=$!
 
-# Start Lightpanda browser on port 9222 (CDP)
-echo "Starting Lightpanda browser on :9222..."
-lightpanda --host 127.0.0.1 --port 9222 &
-LIGHTPANDA_BROWSER_PID=$!
-
-# Wait for Lightpanda browser to be ready (up to 10 seconds)
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-    if wget -qO- http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
-        echo "Lightpanda browser ready (PID=$LIGHTPANDA_BROWSER_PID)"
-        break
-    fi
-    if [ "$i" = "20" ]; then
-        echo "WARNING: Lightpanda browser did not start in 10s, MCP tools will fail"
-    fi
-    sleep 0.5
-done
-
-# Start Lightpanda MCP on port 3006 (connects to browser on :9222)
-echo "Starting Lightpanda MCP on :3006..."
-LIGHTPANDA_CDP_URL=ws://127.0.0.1:9222 LIGHTPANDA_URL=http://127.0.0.1:9222 PORT=3006 node /app/lightpanda/dist/http-server.js &
-LIGHTPANDA_PID=$!
-
-# Start Elpris MCP on port 3007
-echo "Starting Elpris MCP on :3007..."
-PORT=3007 node /app/elpris/dist/http-server.js &
+# Start Elpris MCP on port 3006
+echo "Starting Elpris MCP on :3006..."
+PORT=3006 node /app/elpris/dist/http-server.js &
 ELPRIS_PID=$!
 
-# Start Bolagsverket MCP on port 3008
-echo "Starting Bolagsverket MCP on :3008..."
-PORT=3008 node /app/bolagsverket/dist/http-server.js &
+# Start Bolagsverket MCP on port 3007
+echo "Starting Bolagsverket MCP on :3007..."
+PORT=3007 node /app/bolagsverket/dist/http-server.js &
 BOLAGSVERKET_PID=$!
 
-# Start Google Maps MCP on port 3009
-echo "Starting Google Maps MCP on :3009..."
-MCP_SERVER_PORT=3009 PORT=3009 node /app/google-maps/dist/cli.js &
+# Start Google Maps MCP on port 3008
+echo "Starting Google Maps MCP on :3008..."
+MCP_SERVER_PORT=3008 PORT=3008 node /app/google-maps/dist/cli.js &
 GOOGLE_MAPS_PID=$!
 
-# Start Blocket/Tradera MCP on port 3010
-echo "Starting Blocket/Tradera MCP on :3010..."
-PORT=3010 node /app/blocket-tradera/build/http-server.js &
+# Start Blocket/Tradera MCP on port 3009
+echo "Starting Blocket/Tradera MCP on :3009..."
+PORT=3009 node /app/blocket-tradera/build/http-server.js &
 BLOCKET_TRADERA_PID=$!
 
-# Start Riksdag MCP on port 3011
-echo "Starting Riksdag MCP on :3011..."
-PORT=3011 node /app/riksdag/dist/http-server.js &
+# Start Riksdag MCP on port 3010
+echo "Starting Riksdag MCP on :3010..."
+PORT=3010 node /app/riksdag/dist/http-server.js &
 RIKSDAG_PID=$!
 
-# Start NVV MCP on port 3012
-echo "Starting NVV MCP on :3012..."
-PORT=3012 node /app/nvv/dist/http-server.js &
+# Start NVV MCP on port 3011
+echo "Starting NVV MCP on :3011..."
+PORT=3011 node /app/nvv/dist/http-server.js &
 NVV_PID=$!
 
-# Start Kolada MCP on port 3013
-echo "Starting Kolada MCP on :3013..."
-PORT=3013 node /app/kolada/dist/http-server.js &
+# Start Kolada MCP on port 3012
+echo "Starting Kolada MCP on :3012..."
+PORT=3012 node /app/kolada/dist/http-server.js &
 KOLADA_PID=$!
 
-# Start KB MCP on port 3014
-echo "Starting KB MCP on :3014..."
-PORT=3014 node /app/kb/dist/http-server.js &
+# Start KB MCP on port 3013
+echo "Starting KB MCP on :3013..."
+PORT=3013 node /app/kb/dist/http-server.js &
 KB_PID=$!
 
-# Start Upphandlingsdata MCP on port 3015
-echo "Starting Upphandlingsdata MCP on :3015..."
-PORT=3015 node /app/upphandlingsdata/dist/http-server.js &
+# Start Upphandlingsdata MCP on port 3014
+echo "Starting Upphandlingsdata MCP on :3014..."
+PORT=3014 node /app/upphandlingsdata/dist/http-server.js &
 UPPHANDLINGSDATA_PID=$!
 
-# Start OECD MCP on port 3016
-echo "Starting OECD MCP on :3016..."
-PORT=3016 node /app/oecd/dist/http-server.js &
+# Start OECD MCP on port 3015
+echo "Starting OECD MCP on :3015..."
+PORT=3015 node /app/oecd/dist/http-server.js &
 OECD_PID=$!
 
-# Start Trafikanalys MCP on port 3017
-echo "Starting Trafikanalys MCP on :3017..."
-PORT=3017 node /app/trafikanalys/dist/http-server.js &
+# Start Trafikanalys MCP on port 3016
+echo "Starting Trafikanalys MCP on :3016..."
+PORT=3016 node /app/trafikanalys/dist/http-server.js &
 TRAFIKANALYS_PID=$!
 
-# Start Visit Sweden MCP on port 3018
-echo "Starting Visit Sweden MCP on :3018..."
-PORT=3018 node /app/visitsweden/dist/http-server.js &
+# Start Visit Sweden MCP on port 3017
+echo "Starting Visit Sweden MCP on :3017..."
+PORT=3017 node /app/visitsweden/dist/http-server.js &
 VISITSWEDEN_PID=$!
 
-# Start Krisinformation MCP on port 3019
-echo "Starting Krisinformation MCP on :3019..."
-PORT=3019 node /app/krisinformation/dist/http-server.js &
+# Start Krisinformation MCP on port 3018
+echo "Starting Krisinformation MCP on :3018..."
+PORT=3018 node /app/krisinformation/dist/http-server.js &
 KRISINFORMATION_PID=$!
 
-# Start Polisen MCP on port 3020
-echo "Starting Polisen MCP on :3020..."
-PORT=3020 node /app/polisen/dist/http-server.js &
+# Start Polisen MCP on port 3019
+echo "Starting Polisen MCP on :3019..."
+PORT=3019 node /app/polisen/dist/http-server.js &
 POLISEN_PID=$!
 
 # Wait for all to be ready
@@ -157,8 +134,8 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
        wget -qO- http://127.0.0.1:3005/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3006/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3007/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3008/health >/dev/null 2>&1 && \
-       nc -z 127.0.0.1 3009 2>/dev/null && \
+       nc -z 127.0.0.1 3008 2>/dev/null && \
+       wget -qO- http://127.0.0.1:3009/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3010/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3011/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3012/health >/dev/null 2>&1 && \
@@ -168,8 +145,7 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
        wget -qO- http://127.0.0.1:3016/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3017/health >/dev/null 2>&1 && \
        wget -qO- http://127.0.0.1:3018/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3019/health >/dev/null 2>&1 && \
-       wget -qO- http://127.0.0.1:3020/health >/dev/null 2>&1; then
+       wget -qO- http://127.0.0.1:3019/health >/dev/null 2>&1; then
         echo "All services healthy!"
         break
     fi
@@ -192,8 +168,6 @@ echo "  Riksbank MCP:      http://localhost:$PORT/riksbank/mcp"
 echo "  Riksbank health:   http://localhost:$PORT/riksbank/health"
 echo "  SMHI MCP:          http://localhost:$PORT/smhi/mcp"
 echo "  SMHI health:       http://localhost:$PORT/smhi/health"
-echo "  Lightpanda MCP:    http://localhost:$PORT/lightpanda/mcp"
-echo "  Lightpanda health: http://localhost:$PORT/lightpanda/health"
 echo "  Elpris MCP:        http://localhost:$PORT/elpris/mcp"
 echo "  Elpris health:     http://localhost:$PORT/elpris/health"
 echo "  Bolagsverket MCP:  http://localhost:$PORT/bolagsverket/mcp"
@@ -223,9 +197,9 @@ echo "  Polisen MCP:        http://localhost:$PORT/polisen/mcp"
 echo "  Polisen health:     http://localhost:$PORT/polisen/health"
 
 # Wait for any process to exit
-wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_BROWSER_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID
+wait -n $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID
 
 # If any exits, kill the rest
 echo "A process exited, shutting down..."
-kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $LIGHTPANDA_BROWSER_PID $LIGHTPANDA_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID 2>/dev/null || true
+kill $SCB_PID $SKOLVERKET_PID $TRAFIKVERKET_PID $RIKSBANK_PID $SMHI_PID $ELPRIS_PID $BOLAGSVERKET_PID $GOOGLE_MAPS_PID $BLOCKET_TRADERA_PID $RIKSDAG_PID $NVV_PID $KOLADA_PID $KB_PID $UPPHANDLINGSDATA_PID $OECD_PID $TRAFIKANALYS_PID $VISITSWEDEN_PID $KRISINFORMATION_PID $POLISEN_PID $NGINX_PID 2>/dev/null || true
 exit 1
