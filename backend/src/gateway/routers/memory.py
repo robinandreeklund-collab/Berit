@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from src.agents.memory.updater import get_memory_data, reload_memory_data
+from src.agents.memory.updater import clear_memory_data, get_memory_data, reload_memory_data
 from src.config.memory_config import get_memory_config
 
 router = APIRouter(prefix="/api", tags=["memory"])
@@ -132,6 +132,25 @@ async def reload_memory() -> MemoryResponse:
         The reloaded memory data.
     """
     memory_data = reload_memory_data()
+    return MemoryResponse(**memory_data)
+
+
+@router.delete(
+    "/memory",
+    response_model=MemoryResponse,
+    summary="Clear Memory Data",
+    description="Reset all memory data to an empty state. This clears user context, history, and all facts.",
+)
+async def clear_memory() -> MemoryResponse:
+    """Clear all memory data.
+
+    Resets the memory file to an empty structure, removing all user context,
+    history, and facts. This is useful during development to get a clean start.
+
+    Returns:
+        The new empty memory data.
+    """
+    memory_data = clear_memory_data()
     return MemoryResponse(**memory_data)
 
 

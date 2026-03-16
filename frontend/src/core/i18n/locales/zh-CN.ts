@@ -268,6 +268,7 @@ export const zhCN: Translations = {
       skills: "技能",
       prompts: "提示词",
       notification: "通知",
+      developer: "开发者",
       about: "关于",
     },
     memory: {
@@ -350,6 +351,19 @@ export const zhCN: Translations = {
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",
+    },
+    developer: {
+      title: "开发者",
+      description: "用于重置系统状态的开发工具。在开发过程中使用这些工具获得全新开始。",
+      clearMemory: "清除记忆",
+      clearMemoryDescription: "移除所有已学习的用户上下文、历史和事实。",
+      clearThreads: "清除聊天历史",
+      clearThreadsDescription: "删除所有对话线程及其消息。",
+      clearAll: "清除全部",
+      clearAllDescription: "重置记忆和聊天历史，实现完全的全新开始。",
+      clearButton: "清除",
+      cleared: "已清除！",
+      error: "错误",
     },
     acknowledge: {
       emptyTitle: "致谢",

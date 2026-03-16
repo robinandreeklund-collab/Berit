@@ -2,6 +2,7 @@
 
 import {
   BellIcon,
+  CodeIcon,
   InfoIcon,
   BrainIcon,
   MessageSquareTextIcon,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AboutSettingsPage } from "@/components/workspace/settings/about-settings-page";
+import { DeveloperSettingsPage } from "@/components/workspace/settings/developer-settings-page";
 import { AppearanceSettingsPage } from "@/components/workspace/settings/appearance-settings-page";
 import { MemorySettingsPage } from "@/components/workspace/settings/memory-settings-page";
 import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
@@ -35,6 +37,7 @@ type SettingsSection =
   | "skills"
   | "prompts"
   | "notification"
+  | "developer"
   | "about";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
@@ -79,6 +82,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
         label: t.settings.sections.prompts,
         icon: MessageSquareTextIcon,
       },
+      {
+        id: "developer",
+        label: t.settings.sections.developer,
+        icon: CodeIcon,
+      },
       { id: "about", label: t.settings.sections.about, icon: InfoIcon },
     ],
     [
@@ -88,6 +96,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       t.settings.sections.skills,
       t.settings.sections.prompts,
       t.settings.sections.notification,
+      t.settings.sections.developer,
       t.settings.sections.about,
     ],
   );
@@ -143,6 +152,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               )}
               {activeSection === "prompts" && <PromptSettingsPage />}
               {activeSection === "notification" && <NotificationSettingsPage />}
+              {activeSection === "developer" && <DeveloperSettingsPage />}
               {activeSection === "about" && <AboutSettingsPage />}
             </div>
           </ScrollArea>

@@ -113,6 +113,36 @@ def reload_memory_data(agent_name: str | None = None) -> dict[str, Any]:
     return memory_data
 
 
+def clear_memory_data(agent_name: str | None = None) -> dict[str, Any]:
+    """Clear all memory data by resetting to an empty structure.
+
+    Overwrites the memory file with a fresh empty structure and invalidates the cache.
+
+    Args:
+        agent_name: If provided, clears per-agent memory. If None, clears global memory.
+
+    Returns:
+        The new empty memory data dictionary.
+    """
+    file_path = _get_memory_file_path(agent_name)
+    empty = _create_empty_memory()
+
+    # Write empty memory atomically
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = file_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(empty, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(file_path)
+
+    # Update cache
+    try:
+        mtime = file_path.stat().st_mtime
+    except OSError:
+        mtime = None
+    _memory_cache[agent_name] = (empty, mtime)
+
+    return empty
+
+
 def _load_memory_from_file(agent_name: str | None = None) -> dict[str, Any]:
     """Load memory data from file.
 

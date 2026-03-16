@@ -218,6 +218,7 @@ export interface Translations {
       skills: string;
       prompts: string;
       notification: string;
+      developer: string;
       about: string;
     };
     memory: {
@@ -296,6 +297,19 @@ export interface Translations {
       testBody: string;
       notSupported: string;
       disableNotification: string;
+    };
+    developer: {
+      title: string;
+      description: string;
+      clearMemory: string;
+      clearMemoryDescription: string;
+      clearThreads: string;
+      clearThreadsDescription: string;
+      clearAll: string;
+      clearAllDescription: string;
+      clearButton: string;
+      cleared: string;
+      error: string;
     };
     acknowledge: {
       emptyTitle: string;

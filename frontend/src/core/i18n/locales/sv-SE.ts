@@ -284,6 +284,7 @@ export const svSE: Translations = {
       skills: "Färdigheter",
       prompts: "Promptar",
       notification: "Aviseringar",
+      developer: "Utvecklare",
       about: "Om",
     },
     memory: {
@@ -372,6 +373,23 @@ export const svSE: Translations = {
       testBody: "Detta är en testavisering.",
       notSupported: "Din webbläsare stöder inte aviseringar.",
       disableNotification: "Inaktivera aviseringar",
+    },
+    developer: {
+      title: "Utvecklare",
+      description:
+        "Utvecklingsverktyg för att återställa systemets tillstånd. Använd dessa under utveckling för att få en ren start.",
+      clearMemory: "Rensa minne",
+      clearMemoryDescription:
+        "Ta bort all inlärd användarkontext, historik och fakta.",
+      clearThreads: "Rensa chatthistorik",
+      clearThreadsDescription:
+        "Radera alla konversationstrådar och deras meddelanden.",
+      clearAll: "Rensa allt",
+      clearAllDescription:
+        "Återställ minne och chatthistorik för en helt ren start.",
+      clearButton: "Rensa",
+      cleared: "Rensat!",
+      error: "Fel",
     },
     acknowledge: {
       emptyTitle: "Tack och erkännanden",
