@@ -418,8 +418,7 @@ export class SCBMCPServer {
     const tables = items.filter(i => i.type === 't');
 
     if (tables.length > 0) {
-      // Leaf node — return table listing
-      // For each v1 table, try to find the v2 table ID via search
+      // Leaf node — return table listing with rich v2 metadata
       const v2Tables = await this.mapV1TablesToV2(tables.slice(0, pageSize), pathSegments);
 
       return jsonResponse({
@@ -429,26 +428,26 @@ export class SCBMCPServer {
         tables: v2Tables,
         total_tables: tables.length,
         tips: [
-          'Använd scb_inspect med ett tabell-ID (TABxxx) för att se variabler och värden',
+          'Välj tabell baserat på variableNames och period — du behöver INTE inspektera alla',
+          'Använd scb_inspect med ett tabell-ID (TABxxx) för att se exakta variabelvärden',
           'Sedan scb_fetch för att hämta data',
         ],
       });
     }
 
     if (folders.length > 0) {
-      // Non-leaf node — return child folders
+      // Non-leaf node — enrich folders with metadata from their children
+      const enrichedFolders = await this.enrichFolders(folders, pathSegments);
+
       return jsonResponse({
         level: pathSegments.length + 1,
         parent: subjectCode || 'root',
         path: pathSegments,
-        children: folders.map(f => ({
-          code: f.id,
-          label: f.text,
-        })),
+        children: enrichedFolders,
         total: folders.length,
         tips: pathSegments.length === 0
-          ? ['Välj ett ämnesområde, t.ex. scb_browse({subjectCode: "BE"}) för Befolkning']
-          : [`Bläddra djupare, t.ex. scb_browse({subjectCode: "${folders[0].id}"})`],
+          ? ['Välj ett ämnesområde baserat på beskrivningen nedan']
+          : ['Välj rätt underkategori baserat på table_count och sample_tables — du kan ofta hoppa direkt till tabellnivån'],
       });
     }
 
@@ -456,6 +455,91 @@ export class SCBMCPServer {
       error: `Inga resultat hittades för "${subjectCode}". Kontrollera koden.`,
       tips: ['Börja med scb_browse() utan argument för att se alla ämnesområden'],
     });
+  }
+
+  /**
+   * Enrich folder nodes with metadata: table counts and sample table titles.
+   * For each folder, peeks one level deeper via v1 API to see what's inside.
+   * Runs in parallel with a concurrency limit to respect rate limits.
+   */
+  private async enrichFolders(
+    folders: Array<{ id: string; text: string }>,
+    parentPath: string[]
+  ): Promise<Array<{
+    code: string;
+    label: string;
+    table_count: number;
+    subfolder_count: number;
+    sample_tables: string[];
+  }>> {
+    const CONCURRENCY = 5; // Max parallel v1 requests
+    const results: Array<{
+      code: string;
+      label: string;
+      table_count: number;
+      subfolder_count: number;
+      sample_tables: string[];
+    }> = [];
+
+    // Process folders in batches
+    for (let i = 0; i < folders.length; i += CONCURRENCY) {
+      const batch = folders.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(async (folder) => {
+          try {
+            const childPath = [...parentPath, folder.id];
+            const children = await this.apiClient.navigateV1(childPath);
+            const childTables = children.filter(c => c.type === 't');
+            const childFolders = children.filter(c => c.type === 'l');
+
+            // If this folder has subfolders, peek into each to count total tables
+            let totalTables = childTables.length;
+            const sampleTables: string[] = [];
+
+            if (childFolders.length > 0) {
+              // Show subfolder names as sample info
+              for (const cf of childFolders.slice(0, 5)) {
+                sampleTables.push(`📁 ${cf.text}`);
+              }
+              if (childFolders.length > 5) {
+                sampleTables.push(`...och ${childFolders.length - 5} till`);
+              }
+            }
+
+            if (childTables.length > 0) {
+              // Show first few table titles (strip year range for brevity)
+              for (const ct of childTables.slice(0, 4)) {
+                const shortTitle = ct.text.replace(/\.\s*År\s+.*$/, '').trim();
+                sampleTables.push(shortTitle);
+              }
+              if (childTables.length > 4) {
+                sampleTables.push(`...och ${childTables.length - 4} tabeller till`);
+              }
+            }
+
+            return {
+              code: folder.id,
+              label: folder.text,
+              table_count: totalTables,
+              subfolder_count: childFolders.length,
+              sample_tables: sampleTables,
+            };
+          } catch {
+            // Fallback: return basic info if lookup fails
+            return {
+              code: folder.id,
+              label: folder.text,
+              table_count: -1,
+              subfolder_count: -1,
+              sample_tables: [],
+            };
+          }
+        })
+      );
+      results.push(...batchResults);
+    }
+
+    return results;
   }
 
   /**
@@ -485,11 +569,27 @@ export class SCBMCPServer {
   private async mapV1TablesToV2(
     v1Tables: Array<{ id: string; text: string; updated?: string }>,
     subjectPath: string[]
-  ): Promise<Array<{ v1_id: string; v2_id: string | null; title: string; updated: string | null }>> {
+  ): Promise<Array<{
+    v1_id: string;
+    v2_id: string | null;
+    title: string;
+    updated: string | null;
+    variableNames: string[];
+    firstPeriod: string | null;
+    lastPeriod: string | null;
+    discontinued: boolean;
+    description: string | null;
+    timeUnit: string | null;
+  }>> {
     const leafCode = subjectPath[subjectPath.length - 1]?.toUpperCase();
 
     // Collect all v2 tables matching this subject by doing a few targeted searches
-    const v2Candidates: Array<{ id: string; label: string; paths?: any[] }> = [];
+    interface V2Candidate {
+      id: string; label: string; paths?: any[];
+      variableNames?: string[]; firstPeriod?: string; lastPeriod?: string;
+      discontinued?: boolean; description?: string | null; timeUnit?: string;
+    }
+    const v2Candidates: V2Candidate[] = [];
     const seen = new Set<string>();
 
     // Extract unique search terms from v1 titles
@@ -526,7 +626,9 @@ export class SCBMCPServer {
       // Normalize: strip year ranges like "År 1968 - 2024" for matching
       const v1Norm = v1Title.replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
 
-      let bestMatch: { id: string; score: number } | null = null;
+      let bestId: string | null = null;
+      let bestScore = 0;
+      let matched: V2Candidate | null = null;
       for (const v2 of v2Candidates) {
         const v2Norm = (v2.label || '').replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
         // Score: how many characters match from start
@@ -536,16 +638,24 @@ export class SCBMCPServer {
           else break;
         }
         const score = matchLen / Math.max(v1Norm.length, v2Norm.length, 1);
-        if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
-          bestMatch = { id: v2.id, score };
+        if (score > 0.5 && score > bestScore) {
+          bestId = v2.id;
+          bestScore = score;
+          matched = v2;
         }
       }
 
       return {
         v1_id: v1.id,
-        v2_id: bestMatch?.id || null,
+        v2_id: bestId,
         title: v1Title,
         updated: v1.updated || null,
+        variableNames: matched?.variableNames || [],
+        firstPeriod: matched?.firstPeriod || null,
+        lastPeriod: matched?.lastPeriod || null,
+        discontinued: matched?.discontinued || false,
+        description: matched?.description || null,
+        timeUnit: matched?.timeUnit || null,
       };
     });
   }

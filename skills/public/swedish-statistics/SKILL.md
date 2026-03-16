@@ -13,12 +13,14 @@ Denna färdighet ger dig tillgång till Sveriges officiella statistik via SCB:s 
 
 | Verktyg | Beskrivning |
 |---------|-------------|
-| `scb_browse` | **REKOMMENDERAT** — Navigera SCB:s ämnesområdesträd i 3 nivåer |
+| `scb_browse` | **REKOMMENDERAT** — Navigera SCB:s ämnesområdesträd. Visar metadata (antal tabeller, variabelnamn, tidsperioder) på ALLA nivåer |
 | `scb_search` | Textsökning bland tabeller (alternativ metod) |
 | `scb_find_region_code` | Slå upp regionkoder — fuzzy matching ("Goteborg" → "Göteborg", 1480) |
+| `scb_search_regions` | Sök bland alla 312 regioner (1 rike, 21 län, 290 kommuner) |
 | `scb_inspect` | Visa variabler och metadata för en tabell |
 | `scb_codelist` | Utforska en specifik variabels alla värden |
 | `scb_fetch` | Hämta data — auto-kompletterar saknade variabler, returnerar markdown-tabell |
+| `scb_check_usage` | Visa API-användning och rate limit-status |
 
 ## REKOMMENDERAT ARBETSFLÖDE — Ämnesområdesnavigering
 
@@ -51,23 +53,37 @@ SCB har 20+ ämnesområden organiserade i 3 nivåer. Bestäm nivå 1 utifrån fr
 | **NV** | Näringsverksamhet | Företag, industri, bransch |
 | **SO** | Socialförsäkring | Pension, föräldrapenning |
 
-### Steg 2: Navigera djupare med scb_browse (3 nivåer)
+### Steg 2: Navigera djupare med scb_browse (rik metadata på ALLA nivåer)
+
+Varje nivå visar metadata som hjälper dig välja rätt utan blinda anrop:
 
 ```
-scb_browse()                              → Alla 20+ ämnesområden (nivå 1)
-scb_browse(subjectCode="BE")              → Underområden (nivå 2): BE0101, BE0401...
-scb_browse(subjectCode="BE0101")          → Ämnen (nivå 3): Folkmängd, Döda, Flyttningar...
-scb_browse(subjectCode="BE0101A")         → Tabeller i ämnet Folkmängd
+scb_browse()
+  → Alla 20+ ämnesområden med subfolder_count och sample_tables
+
+scb_browse(subjectCode="BE")
+  → Underområden med table_count, subfolder_count och sample_tables
+    t.ex. BE0101 "Befolkningsstatistik" (subfolder_count: 20,
+          sample_tables: ["📁 Folkmängd", "📁 Befolkningsförändringar", ...])
+
+scb_browse(subjectCode="BE0101")
+  → Ämnen med table_count och sample_tables per kategori
+    t.ex. BE0101A "Folkmängd" (table_count: 11,
+          sample_tables: ["Folkmängden per månad efter region...", ...])
+
+scb_browse(subjectCode="BE0101A")
+  → Alla tabeller med RIK METADATA per tabell:
+    v2_id, title, variableNames, firstPeriod, lastPeriod, discontinued, timeUnit
 ```
 
 ### Steg 3: Välj rätt tabell
 
-Nu ser du ALLA tabeller i ämnet. Välj den som bäst matchar frågan.
+Nu ser du ALLA tabeller med metadata (variabelnamn, tidsperiod, status). Välj baserat på `variableNames` och `firstPeriod`/`lastPeriod` — du behöver ofta INTE inspektera tabellen först.
 
 ### Steg 4: Hämta data
 
 1. `scb_find_region_code` om frågan gäller en specifik plats
-2. `scb_inspect` för att se tabellens variabler
+2. `scb_inspect` om du behöver se exakta variabelvärden (ofta onödigt tack vare metadata i browse)
 3. `scb_fetch` för att hämta data (auto-kompletterar saknade variabler)
 
 ## Snabbguide: Fråga → Sökväg → Tabell
@@ -94,13 +110,15 @@ Nu ser du ALLA tabeller i ämnet. Välj den som bäst matchar frågan.
 ## KRITISKA REGLER
 
 1. **Använd `scb_browse` för att navigera** — textsökning ger ofta dåliga resultat
-2. **Gå direkt från `scb_inspect` till `scb_fetch`** — fetch auto-kompletterar saknade variabler
-3. **Använd INTE `scb_validate`** — den behövs inte, fetch hanterar allt
-4. **Max 5 verktygsanrop totalt per fråga** — browse → region → inspect → fetch. Sedan SVAR.
-5. **Presentera `markdown_table` direkt** från fetch-resultatet — skriv INTE filer
-6. **Fråga INTE användaren** om förtydligande — gissa rimliga defaults (senaste år, totalt)
-7. **Sök på SVENSKA** — "befolkning" inte "population"
-8. **Om ett verktyg misslyckas — försök INTE igen.** Gå vidare eller svara med vad du har.
+2. **Läs metadata från browse-resultatet** — varje nivå visar table_count, sample_tables och variableNames. Använd detta för att navigera smart.
+3. **Hoppa över `scb_inspect` om metadata räcker** — browse visar nu variableNames och tidsperioder per tabell. Du kan ofta gå direkt till `scb_fetch`.
+4. **Gå direkt från `scb_inspect` till `scb_fetch`** — fetch auto-kompletterar saknade variabler
+5. **Använd INTE `scb_validate`** — den behövs inte, fetch hanterar allt
+6. **Max 6 verktygsanrop totalt per fråga** — browse(2-3) → region → inspect(valfritt) → fetch. Sedan SVAR.
+7. **Presentera `markdown_table` direkt** från fetch-resultatet — skriv INTE filer
+8. **Fråga INTE användaren** om förtydligande — gissa rimliga defaults (senaste år, totalt)
+9. **Sök på SVENSKA** — "befolkning" inte "population"
+10. **Om ett verktyg misslyckas — försök INTE igen.** Gå vidare eller svara med vad du har.
 
 ## Regionkoder
 
@@ -125,20 +143,23 @@ Använd `scb_find_region_code` för att slå upp andra kommuner/län. Fuzzy matc
 
 ### "Hur många bor i Borås?"
 
-1. `scb_browse(subjectCode="BE0101A")` → Folkmängd-tabeller → TAB638
+1. `scb_browse(subjectCode="BE0101A")` → Ser alla tabeller med metadata → TAB638 har variableNames: ["region", "civilstånd", "ålder", "kön"]
 2. `scb_find_region_code(query="Borås")` → `"1490"`
 3. `scb_fetch(tableId="TAB638", selection={"Region": ["1490"], "Tid": ["TOP(1)"]})` → data
+   (3 anrop — inspect behövdes inte tack vare metadata i browse)
 
 ### "Jämför befolkningen i Stockholm, Göteborg och Malmö"
 
-1. `scb_browse(subjectCode="BE0101A")` → TAB638
+1. `scb_browse(subjectCode="BE0101A")` → Ser variableNames + period direkt → TAB638
 2. `scb_fetch(tableId="TAB638", selection={"Region": ["0180", "1480", "1280"], "Tid": ["TOP(5)"]})` → data
+   (2 anrop — regionkoder fanns i snabbreferensen)
 
 ### "Visa BNP-utveckling de senaste 10 åren"
 
-1. `scb_browse(subjectCode="NR0103")` → hitta BNP-tabell
-2. `scb_inspect(tableId="...")` → se dimensioner
+1. `scb_browse(subjectCode="NR0103")` → Ser underkategorier med sample_tables → NR0103B (BNP år)
+2. `scb_browse(subjectCode="NR0103B")` → Ser alla tabeller med variableNames och tidsperioder
 3. `scb_fetch(tableId="...", selection={"Tid": ["TOP(10)"]})` → data
+   (3 anrop — metadata räckte för att välja rätt tabell)
 
 ## Presentera resultat
 
