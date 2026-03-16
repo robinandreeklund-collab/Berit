@@ -258,39 +258,40 @@ You: "Driftsätter till staging..." [continue]
 <mcp_tool_guidance>
 **SCB (Statistiska centralbyrån) — OBLIGATORISKT ARBETSFLÖDE:**
 
-När användaren frågar om svensk statistik (befolkning, ekonomi, arbetsmarknad etc.), följ ALLTID dessa steg i EXAKT denna ordning:
+När användaren frågar om svensk statistik (befolkning, ekonomi, arbetsmarknad etc.), följ ALLTID detta arbetsflöde. Använd `scb_browse` för navigering — ALDRIG `scb_search`.
 
-1. **HITTA REGIONKOD FÖRST** — `scb_find_region_code(query="kommunnamn")`
-   - ALLTID kör detta INNAN du söker efter tabeller om frågan gäller en specifik kommun/län
-   - Fuzzy-matching: "Hjo" → hittar "Hjo" (1497), "Goteborg" → "Göteborg" (1480)
-   - Riket (hela Sverige): kod "00"
-   - Län: 2-siffriga koder (01-25)
-   - Kommuner: 4-siffriga koder
+**STEG 1: Bestäm ämnesområde utifrån frågan:**
+- BE=Befolkning, AM=Arbetsmarknad, NR=Nationalräkenskaper/BNP, HE=Inkomster
+- BO=Boende/Bostäder, UF=Utbildning, MI=Miljö, PR=Priser/KPI/Inflation
+- OE=Offentlig ekonomi/Skatt, ME=Demokrati/Val, TK=Transport/Fordon, EN=Energi
 
-2. **SÖK TABELL** — `scb_search(query="befolkning", category="population")`
-   - Använd SVENSKA söktermer: "befolkning" inte "population", "arbetslöshet" inte "unemployment"
-   - Kategorier: population, labour, economy, housing, environment, education, health, transport
+**STEG 2: Navigera med scb_browse (visar rik metadata på VARJE nivå):**
+- `scb_browse(subjectCode="BE")` → Ser underkategorier med table_count och sample_tables
+- `scb_browse(subjectCode="BE0101")` → Ser ämnen med table_count och sample_tables
+- `scb_browse(subjectCode="BE0101A")` → Ser ALLA tabeller med variableNames, tidsperioder, v2_id
 
-3. **INSPEKTERA TABELL** — `scb_inspect(tableId="TAB1267")`
-   - Se alla variabler, deras värden, tidsperioder och eliminationsdefaults
-   - Kontrollera vilka variabler som är obligatoriska
+**STEG 3: Hitta regionkod om frågan gäller en plats:**
+- `scb_find_region_code(query="kommunnamn")` — fuzzy matching stöds
+- Vanliga: "00"=Riket, "0180"=Stockholm, "1480"=Göteborg, "1280"=Malmö
 
-4. **HÄMTA DATA** — `scb_fetch(tableId="TAB1267", selection={{...}})`
-   - Auto-kompletterar saknade variabler automatiskt
-   - Returnerar BÅDE JSON och markdown-tabell
-   - Selection-syntax: {{"Region": ["1480"], "Tid": ["TOP(5)"]}}
-   - Senaste N värden: "TOP(5)", alla: "*", specifikt år: "2024"
+**STEG 4: Hämta data:**
+- `scb_fetch(tableId="TABxxxx", selection={{"Region": ["1480"], "Tid": ["TOP(5)"]}})` — auto-kompletterar saknade variabler
+- `scb_inspect` BARA om du behöver se exakta variabelvärden (browse visar redan variableNames)
 
-**SCB VANLIGA TABELLER:**
-- TAB1267: Folkmängd per kommun (befolkning, ålder, kön)
-- TAB638: Befolkningsförändringar (födslar, dödsfall, migration)
-- TAB4502: Sysselsättning och arbetslöshet
+**SNABBVÄGAR (hoppa direkt till steg 3-4 för vanliga frågor):**
+- Folkmängd: `scb_browse(subjectCode="BE0101A")` → TAB638 eller TAB5557
+- BNP: `scb_browse(subjectCode="NR0103")` → välj rätt tabell
+- Arbetslöshet: `scb_browse(subjectCode="AM0401")` → AKU-tabeller
+- KPI/Inflation: `scb_browse(subjectCode="PR0101")` → KPI-tabeller
 
-**KRITISKT FÖR SCB:**
-- Kör ALLTID `scb_find_region_code` FÖRST om frågan nämner en kommun/stad/län
-- Gissa INTE regionkoder — slå ALLTID upp dem
-- Om `scb_fetch` misslyckas, kör `scb_inspect` för att se korrekta variabelnamn
-- Max 3 anrop per verktyg — avbryt om det inte fungerar efter 3 försök
+**KRITISKA REGLER FÖR SCB:**
+- Använd ALDRIG `scb_search` — använd `scb_browse` för navigering
+- Max 6 verktygsanrop totalt: browse(2-3) → region → fetch. Sedan SVAR.
+- Hoppa över `scb_inspect` om browse redan visar variableNames
+- Presentera `markdown_table` från fetch-resultatet DIREKT — skriv INTE filer
+- Om ett verktyg misslyckas — försök INTE igen. Presentera vad du har.
+- Sök på SVENSKA: "befolkning" inte "population"
+- Fråga INTE användaren om förtydligande — gissa rimliga defaults
 
 ---
 
