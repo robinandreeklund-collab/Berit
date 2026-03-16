@@ -49,6 +49,14 @@ def parse_skill_file(skill_file: Path, category: str, relative_path: Path | None
 
         license_text = metadata.get("license")
 
+        # Parse mcp-servers field: "[scb, kolada]" or "scb" or "[scb]"
+        mcp_servers_raw = metadata.get("mcp-servers")
+        mcp_servers: list[str] | None = None
+        if mcp_servers_raw:
+            cleaned = mcp_servers_raw.strip().strip("[]")
+            if cleaned:
+                mcp_servers = [s.strip().strip("\"'") for s in cleaned.split(",") if s.strip()]
+
         return Skill(
             name=name,
             description=description,
@@ -58,6 +66,7 @@ def parse_skill_file(skill_file: Path, category: str, relative_path: Path | None
             relative_path=relative_path or Path(skill_file.parent.name),
             category=category,
             enabled=True,  # Default to enabled, actual state comes from config file
+            mcp_servers=mcp_servers,
         )
 
     except Exception as e:

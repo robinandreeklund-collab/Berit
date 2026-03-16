@@ -1,6 +1,7 @@
 ---
 name: swedish-procurement
 description: Använd denna färdighet när användaren frågar om offentlig upphandling, upphandlingsmyndigheten, LOU, LOV, valfrihetssystem, hållbarhetskriterier, upphandlingskriterier, TED, EU-upphandlingar, offentliga affärer, anbudsförfarande, ramavtal, leverantör, offentlig sektor inköp, eller svensk upphandlingsdata.
+mcp-servers: [upphandlingsdata]
 ---
 
 # Svensk offentlig upphandling (Upphandlingsdata MCP v1.0)

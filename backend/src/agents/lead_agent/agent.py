@@ -6,6 +6,7 @@ from langchain_core.runnables import RunnableConfig
 
 from src.agents.lead_agent.prompt import apply_prompt_template
 from src.agents.middlewares.clarification_middleware import ClarificationMiddleware
+from src.agents.middlewares.mcp_tool_injection_middleware import McpToolInjectionMiddleware
 from src.agents.middlewares.memory_middleware import MemoryMiddleware
 from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
@@ -246,6 +247,9 @@ def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_nam
         max_concurrent_subagents = config.get("configurable", {}).get("max_concurrent_subagents", 3)
         middlewares.append(SubagentLimitMiddleware(max_concurrent=max_concurrent_subagents))
 
+    # McpToolInjectionMiddleware injects MCP tools on-demand based on activated skills
+    middlewares.append(McpToolInjectionMiddleware())
+
     # ToolCallLoopMiddleware prevents LLMs from endlessly repeating the same tool call
     middlewares.append(ToolCallLoopMiddleware())
 
@@ -318,14 +322,14 @@ def make_lead_agent(config: RunnableConfig):
 
         return create_agent(
             model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
-            tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled) + [setup_agent],
+            tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled, include_mcp=False) + [setup_agent],
             middleware=_build_middlewares(config, model_name=model_name),
             system_prompt=system_prompt,
             state_schema=ThreadState,
         )
 
     # Default lead agent — include setup_agent tool so bootstrap skill works in normal mode
-    base_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled)
+    base_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, include_mcp=False)
     base_tools = base_tools + [setup_agent]
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort),

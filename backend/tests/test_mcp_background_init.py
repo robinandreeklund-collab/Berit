@@ -77,9 +77,9 @@ class TestBackgroundInit:
 
         cache.reset_mcp_tools_cache()
 
-        # Simulate completed initialization
+        # Simulate completed initialization (cache is now a dict keyed by server)
         cache._cache_initialized = True
-        cache._mcp_tools_cache = ["tool1", "tool2"]
+        cache._mcp_tools_cache = {"server1": ["tool1", "tool2"]}
 
         result = cache.get_cached_mcp_tools()
         assert result == ["tool1", "tool2"]
@@ -104,7 +104,7 @@ class TestBackgroundInit:
 
         cache._bg_init_started = True
         cache._cache_initialized = True
-        cache._mcp_tools_cache = ["tool1"]
+        cache._mcp_tools_cache = {"server1": ["tool1"]}
 
         cache.reset_mcp_tools_cache()
 

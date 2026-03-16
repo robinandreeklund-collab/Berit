@@ -5,6 +5,7 @@ description: Använd denna färdighet när användaren frågar om aktier, aktiek
   terminer, optioner, orderboken, mäklarstatistik, bolagsanalys, finansiella
   nyckeltal, börskurser, OMXS30, Stockholmsbörsen, köpa aktier, fondförvaltning,
   hållbarhetsbedömning, blankning, kursutveckling, eller Swedish stocks.
+mcp-servers: [avanza]
 ---
 
 # Avanza Marknadsdata (Avanza MCP v1.0)

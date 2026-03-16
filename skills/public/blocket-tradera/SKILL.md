@@ -5,6 +5,7 @@ description: Använd denna färdighet när användaren frågar om Blocket, Trade
   begagnade båtar, begagnade motorcyklar, prishistorik, prisjämförelse,
   marknadsplatser, annonser, klassificerade annonser, begagnatmarknaden,
   köp och sälj, hitta produkter, sökresultat Blocket, eller Tradera-auktioner.
+mcp-servers: [blocket-tradera]
 ---
 
 # Blocket & Tradera (Blocket/Tradera MCP v1.0)

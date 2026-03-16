@@ -1,6 +1,7 @@
 ---
 name: oecd-statistics
 description: Använd denna färdighet när användaren frågar om OECD, OECD-statistik, internationell jämförelse, BNP jämförelse länder, arbetslöshet internationellt, utbildningsstatistik internationellt, handelsdata, FDI, grön tillväxt, bostadspriser internationellt, inkomstfördelning, bistånd, ODA, innovationsstatistik, PISA, hälsostatistik internationellt, klimatdata OECD, eller ekonomisk statistik för flera länder.
+mcp-servers: [oecd]
 ---
 
 # OECD-statistik (OECD MCP v1.0)

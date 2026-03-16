@@ -16,34 +16,29 @@ _HTTP_RETRY_ATTEMPTS = 3
 _HTTP_RETRY_BASE_DELAY = 5  # seconds — Render cold start can take 30-60s
 
 
-async def get_mcp_tools() -> list[BaseTool]:
-    """Get all tools from enabled MCP servers.
+async def get_mcp_tools_by_server() -> dict[str, list[BaseTool]]:
+    """Get tools from all enabled MCP servers, indexed by server name.
 
     Returns:
-        List of LangChain tools from all enabled MCP servers.
+        Dict mapping server name to list of tools from that server.
     """
     try:
-        from langchain_mcp_adapters.client import MultiServerMCPClient
+        from langchain_mcp_adapters.client import MultiServerMCPClient  # noqa: F401
     except ImportError:
         logger.warning("langchain-mcp-adapters not installed. Install it to enable MCP tools: pip install langchain-mcp-adapters")
-        return []
+        return {}
 
-    # NOTE: We use ExtensionsConfig.from_file() instead of get_extensions_config()
-    # to always read the latest configuration from disk. This ensures that changes
-    # made through the Gateway API (which runs in a separate process) are immediately
-    # reflected when initializing MCP tools.
     extensions_config = ExtensionsConfig.from_file()
     servers_config = build_servers_config(extensions_config)
 
     if not servers_config:
         logger.info("No enabled MCP servers configured")
-        return []
+        return {}
 
     try:
-        # Create the multi-server MCP client
         logger.info(f"Initializing MCP client with {len(servers_config)} server(s)")
 
-        # Inject initial OAuth headers for server connections (tool discovery/session init)
+        # Inject initial OAuth headers for server connections
         initial_oauth_headers = await get_initial_oauth_headers(extensions_config)
         for server_name, auth_header in initial_oauth_headers.items():
             if server_name not in servers_config:
@@ -58,23 +53,38 @@ async def get_mcp_tools() -> list[BaseTool]:
         if oauth_interceptor is not None:
             tool_interceptors.append(oauth_interceptor)
 
-        # Load all servers concurrently so one slow server doesn't block the rest
+        # Load all servers concurrently, keeping results per server
+        server_names = list(servers_config.keys())
         results = await asyncio.gather(
             *[
-                _load_tools_from_server(server_name, {server_name: server_config}, tool_interceptors)
-                for server_name, server_config in servers_config.items()
+                _load_tools_from_server(server_name, {server_name: servers_config[server_name]}, tool_interceptors)
+                for server_name in server_names
             ]
         )
-        all_tools: list[BaseTool] = [tool for tools in results for tool in tools]
 
-        tool_names = [t.name for t in all_tools]
-        logger.info(f"Successfully loaded {len(all_tools)} total MCP tool(s): {tool_names}")
+        tools_by_server: dict[str, list[BaseTool]] = {}
+        total = 0
+        for server_name, tools in zip(server_names, results):
+            if tools:
+                tools_by_server[server_name] = tools
+                total += len(tools)
 
-        return all_tools
+        logger.info(f"Successfully loaded {total} total MCP tool(s) across {len(tools_by_server)} server(s)")
+        return tools_by_server
 
     except Exception as e:
         logger.error(f"Failed to load MCP tools: {e}", exc_info=True)
-        return []
+        return {}
+
+
+async def get_mcp_tools() -> list[BaseTool]:
+    """Get all tools from enabled MCP servers (flat list, backward compatible).
+
+    Returns:
+        List of LangChain tools from all enabled MCP servers.
+    """
+    by_server = await get_mcp_tools_by_server()
+    return [tool for tools in by_server.values() for tool in tools]
 
 
 def _is_http_transport(server_config: dict) -> bool:

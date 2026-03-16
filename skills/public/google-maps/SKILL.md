@@ -5,6 +5,7 @@ description: Använd denna färdighet när användaren frågar om kartor, platse
   latitud, longitud, elevation, höjd, tidszon, väder på en plats, nearby places,
   restauranger nära mig, hotell, butiker, sevärdheter, POI, jämför platser, eller
   planera rutt med flera stopp.
+mcp-servers: [google-maps]
 ---
 
 # Google Maps (Google Maps MCP v1.0)
