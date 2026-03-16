@@ -216,10 +216,11 @@ export class LightpandaMCPServer {
         }
 
         case 'lightpanda_get_text': {
+          const url = params.url as string;
           const selector = params.selector as string;
-          if (!selector) return this._missingParamsError('selector');
+          if (!url || !selector) return this._missingParamsError('url, selector');
 
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const text = await client.evaluate(
               ws,
               session,
@@ -237,10 +238,11 @@ export class LightpandaMCPServer {
 
         // ── Interaction ──────────────────────────────────────────────
         case 'lightpanda_click': {
+          const url = params.url as string;
           const selector = params.selector as string;
-          if (!selector) return this._missingParamsError('selector');
+          if (!url || !selector) return this._missingParamsError('url, selector');
 
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const clickResult = await client.evaluate(
               ws,
               session,
@@ -257,11 +259,12 @@ export class LightpandaMCPServer {
         }
 
         case 'lightpanda_fill_form': {
+          const url = params.url as string;
           const selector = params.selector as string;
           const value = params.value as string;
-          if (!selector || value === undefined) return this._missingParamsError('selector, value');
+          if (!url || !selector || value === undefined) return this._missingParamsError('url, selector, value');
 
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const fillResult = await client.evaluate(
               ws,
               session,
@@ -279,11 +282,12 @@ export class LightpandaMCPServer {
         }
 
         case 'lightpanda_wait_for': {
+          const url = params.url as string;
           const selector = params.selector as string;
-          if (!selector) return this._missingParamsError('selector');
+          if (!url || !selector) return this._missingParamsError('url, selector');
           const timeout = Math.min((params.timeout as number) || 5000, 30000);
 
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const waitResult = await client.evaluate(
               ws,
               session,
@@ -312,10 +316,11 @@ export class LightpandaMCPServer {
 
         // ── Advanced ─────────────────────────────────────────────────
         case 'lightpanda_execute_js': {
+          const url = params.url as string;
           const expression = params.expression as string;
-          if (!expression) return this._missingParamsError('expression');
+          if (!url || !expression) return this._missingParamsError('url, expression');
 
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const jsResult = await client.evaluate(ws, session, expression, msgId);
             return {
               verktyg: tool.id,
@@ -327,12 +332,13 @@ export class LightpandaMCPServer {
         }
 
         case 'lightpanda_extract_data': {
+          const url = params.url as string;
           const selector = params.selector as string;
-          if (!selector) return this._missingParamsError('selector');
+          if (!url || !selector) return this._missingParamsError('url, selector');
           const attributes = (params.attributes as string[]) || [];
 
           const attrJson = JSON.stringify(attributes);
-          result = await client.withSession(undefined, async (ws, session, msgId) => {
+          result = await client.withSession(url, async (ws, session, msgId) => {
             const dataJson = await client.evaluate(
               ws,
               session,
