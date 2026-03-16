@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from src.agents.middlewares.tool_call_loop_middleware import (
     EXEMPT_TOOLS,
     MAX_CALLS_PER_TOOL,
+    MAX_TOTAL_MCP_CALLS,
     ToolCallLoopMiddleware,
     _count_tool_calls_in_history,
 )
@@ -147,3 +148,53 @@ class TestToolCallLoopMiddleware:
         assert "bash" in EXEMPT_TOOLS
         assert "read_file" in EXEMPT_TOOLS
         assert "task" in EXEMPT_TOOLS
+
+    def test_total_mcp_cap_blocks_after_limit(self):
+        """Total MCP call limit blocks even if per-tool limit is not reached."""
+        mw = ToolCallLoopMiddleware(max_calls_per_tool=5, max_total_mcp_calls=4)
+        runtime = MagicMock()
+
+        # 4 different MCP tools called once each (at the total limit)
+        history = [HumanMessage(content="test")]
+        for i, tool_name in enumerate(["scb_browse", "scb_search", "scb_inspect", "scb_fetch"]):
+            history.append(_make_ai_msg_with_tool_calls([_make_tool_call(tool_name, f"tc{i}")]))
+            history.append(ToolMessage(content="ok", tool_call_id=f"tc{i}", name=tool_name))
+
+        # 5th MCP call should be blocked (total limit = 4)
+        new_call = _make_ai_msg_with_tool_calls([_make_tool_call("scb_browse", "tc_new")], id="ai_new")
+        history.append(new_call)
+
+        state = {"messages": history}
+        result = mw.after_model(state, runtime)
+
+        assert result is not None
+        messages = result["messages"]
+        error_msg = messages[1]
+        assert isinstance(error_msg, ToolMessage)
+        assert error_msg.status == "error"
+        assert "MCP-verktygsanrop" in error_msg.content
+
+    def test_total_mcp_cap_does_not_count_exempt_tools(self):
+        """Exempt tools (bash, read_file, etc.) don't count toward total MCP cap."""
+        mw = ToolCallLoopMiddleware(max_calls_per_tool=5, max_total_mcp_calls=2)
+        runtime = MagicMock()
+
+        # 10 bash calls + 1 MCP call (bash is exempt, only 1 MCP so far)
+        history = [HumanMessage(content="test")]
+        for i in range(10):
+            history.append(_make_ai_msg_with_tool_calls([_make_tool_call("bash", f"tc_bash{i}")]))
+            history.append(ToolMessage(content="ok", tool_call_id=f"tc_bash{i}", name="bash"))
+        history.append(_make_ai_msg_with_tool_calls([_make_tool_call("scb_browse", "tc_mcp1")]))
+        history.append(ToolMessage(content="ok", tool_call_id="tc_mcp1", name="scb_browse"))
+
+        # 2nd MCP call should still be allowed (total = 2, limit = 2)
+        new_call = _make_ai_msg_with_tool_calls([_make_tool_call("scb_fetch", "tc_mcp2")], id="ai_new")
+        history.append(new_call)
+
+        state = {"messages": history}
+        result = mw.after_model(state, runtime)
+        assert result is None  # 2nd MCP call is within limit
+
+    def test_default_max_total_mcp_calls(self):
+        mw = ToolCallLoopMiddleware()
+        assert mw.max_total_mcp_calls == MAX_TOTAL_MCP_CALLS
