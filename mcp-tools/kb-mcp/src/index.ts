@@ -40,7 +40,7 @@ interface CallRecord {
   firstCall: number;
 }
 
-const CALL_LIMIT = 8;
+const CALL_LIMIT = 30;
 const CALL_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 class CallTracker {
