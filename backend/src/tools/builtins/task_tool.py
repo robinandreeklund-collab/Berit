@@ -99,7 +99,8 @@ def task_tool(
     from src.tools import get_available_tools
 
     # Subagents should not have subagent tools enabled (prevent recursive nesting)
-    tools = get_available_tools(model_name=parent_model, subagent_enabled=False)
+    # Exclude MCP tools — subagents use sandbox tools only; MCP tools are used by the lead agent
+    tools = get_available_tools(model_name=parent_model, subagent_enabled=False, include_mcp=False)
 
     # Create executor
     executor = SubagentExecutor(
