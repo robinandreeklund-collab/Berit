@@ -127,17 +127,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Hämta textinnehållet från ett specifikt element via CSS-selektor.\n\n' +
       '**Användningsfall:** Extrahera text från en viss del av sidan.\n' +
       '**Returnerar:** Textinnehållet i elementet.\n' +
-      '**Exempel:** "Hämta text från .article-body", "Vad står i #main-content?"',
+      '**Exempel:** "Hämta text från .article-body på https://svt.se"',
     category: 'content',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till innan text extraheras. Krävs (varje anrop startar en ny session).',
+        },
         selector: {
           type: 'string',
           description: 'CSS-selektor för element att hämta text från.',
         },
       },
-      required: ['selector'],
+      required: ['url', 'selector'],
     },
   },
 
@@ -149,17 +153,21 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Klicka på ett element på sidan via CSS-selektor.\n\n' +
       '**Användningsfall:** Klicka på knappar, länkar, menyval.\n' +
       '**Returnerar:** Bekräftelse att elementet klickades.\n' +
-      '**Exempel:** "Klicka på .submit-button", "Tryck på #next-page"',
+      '**Exempel:** "Klicka på .submit-button på https://example.com"',
     category: 'interaction',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till innan klick. Krävs (varje anrop startar en ny session).',
+        },
         selector: {
           type: 'string',
           description: 'CSS-selektor för elementet att klicka på.',
         },
       },
-      required: ['selector'],
+      required: ['url', 'selector'],
     },
   },
   {
@@ -169,11 +177,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Fyll i ett formulärfält med ett värde via CSS-selektor.\n\n' +
       '**Användningsfall:** Fyll i sökfält, textfält, input-element.\n' +
       '**Returnerar:** Bekräftelse att värdet fylldes i.\n' +
-      '**Exempel:** "Fyll i sökfältet med \'klimat\'", "Ange namn i #name-field"',
+      '**Exempel:** "Fyll i sökfältet med \'klimat\' på https://example.com/search"',
     category: 'interaction',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till innan formuläret fylls i. Krävs (varje anrop startar en ny session).',
+        },
         selector: {
           type: 'string',
           description: 'CSS-selektor för formulärfältet.',
@@ -183,7 +195,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
           description: 'Värde att fylla i.',
         },
       },
-      required: ['selector', 'value'],
+      required: ['url', 'selector', 'value'],
     },
   },
   {
@@ -193,11 +205,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Vänta tills ett element dyker upp på sidan.\n\n' +
       '**Användningsfall:** Vänta på att dynamiskt innehåll laddas.\n' +
       '**Returnerar:** Bekräftelse att elementet hittades, eller timeout.\n' +
-      '**Exempel:** "Vänta på .results-container", "Vänta på #loaded-content"',
+      '**Exempel:** "Vänta på .results-container på https://example.com"',
     category: 'interaction',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till. Krävs (varje anrop startar en ny session).',
+        },
         selector: {
           type: 'string',
           description: 'CSS-selektor att vänta på.',
@@ -209,7 +225,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
           maximum: 30000,
         },
       },
-      required: ['selector'],
+      required: ['url', 'selector'],
     },
   },
 
@@ -218,20 +234,24 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     id: 'lightpanda_execute_js',
     name: 'Kör JavaScript',
     description:
-      'Kör ett JavaScript-uttryck på aktuell sida.\n\n' +
+      'Kör ett JavaScript-uttryck på en webbsida.\n\n' +
       '**Användningsfall:** Avancerad interaktion, datautvinning, DOM-manipulation.\n' +
       '**Returnerar:** Returvärdet från JavaScript-uttrycket.\n' +
-      '**Exempel:** "Kör document.title", "Hämta document.querySelectorAll(\'.item\').length"',
+      '**Exempel:** "Kör document.title på https://svt.se"',
     category: 'advanced',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till innan JavaScript körs. Krävs (varje anrop startar en ny session).',
+        },
         expression: {
           type: 'string',
-          description: 'JavaScript-uttryck att köra på aktuell sida.',
+          description: 'JavaScript-uttryck att köra på sidan.',
         },
       },
-      required: ['expression'],
+      required: ['url', 'expression'],
     },
   },
   {
@@ -241,11 +261,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       'Extrahera strukturerad data från element via CSS-selektor.\n\n' +
       '**Användningsfall:** Samla data från tabeller, listor, upprepade element.\n' +
       '**Returnerar:** Array med extraherade data (text eller attributvärden) i JSON.\n' +
-      '**Exempel:** "Extrahera data från .product-card", "Hämta alla href från .nav-link"',
+      '**Exempel:** "Extrahera data från .product-card på https://example.com/products"',
     category: 'advanced',
     inputSchema: {
       type: 'object',
       properties: {
+        url: {
+          type: 'string',
+          description: 'URL att navigera till innan data extraheras. Krävs (varje anrop startar en ny session).',
+        },
         selector: {
           type: 'string',
           description: 'CSS-selektor för element att extrahera data från.',
@@ -257,7 +281,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             'Attribut att extrahera (t.ex. ["href", "src"]). Om tom extraheras textinnehåll.',
         },
       },
-      required: ['selector'],
+      required: ['url', 'selector'],
     },
   },
   {

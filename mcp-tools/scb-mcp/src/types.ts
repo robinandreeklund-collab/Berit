@@ -71,7 +71,8 @@ export const TablesResponseSchema = z.object({
     type: z.literal('Table').optional(),
     id: z.string(),
     label: z.string(),
-    description: z.string(),
+    description: z.string().nullish().default(''),
+    sortCode: z.string().optional(),
     updated: z.string().optional(),
     firstPeriod: z.string().optional(),
     lastPeriod: z.string().optional(),
@@ -83,14 +84,15 @@ export const TablesResponseSchema = z.object({
     discontinued: z.boolean().optional(),
     paths: z.array(z.array(z.object({
       id: z.string(),
-      label: z.string()
-    }))).optional(),
+      label: z.string(),
+      sortCode: z.string().optional(),
+    }).passthrough())).optional(),
     links: z.array(z.object({
       rel: z.string(),
       hreflang: z.string(),
       href: z.string()
-    }))
-  })),
+    }).passthrough()).optional()
+  }).passthrough()),
   page: z.object({
     pageNumber: z.number(),
     pageSize: z.number(),
@@ -100,14 +102,14 @@ export const TablesResponseSchema = z.object({
       rel: z.string(),
       hreflang: z.string(),
       href: z.string()
-    })).optional()
-  }),
+    }).passthrough()).optional()
+  }).passthrough(),
   links: z.array(z.object({
     rel: z.string(),
     hreflang: z.string(),
     href: z.string()
-  }))
-});
+  }).passthrough()).optional()
+}).passthrough();
 
 export const DatasetSchema = z.object({
   version: z.literal('2.0'),

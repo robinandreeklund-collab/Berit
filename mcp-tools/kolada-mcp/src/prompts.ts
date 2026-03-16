@@ -107,7 +107,7 @@ export function generatePromptMessages(
               `Skapa en ekonomisk översikt för ${args.kommun || 'en vald kommun'}.\n\n` +
               'Gör följande steg:\n' +
               '1. Använd kolada_sok_kommun för att hitta kommun-ID\n' +
-              '2. Hämta nyckeltal: N01951 (nettokostnadsavvikelse), N15033 (kommunalskatt)\n' +
+              '2. Hämta nyckeltal: N00901 (skattesats), N02267 (sysselsättningsgrad)\n' +
               '3. Använd kolada_trend för att se ekonomisk utveckling\n' +
               '4. Sammanställ en ekonomisk översikt med alla nyckeltal',
           },

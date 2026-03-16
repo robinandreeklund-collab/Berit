@@ -65,31 +65,31 @@ const POPULAR_KPIS_CONTENT = `# Populära nyckeltal
 
 | KPI-ID | Beskrivning |
 |--------|-------------|
-| N00945 | Invånare totalt |
-| N00941 | Befolkningsökning/-minskning |
-| N00914 | Invånare 0-17 år |
-| N00928 | Invånare 65+ år |
+| N01951 | Invånare totalt, antal (folkmängd) |
+| N01963 | Befolkningsförändring sedan föregående år (%) |
+| N01920 | Invånare 0-18 år, antal |
+| N00980 | Äldre äldre av invånare 65+, andel (%) |
+
+## Arbetsmarknad
+
+| KPI-ID | Beskrivning |
+|--------|-------------|
+| N02267 | Sysselsättningsgrad 20-64 år, andel (%) |
+| N02280 | Arbetslöshet 20-64 år, andel (%) |
 
 ## Utbildning
 
 | KPI-ID | Beskrivning |
 |--------|-------------|
-| U09400 | Elever i åk 9 som uppnått kunskapskraven i alla ämnen |
-| N15818 | Kostnad per elev i grundskola, kr |
+| N15006 | Kostnad grundskola åk 1-9, kr/elev |
+| N15504 | Meritvärde åk 9, genomsnitt (17 ämnen) |
 
 ## Ekonomi
 
 | KPI-ID | Beskrivning |
 |--------|-------------|
-| N01951 | Nettokostnadsavvikelse, kr/inv |
-| N15033 | Kommunalskatt, kr/skattekrona |
-
-## Medborgarservice
-
-| KPI-ID | Beskrivning |
-|--------|-------------|
-| N07900 | Resultat av medborgarundersökning |
-| U40501 | Brukarbedömning hemtjänst |
+| N00901 | Skattesats till kommun (%) |
+| N20891 | Invånare 65+ i särskilt boende/hemtjänst, andel (%) |
 
 Använd \`kolada_sok_nyckeltal\` för att söka efter fler nyckeltal.
 `;

@@ -31,14 +31,16 @@ Du har tillgång till 10 verktyg för att hämta svensk kommunstatistik från Ko
 
 | KPI-ID | Beskrivning |
 |--------|-------------|
-| N00945 | Invånare totalt |
-| N00941 | Befolkningsökning/-minskning |
-| N01951 | Nettokostnadsavvikelse, kr/inv |
-| U09400 | Elever i åk 9 som uppnått kunskapskraven i alla ämnen |
-| N07900 | Resultat av medborgarundersökning |
-| N15033 | Kostnad per elev i grundskola |
-| N28040 | Andel nöjda brukare i hemtjänst |
-| N20049 | Skattesats, kommun |
+| N01951 | Invånare totalt, antal (folkmängd) |
+| N01963 | Befolkningsförändring sedan föregående år (%) |
+| N01920 | Invånare 0-18 år, antal |
+| N00980 | Äldre äldre av invånare 65+, andel (%) |
+| N02267 | Sysselsättningsgrad 20-64 år, andel (%) |
+| N02280 | Arbetslöshet 20-64 år, andel (%) |
+| N00901 | Skattesats till kommun (%) |
+| N15006 | Kostnad grundskola åk 1-9, kr/elev |
+| N15504 | Meritvärde åk 9, genomsnitt (17 ämnen) |
+| N20891 | Invånare 65+ i särskilt boende/hemtjänst, andel (%) |
 
 ## Vanliga kommun-ID:n (använd direkt utan att söka!)
 
@@ -61,6 +63,13 @@ Du har tillgång till 10 verktyg för att hämta svensk kommunstatistik från Ko
 - **kolada_data_enhet** — KPI per enhet
 - **kolada_nyckeltal_detalj** — Metadata om ett KPI
 - **kolada_kommungrupper** — Lista kommungrupper
+
+## Söktips
+
+- "Hur många bor i X?" → N01951 (Invånare totalt)
+- "Arbetsmarknaden i X" → N02267 (Sysselsättningsgrad) eller N02280 (Arbetslöshet)
+- "Sysselsättningsgraden i Sverige" → N02267 + kolada_data_alla_kommuner
+- Sök "folkmängd" istället för "befolkning" för att hitta invånarantal
 
 ## Tips
 

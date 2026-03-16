@@ -27,6 +27,7 @@ import { SCBApiClient } from './api-client.js';
 import { resources, getResourceContent } from './resources.js';
 import { ALL_REGIONS, searchRegions, findRegion, REGION_STATS, normalizeForSearch } from './regions.js';
 import { LLM_INSTRUCTIONS, STATISTICS_CATEGORIES, WORKFLOW_TEMPLATES, USAGE_TIPS, getCategoryDescriptions } from './instructions.js';
+import { SUBJECT_TREE, findSubjectNode, getSubjectChildren, getSearchKeywords, formatSubjectTree } from './subjects.js';
 
 // ============================================================================
 // CONSTANTS AND HELPERS
@@ -61,7 +62,7 @@ function errorResponse(type: string, message: string, suggestions: string[] = []
 // ============================================================================
 
 // Per-tool call counter to prevent infinite loops from LLMs
-const MAX_CALLS_PER_TOOL = 3;
+const MAX_CALLS_PER_TOOL = 8;
 
 class CallTracker {
   private calls: Map<string, number> = new Map();
@@ -162,16 +163,24 @@ export class SCBMCPServer {
       },
       {
         name: 'scb_browse',
-        description: 'Utforska SCB:s statistikträd. Bläddra bland ämnesområden (t.ex. "BE" = befolkning, "AM" = arbetsmarknad, "NR" = nationalräkenskaper).',
+        description:
+          'Navigera SCB:s ämnesområdesträd i 3 nivåer. REKOMMENDERAT arbetsflöde:\n' +
+          '1. Utan subjectCode → visa alla 20+ ämnesområden (nivå 1)\n' +
+          '2. Med t.ex. "BE" → visa underområden (nivå 2: BE0101=Befolkningsstatistik, BE0401=Framskrivningar)\n' +
+          '3. Med t.ex. "BE0101A" → visa tabeller i det ämnet (Folkmängd)\n\n' +
+          'Vanliga koder: BE=Befolkning, AM=Arbetsmarknad, NR=Nationalräkenskaper, HE=Hushållens ekonomi, BO=Boende, UF=Utbildning, MI=Miljö, PR=Priser, OE=Offentlig ekonomi, TK=Transport',
         inputSchema: {
           type: 'object',
           properties: {
-            subjectCode: { type: 'string', description: 'Ämnesområdeskod (t.ex. "BE", "AM", "NR", "MI"). Utelämna för alla.' },
-            pageSize: { type: 'number', description: 'Max antal tabeller', default: 20 },
+            subjectCode: {
+              type: 'string',
+              description: 'Ämnesområdeskod. Nivå 1: "BE", "AM". Nivå 2: "BE0101". Nivå 3: "BE0101A". Utelämna för att se alla nivå 1.',
+            },
+            pageSize: { type: 'number', description: 'Max antal tabeller vid nivå 3', default: 50 },
             language: { type: 'string', description: '"sv" (standard) eller "en"', default: 'sv' },
           },
         },
-        annotations: { title: 'Bläddra statistik', readOnlyHint: true, openWorldHint: true },
+        annotations: { title: 'Bläddra ämnesområden', readOnlyHint: true, openWorldHint: true },
       },
       // ---- INSPECTION ----
       {
@@ -267,8 +276,9 @@ export class SCBMCPServer {
   public async callTool(name: string, args: any) {
     try {
       // Track calls to prevent infinite loops from LLMs
-      const tableId = args?.tableId || args?.table_id;
-      const { allowed, count } = this.callTracker.track(name, tableId);
+      // Use tableId for data tools, subjectCode for browse, query for search/region
+      const contextKey = args?.tableId || args?.table_id || args?.subjectCode || args?.query;
+      const { allowed, count } = this.callTracker.track(name, contextKey);
       if (!allowed) {
         return jsonResponse({
           error: 'STOPP — du har redan anropat detta verktyg flera gånger med samma tabell.',
@@ -338,6 +348,37 @@ export class SCBMCPServer {
       });
     }
 
+    // Relevance ranking: boost tables where query appears in title, prefer recent and non-discontinued
+    if (args.query) {
+      const queryLower = args.query.toLowerCase();
+      const queryTerms = queryLower.split(/\s+/).filter((t: string) => t.length > 2);
+      filteredTables = [...filteredTables].sort((a, b) => {
+        const scoreTable = (t: typeof a) => {
+          let score = 0;
+          const title = (t.label || '').toLowerCase();
+          // Strong boost for title starting with query
+          if (title.startsWith(queryLower)) score += 100;
+          // Boost for exact query match in title
+          if (title.includes(queryLower)) score += 50;
+          // Boost per query term found in title
+          for (const term of queryTerms) {
+            if (title.includes(term)) score += 20;
+          }
+          // Boost for recent data (still active)
+          if (!t.discontinued) score += 10;
+          // Boost for tables with region variable (commonly wanted)
+          if (t.variableNames?.some((v: string) => v.toLowerCase() === 'region')) score += 5;
+          // Slight boost for newer last period
+          if (t.lastPeriod) {
+            const year = parseInt(t.lastPeriod.replace(/\D.*/, ''), 10);
+            if (!isNaN(year) && year >= 2023) score += 5;
+          }
+          return score;
+        };
+        return scoreTable(b) - scoreTable(a);
+      });
+    }
+
     const displayTables = filteredTables.slice(0, pageSize);
 
     return jsonResponse({
@@ -362,42 +403,260 @@ export class SCBMCPServer {
 
   // ---- scb_browse ----
   private async handleBrowse(args: any) {
-    const langValidation = validateLanguage(args.language);
-    const language = langValidation.language;
-    const pageSize = Math.min(args.pageSize || 20, MAX_PAGE_SIZE);
+    const pageSize = Math.min(args.pageSize || 50, MAX_PAGE_SIZE);
+    const subjectCode = args.subjectCode?.trim();
 
-    const result = await this.apiClient.browseTables({
-      subjectCode: args.subjectCode,
-      pageSize,
-      lang: language,
-    });
+    // Build the v1 navigation path from the subject code
+    // e.g. "BE0101A" → ["BE", "BE0101", "BE0101A"]
+    const pathSegments = this.buildNavPath(subjectCode);
 
-    // Group by subject code path
-    const grouped: Record<string, any[]> = {};
-    for (const table of result.tables) {
-      const subject = table.subjectCode || table.paths?.[0]?.[0]?.id || 'Övrigt';
-      if (!grouped[subject]) grouped[subject] = [];
-      grouped[subject].push({
-        id: table.id,
-        title: table.label,
-        period: { start: table.firstPeriod, end: table.lastPeriod },
-        updated: table.updated,
+    // Call v1 navigation API
+    const items = await this.apiClient.navigateV1(pathSegments);
+
+    // Separate folders and tables
+    const folders = items.filter(i => i.type === 'l');
+    const tables = items.filter(i => i.type === 't');
+
+    if (tables.length > 0) {
+      // Leaf node — return table listing with rich v2 metadata
+      const v2Tables = await this.mapV1TablesToV2(tables.slice(0, pageSize), pathSegments);
+
+      return jsonResponse({
+        level: 'tables',
+        subject_code: subjectCode || null,
+        path: pathSegments,
+        tables: v2Tables,
+        total_tables: tables.length,
+        tips: [
+          'Välj tabell baserat på variableNames och period — du behöver INTE inspektera alla',
+          'Använd scb_inspect med ett tabell-ID (TABxxx) för att se exakta variabelvärden',
+          'Sedan scb_fetch för att hämta data',
+        ],
+      });
+    }
+
+    if (folders.length > 0) {
+      // Non-leaf node — enrich folders with metadata from their children
+      const enrichedFolders = await this.enrichFolders(folders, pathSegments);
+
+      return jsonResponse({
+        level: pathSegments.length + 1,
+        parent: subjectCode || 'root',
+        path: pathSegments,
+        children: enrichedFolders,
+        total: folders.length,
+        tips: pathSegments.length === 0
+          ? ['Välj ett ämnesområde baserat på beskrivningen nedan']
+          : ['Välj rätt underkategori baserat på table_count och sample_tables — du kan ofta hoppa direkt till tabellnivån'],
       });
     }
 
     return jsonResponse({
-      subject_filter: args.subjectCode || null,
-      language: language,
-      subjects: Object.entries(grouped).map(([code, tables]) => ({
-        code,
-        tables: tables.slice(0, 10),
-        total_tables: tables.length,
-      })),
-      total_tables: result.tables.length,
-      tips: [
-        'Använd subjectCode för att bläddra djupare: "BE" = befolkning, "AM" = arbetsmarknad',
-        'Använd scb_inspect med ett tabell-ID för att se variabler och värden',
-      ],
+      error: `Inga resultat hittades för "${subjectCode}". Kontrollera koden.`,
+      tips: ['Börja med scb_browse() utan argument för att se alla ämnesområden'],
+    });
+  }
+
+  /**
+   * Enrich folder nodes with metadata: table counts and sample table titles.
+   * For each folder, peeks one level deeper via v1 API to see what's inside.
+   * Runs in parallel with a concurrency limit to respect rate limits.
+   */
+  private async enrichFolders(
+    folders: Array<{ id: string; text: string }>,
+    parentPath: string[]
+  ): Promise<Array<{
+    code: string;
+    label: string;
+    table_count: number;
+    subfolder_count: number;
+    sample_tables: string[];
+  }>> {
+    const CONCURRENCY = 5; // Max parallel v1 requests
+    const results: Array<{
+      code: string;
+      label: string;
+      table_count: number;
+      subfolder_count: number;
+      sample_tables: string[];
+    }> = [];
+
+    // Process folders in batches
+    for (let i = 0; i < folders.length; i += CONCURRENCY) {
+      const batch = folders.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(async (folder) => {
+          try {
+            const childPath = [...parentPath, folder.id];
+            const children = await this.apiClient.navigateV1(childPath);
+            const childTables = children.filter(c => c.type === 't');
+            const childFolders = children.filter(c => c.type === 'l');
+
+            // If this folder has subfolders, peek into each to count total tables
+            let totalTables = childTables.length;
+            const sampleTables: string[] = [];
+
+            if (childFolders.length > 0) {
+              // Show subfolder names as sample info
+              for (const cf of childFolders.slice(0, 5)) {
+                sampleTables.push(`📁 ${cf.text}`);
+              }
+              if (childFolders.length > 5) {
+                sampleTables.push(`...och ${childFolders.length - 5} till`);
+              }
+            }
+
+            if (childTables.length > 0) {
+              // Show first few table titles (strip year range for brevity)
+              for (const ct of childTables.slice(0, 4)) {
+                const shortTitle = ct.text.replace(/\.\s*År\s+.*$/, '').trim();
+                sampleTables.push(shortTitle);
+              }
+              if (childTables.length > 4) {
+                sampleTables.push(`...och ${childTables.length - 4} tabeller till`);
+              }
+            }
+
+            return {
+              code: folder.id,
+              label: folder.text,
+              table_count: totalTables,
+              subfolder_count: childFolders.length,
+              sample_tables: sampleTables,
+            };
+          } catch {
+            // Fallback: return basic info if lookup fails
+            return {
+              code: folder.id,
+              label: folder.text,
+              table_count: -1,
+              subfolder_count: -1,
+              sample_tables: [],
+            };
+          }
+        })
+      );
+      results.push(...batchResults);
+    }
+
+    return results;
+  }
+
+  /**
+   * Build v1 navigation path segments from a subject code.
+   * "BE0101A" → ["BE", "BE0101", "BE0101A"]
+   * "BE0101"  → ["BE", "BE0101"]
+   * "BE"      → ["BE"]
+   * undefined → []
+   */
+  private buildNavPath(code?: string): string[] {
+    if (!code) return [];
+    const parts: string[] = [];
+    // Level 1: first 2 chars (e.g. "BE")
+    if (code.length >= 2) parts.push(code.slice(0, 2));
+    // Level 2: first 6 chars (e.g. "BE0101")
+    if (code.length >= 4) parts.push(code.slice(0, 6).replace(/0+$/, '') || code.slice(0, 4));
+    // Level 3+: full code (e.g. "BE0101A")
+    if (code.length > 6) parts.push(code);
+    // Deduplicate in case of short codes
+    return [...new Set(parts)];
+  }
+
+  /**
+   * Map v1 table items to v2 table IDs via v2 search API.
+   * Uses title-based matching with path filtering.
+   */
+  private async mapV1TablesToV2(
+    v1Tables: Array<{ id: string; text: string; updated?: string }>,
+    subjectPath: string[]
+  ): Promise<Array<{
+    v1_id: string;
+    v2_id: string | null;
+    title: string;
+    updated: string | null;
+    variableNames: string[];
+    firstPeriod: string | null;
+    lastPeriod: string | null;
+    discontinued: boolean;
+    description: string | null;
+    timeUnit: string | null;
+  }>> {
+    const leafCode = subjectPath[subjectPath.length - 1]?.toUpperCase();
+
+    // Collect all v2 tables matching this subject by doing a few targeted searches
+    interface V2Candidate {
+      id: string; label: string; paths?: any[];
+      variableNames?: string[]; firstPeriod?: string; lastPeriod?: string;
+      discontinued?: boolean; description?: string | null; timeUnit?: string;
+    }
+    const v2Candidates: V2Candidate[] = [];
+    const seen = new Set<string>();
+
+    // Extract unique search terms from v1 titles
+    const searchTerms = new Set<string>();
+    for (const t of v1Tables) {
+      // Use first meaningful words from title, e.g. "Folkmängden" from "Folkmängden efter region..."
+      const firstWord = t.text.split(/\s+/)[0];
+      if (firstWord && firstWord.length > 3) searchTerms.add(firstWord);
+    }
+
+    // Search v2 API with each unique term
+    for (const term of [...searchTerms].slice(0, 4)) {
+      try {
+        const result = await this.apiClient.searchTables({ query: term, pageSize: 100, lang: 'sv' });
+        for (const t of result.tables) {
+          if (seen.has(t.id)) continue;
+          // Only keep tables matching our subject path
+          const matchesPath = leafCode && t.paths?.some(p =>
+            p.some(segment => segment.id?.toUpperCase() === leafCode)
+          );
+          if (matchesPath) {
+            v2Candidates.push(t);
+            seen.add(t.id);
+          }
+        }
+      } catch {
+        // Ignore failed searches
+      }
+    }
+
+    // Now match each v1 table to a v2 candidate by title similarity
+    return v1Tables.map(v1 => {
+      const v1Title = v1.text.replace(/\s+/g, ' ').trim();
+      // Normalize: strip year ranges like "År 1968 - 2024" for matching
+      const v1Norm = v1Title.replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
+
+      let bestId: string | null = null;
+      let bestScore = 0;
+      let matched: V2Candidate | null = null;
+      for (const v2 of v2Candidates) {
+        const v2Norm = (v2.label || '').replace(/\.\s*År\s+.*$/, '').trim().toLowerCase();
+        // Score: how many characters match from start
+        let matchLen = 0;
+        for (let i = 0; i < Math.min(v1Norm.length, v2Norm.length); i++) {
+          if (v1Norm[i] === v2Norm[i]) matchLen++;
+          else break;
+        }
+        const score = matchLen / Math.max(v1Norm.length, v2Norm.length, 1);
+        if (score > 0.5 && score > bestScore) {
+          bestId = v2.id;
+          bestScore = score;
+          matched = v2;
+        }
+      }
+
+      return {
+        v1_id: v1.id,
+        v2_id: bestId,
+        title: v1Title,
+        updated: v1.updated || null,
+        variableNames: matched?.variableNames || [],
+        firstPeriod: matched?.firstPeriod || null,
+        lastPeriod: matched?.lastPeriod || null,
+        discontinued: matched?.discontinued || false,
+        description: matched?.description || null,
+        timeUnit: matched?.timeUnit || null,
+      };
     });
   }
 

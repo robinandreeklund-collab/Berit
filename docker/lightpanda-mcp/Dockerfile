@@ -1,6 +1,7 @@
 # Lightpanda MCP Server v1.0 — Web browsing, search and data extraction
 # Built from local source: mcp-tools/lightpanda-mcp/
 # NOTE: Requires a running Lightpanda browser instance (LIGHTPANDA_CDP_URL)
+# Start one with: docker run -d -p 9222:9222 lightpanda/browser:nightly
 
 FROM node:22-alpine AS build
 WORKDIR /app

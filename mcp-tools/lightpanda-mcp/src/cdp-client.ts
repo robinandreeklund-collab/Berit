@@ -55,7 +55,18 @@ export class CDPClient {
       if (response.ok) {
         const data = (await response.json()) as VersionInfo;
         if (data.webSocketDebuggerUrl) {
-          return data.webSocketDebuggerUrl;
+          // Lightpanda returns ws://0.0.0.0:9222/ which is unreachable from
+          // Docker containers.  Rewrite the host/port to match the configured
+          // cdpUrl so that host.docker.internal (or any override) is honoured.
+          try {
+            const returned = new URL(data.webSocketDebuggerUrl);
+            const configured = new URL(this.cdpUrl);
+            returned.hostname = configured.hostname;
+            returned.port = configured.port;
+            return returned.toString();
+          } catch {
+            return data.webSocketDebuggerUrl;
+          }
         }
       }
     } catch {

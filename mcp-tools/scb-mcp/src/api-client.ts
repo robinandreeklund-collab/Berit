@@ -79,12 +79,24 @@ const DEFAULT_HEADERS: Record<string, string> = {
 // Client
 // ---------------------------------------------------------------------------
 
+// V1 navigation API base URL — provides hierarchical browsing that v2 lacks
+const V1_NAV_BASE = 'https://api.scb.se/OV0104/v1/doris/sv/ssd';
+
+// V1 navigation item types
+export interface V1NavItem {
+  id: string;      // e.g. "BE", "BE0101", "BE0101A", or "BefolkningNy" (table)
+  type: 'l' | 't'; // l = folder/subject, t = table
+  text: string;    // display label
+  updated?: string;
+}
+
 export class SCBApiClient {
   private baseUrl: string;
   private rateLimitInfo: RateLimitInfo | null = null;
   private requestCount = 0;
   private windowStartTime = new Date();
   private cache = new MetadataCache();
+  private navCache = new Map<string, { data: V1NavItem[]; expiresAt: number }>();
 
   constructor(baseUrl = 'https://statistikdatabasen.scb.se/api/v2') {
     this.baseUrl = baseUrl;
@@ -348,32 +360,135 @@ export class SCBApiClient {
     };
   }
 
+  // -----------------------------------------------------------------------
+  // V1 Navigation API — hierarchical browsing
+  // -----------------------------------------------------------------------
+
   /**
-   * Browse tables by subject code (exploratory navigation)
+   * Navigate SCB's subject tree using the v1 API.
+   * Path segments: [] = root, ["BE"] = level 2, ["BE","BE0101"] = level 3, etc.
+   * Returns folders (type=l) and tables (type=t).
+   */
+  async navigateV1(pathSegments: string[] = []): Promise<V1NavItem[]> {
+    const pathStr = pathSegments.join('/');
+    const cacheKey = pathStr || '__root__';
+    const cached = this.navCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
+
+    const url = pathStr ? `${V1_NAV_BASE}/${pathStr}` : V1_NAV_BASE;
+    const response = await fetch(url, { headers: DEFAULT_HEADERS });
+
+    if (!response.ok) {
+      throw new Error(`Navigation failed for path /${pathStr}: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as V1NavItem[];
+    // Cache for 30 minutes (navigation tree changes rarely)
+    this.navCache.set(cacheKey, { data, expiresAt: Date.now() + 30 * 60 * 1000 });
+    return data;
+  }
+
+  /**
+   * Find the v2 table ID for a v1 table by searching by title.
+   * Returns the v2 table ID (e.g. "TAB638") or null if not found.
+   */
+  async findV2TableId(v1Title: string, subjectPath: string[]): Promise<string | null> {
+    // Extract first few words of title for search query
+    const queryWords = v1Title.split(/\s+/).slice(0, 6).join(' ');
+    const searchParams = new URLSearchParams();
+    searchParams.set('query', queryWords);
+    searchParams.set('pageSize', '20');
+    searchParams.set('lang', 'sv');
+
+    try {
+      const result = await this.makeRequest<TablesResponse>(
+        `/tables?${searchParams.toString()}`,
+        TablesResponseSchema
+      );
+
+      // Match by path — find v2 table that belongs to the same subject area
+      const pathCode = subjectPath[subjectPath.length - 1]?.toUpperCase();
+      for (const t of result.tables) {
+        const matchesPath = pathCode && t.paths?.some(p =>
+          p.some(segment => segment.id.toUpperCase() === pathCode)
+        );
+        // Also check title similarity
+        const titleMatch = t.label && v1Title.includes(t.label.split('.')[0].trim());
+        if (matchesPath || titleMatch) {
+          return t.id;
+        }
+      }
+      // Fallback: return first result if it exists
+      return result.tables.length > 0 ? result.tables[0].id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Browse tables by subject code (exploratory navigation).
+   *
+   * Uses the subject node's label as API search text (much better than code),
+   * then filters client-side by exact path matching.
+   *
+   * @param searchLabel - The human-readable label for the subject (e.g., "Folkmängd")
+   *   Used as the API query parameter for better results than the code itself.
    */
   async browseTables(params: {
     subjectCode?: string;
+    searchLabel?: string;
     pageSize?: number;
     lang?: string;
   } = {}): Promise<TablesResponse> {
-    const searchParams = new URLSearchParams();
-    // Use subjectCode as query when available to avoid wildcard queries that can 500
-    searchParams.set('query', params.subjectCode || '*');
-    if (params.pageSize) searchParams.set('pageSize', params.pageSize.toString());
-    if (params.lang) searchParams.set('lang', params.lang);
+    const queryText = params.searchLabel || params.subjectCode || 'statistik';
+    const code = params.subjectCode?.toUpperCase();
+    const lang = params.lang || 'sv';
+    const pageSize = params.pageSize || 100;
 
-    const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
-
-    // Further filter client-side for exact subject code prefix matching
-    if (params.subjectCode) {
-      const code = params.subjectCode.toUpperCase();
-      result.tables = result.tables.filter(t =>
-        t.subjectCode?.toUpperCase().startsWith(code) ||
-        t.paths?.some(p => p.some(segment => segment.id.toUpperCase().startsWith(code)))
-      );
+    // Try up to 3 search queries to find tables matching the subject code
+    const queries = [queryText];
+    if (code) {
+      // Add broader fallback queries
+      const parentCode = code.replace(/[A-Z]$/, ''); // BE0101A → BE0101
+      queries.push(parentCode !== code ? parentCode : code.slice(0, 2));
     }
 
-    return result;
+    const allTables = new Map<string, any>();
+
+    for (const query of queries) {
+      const searchParams = new URLSearchParams();
+      searchParams.set('query', query);
+      searchParams.set('pageSize', String(pageSize));
+      searchParams.set('lang', lang);
+
+      try {
+        const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
+
+        // Filter by path matching
+        if (code) {
+          for (const t of result.tables) {
+            const matchesSubject = t.subjectCode?.toUpperCase().startsWith(code);
+            const matchesPath = t.paths?.some(p => p.some(segment => segment.id.toUpperCase() === code || segment.id.toUpperCase().startsWith(code)));
+            if (matchesSubject || matchesPath) {
+              allTables.set(t.id, t);
+            }
+          }
+        } else {
+          for (const t of result.tables) {
+            allTables.set(t.id, t);
+          }
+        }
+
+        // If we found enough tables, stop searching
+        if (allTables.size >= 5) break;
+      } catch {
+        // Ignore failed queries, try next
+      }
+    }
+
+    return { tables: [...allTables.values()] } as TablesResponse;
   }
 
   /**

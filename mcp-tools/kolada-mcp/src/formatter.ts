@@ -118,20 +118,52 @@ export function formatEnhetLista(
   return { markdown: markdownTable(headers, rows), count: items.length, raw: items };
 }
 
+/**
+ * Flatten Kolada's nested response format.
+ * Kolada returns: { values: [{ kpi, municipality, period, values: [{ gender, value, count, status }] }] }
+ * We flatten to: [{ municipality, period, gender, value }]
+ */
+function flattenKoladaValues(data: unknown): Array<Record<string, unknown>> {
+  const response = data as Record<string, unknown>;
+  const outerItems = Array.isArray(response.values) ? response.values : (Array.isArray(data) ? data : []);
+  const flat: Array<Record<string, unknown>> = [];
+
+  for (const outer of outerItems) {
+    const o = outer as Record<string, unknown>;
+    const innerValues = Array.isArray(o.values) ? o.values : [];
+
+    if (innerValues.length === 0) {
+      flat.push(o);
+    } else {
+      for (const inner of innerValues) {
+        const iv = inner as Record<string, unknown>;
+        flat.push({
+          kpi: o.kpi,
+          municipality: o.municipality,
+          ou: o.ou,
+          period: o.period,
+          gender: iv.gender,
+          value: iv.value,
+          status: iv.status,
+          count: iv.count,
+        });
+      }
+    }
+  }
+
+  return flat;
+}
+
 /** Format KPI values with municipality names. */
 export function formatKpiData(
   data: unknown,
   kpiLabel?: string,
 ): { markdown: string; count: number; raw: unknown[] } {
-  const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.values) ? response.values : (Array.isArray(data) ? data : []);
+  const items = flattenKoladaValues(data);
   if (items.length === 0) return { markdown: '_Inga data hittades._', count: 0, raw: [] };
 
   // Filter to gender=T (Totalt) by default, unless mixed
-  const totalItems = items.filter((item) => {
-    const v = item as Record<string, unknown>;
-    return v.gender === 'T' || !v.gender;
-  });
+  const totalItems = items.filter((v) => v.gender === 'T' || !v.gender);
   const displayItems = totalItems.length > 0 ? totalItems : items;
 
   const headers = kpiLabel
@@ -139,8 +171,7 @@ export function formatKpiData(
     : ['Kommun', 'Period', 'V\u00e4rde', 'K\u00f6n'];
   const rows: string[][] = [];
 
-  for (const item of displayItems) {
-    const v = item as Record<string, unknown>;
+  for (const v of displayItems) {
     const kommunId = String(v.municipality || v.ou || '\u2014');
     rows.push([
       municipalityName(kommunId),
@@ -211,19 +242,15 @@ export function formatTrend(
   data: unknown,
   kpiLabel?: string,
 ): { markdown: string; count: number; raw: unknown[] } {
-  const response = data as Record<string, unknown>;
-  const items = Array.isArray(response.values) ? response.values : (Array.isArray(data) ? data : []);
+  const items = flattenKoladaValues(data);
   if (items.length === 0) return { markdown: '_Inga trenddata hittades._', count: 0, raw: [] };
 
   // Filter to gender=T and sort by period
   const totalItems = items
-    .filter((item) => {
-      const v = item as Record<string, unknown>;
-      return v.gender === 'T' || !v.gender;
-    })
+    .filter((v) => v.gender === 'T' || !v.gender)
     .sort((a, b) => {
-      const pa = String((a as Record<string, unknown>).period || '');
-      const pb = String((b as Record<string, unknown>).period || '');
+      const pa = String(a.period || '');
+      const pb = String(b.period || '');
       return pa.localeCompare(pb);
     });
   const displayItems = totalItems.length > 0 ? totalItems : items;

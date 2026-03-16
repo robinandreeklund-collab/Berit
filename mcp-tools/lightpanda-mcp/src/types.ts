@@ -67,19 +67,23 @@ export const LinksInputSchema = z.object({
 });
 
 export const ClickInputSchema = z.object({
+  url: z.string().describe('URL att navigera till innan klick.'),
   selector: z.string().describe('CSS-selektor för elementet att klicka på.'),
 });
 
 export const ExecuteJsInputSchema = z.object({
-  expression: z.string().describe('JavaScript-uttryck att köra på aktuell sida.'),
+  url: z.string().describe('URL att navigera till innan JavaScript körs.'),
+  expression: z.string().describe('JavaScript-uttryck att köra på sidan.'),
 });
 
 export const FillFormInputSchema = z.object({
+  url: z.string().describe('URL att navigera till innan formuläret fylls i.'),
   selector: z.string().describe('CSS-selektor för formulärfältet.'),
   value: z.string().describe('Värde att fylla i.'),
 });
 
 export const ExtractDataInputSchema = z.object({
+  url: z.string().describe('URL att navigera till innan data extraheras.'),
   selector: z.string().describe('CSS-selektor för element att extrahera data från.'),
   attributes: z.array(z.string()).optional().describe('Attribut att extrahera (t.ex. ["href", "src"]). Om tom extraheras textinnehåll.'),
 });
@@ -92,11 +96,13 @@ export const FetchApiInputSchema = z.object({
 });
 
 export const WaitForInputSchema = z.object({
+  url: z.string().describe('URL att navigera till.'),
   selector: z.string().describe('CSS-selektor att vänta på.'),
   timeout: z.number().optional().describe('Timeout i millisekunder (standard: 5000).'),
 });
 
 export const GetTextInputSchema = z.object({
+  url: z.string().describe('URL att navigera till innan text extraheras.'),
   selector: z.string().describe('CSS-selektor för element att hämta text från.'),
 });
 

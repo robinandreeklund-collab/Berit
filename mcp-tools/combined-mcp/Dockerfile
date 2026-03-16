@@ -1,10 +1,10 @@
-# Combined MCP Server — 21 MCP servers on one Render instance
+# Combined MCP Server — 20 MCP servers on one Render instance
+# (Lightpanda runs locally only — requires headless browser sidecar)
 # SCB:              / (backwards compatible)
 # Skolverket:       /skolverket/
 # Trafikverket:     /trafikverket/
 # Riksbank:         /riksbank/
 # SMHI:             /smhi/
-# Lightpanda:       /lightpanda/
 # Elpris:           /elpris/
 # Bolagsverket:     /bolagsverket/
 # Google Maps:      /google-maps/
@@ -55,14 +55,7 @@ COPY smhi-mcp/package.json smhi-mcp/package-lock.json smhi-mcp/tsconfig.json ./
 COPY smhi-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 6: Build Lightpanda ============
-FROM node:22-alpine AS build-lightpanda
-WORKDIR /app
-COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json lightpanda-mcp/tsconfig.json ./
-COPY lightpanda-mcp/src ./src
-RUN npm ci --ignore-scripts && npm run build
-
-# ============ Stage 7: Build Elpris ============
+# ============ Stage 6: Build Elpris ============
 FROM node:22-alpine AS build-elpris
 WORKDIR /app
 COPY elpris-mcp/package.json elpris-mcp/tsconfig.json ./
@@ -160,7 +153,7 @@ COPY polisen-mcp/package.json polisen-mcp/package-lock.json polisen-mcp/tsconfig
 COPY polisen-mcp/src ./src
 RUN npm ci --ignore-scripts && npm run build
 
-# ============ Stage 21: Production ============
+# ============ Stage 20: Production ============
 FROM node:22-alpine
 
 # Install nginx and envsubst (from gettext)
@@ -196,11 +189,6 @@ COPY riksbank-mcp/README.md /app/riksbank/README.md
 COPY smhi-mcp/package.json smhi-mcp/package-lock.json /app/smhi/
 RUN cd /app/smhi && npm ci --omit=dev --ignore-scripts
 COPY --from=build-smhi /app/dist /app/smhi/dist
-
-# Lightpanda production install
-COPY lightpanda-mcp/package.json lightpanda-mcp/package-lock.json /app/lightpanda/
-RUN cd /app/lightpanda && npm ci --omit=dev --ignore-scripts
-COPY --from=build-lightpanda /app/dist /app/lightpanda/dist
 
 # Elpris production install
 COPY elpris-mcp/package.json /app/elpris/

@@ -281,6 +281,7 @@ export const enUS: Translations = {
       skills: "Skills",
       prompts: "Prompts",
       notification: "Notification",
+      developer: "Developer",
       about: "About",
     },
     memory: {
@@ -367,6 +368,23 @@ export const enUS: Translations = {
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",
+    },
+    developer: {
+      title: "Developer",
+      description:
+        "Development tools for resetting system state. Use these during development to get a clean start.",
+      clearMemory: "Clear memory",
+      clearMemoryDescription:
+        "Remove all learned user context, history, and facts.",
+      clearThreads: "Clear chat history",
+      clearThreadsDescription:
+        "Delete all conversation threads and their messages.",
+      clearAll: "Clear everything",
+      clearAllDescription:
+        "Reset memory and chat history for a completely clean start.",
+      clearButton: "Clear",
+      cleared: "Cleared!",
+      error: "Error",
     },
     acknowledge: {
       emptyTitle: "Acknowledgements",

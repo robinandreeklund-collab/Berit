@@ -139,6 +139,55 @@ describe('autoCompleteSelection', () => {
     expect(result.selection.Tid).toEqual(['TOP(1)']);
     expect(result.addedVariables.find(v => v.code === 'Tid')?.reason).toContain('senaste');
   });
+
+  it('should SKIP variables with elimination=true but no eliminationValueCode and no smart total', () => {
+    // Simulate TAB638's Civilstand: elimination=true, no eliminationValueCode, no total code
+    const metadata = makeMetadata();
+    metadata.id = ['Region', 'Civilstand', 'Kon', 'Tid', 'ContentsCode'];
+    metadata.size = [3, 4, 3, 10, 2];
+    metadata.dimension['Civilstand'] = {
+      label: 'civilstånd',
+      category: {
+        index: { 'OG': 0, 'G': 1, 'SK': 2, 'ÄNKL': 3 },
+        label: { 'OG': 'ogifta', 'G': 'gifta', 'SK': 'skilda', 'ÄNKL': 'änkor/änklingar' },
+      },
+      extension: { elimination: true },
+    };
+
+    const result = autoCompleteSelection(metadata, {
+      Region: ['1480'],
+      Tid: ['2024'],
+    });
+
+    // Civilstand should NOT be included in selection — let API aggregate
+    expect(result.selection.Civilstand).toBeUndefined();
+    const civilstandAdded = result.addedVariables.find(v => v.code === 'Civilstand');
+    expect(civilstandAdded?.reason).toContain('utelämnad');
+    expect(civilstandAdded?.values).toEqual([]);
+  });
+
+  it('should SKIP Kon with elimination=true when no total code exists', () => {
+    // Simulate TAB638's Kon: only "1" (män) and "2" (kvinnor), no "1+2"
+    const metadata = makeMetadata();
+    metadata.dimension['Kon'] = {
+      label: 'kön',
+      category: {
+        index: { '1': 0, '2': 1 },
+        label: { '1': 'män', '2': 'kvinnor' },
+      },
+      extension: { elimination: true },
+    };
+
+    const result = autoCompleteSelection(metadata, {
+      Region: ['1480'],
+      Tid: ['2024'],
+    });
+
+    // Kon should NOT be included — no total code, elimination=true
+    expect(result.selection.Kon).toBeUndefined();
+    const konAdded = result.addedVariables.find(v => v.code === 'Kon');
+    expect(konAdded?.reason).toContain('utelämnad');
+  });
 });
 
 describe('estimateCellCount', () => {

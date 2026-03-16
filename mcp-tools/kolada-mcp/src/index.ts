@@ -42,7 +42,7 @@ interface CallRecord {
   firstCall: number;
 }
 
-const CALL_LIMIT = 3;
+const CALL_LIMIT = 30;
 const CALL_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 class CallTracker {
@@ -177,14 +177,12 @@ export class KoladaMCPServer {
           const kommunId = String(params.kommun_id);
           const fromYear = params.from_year as string;
           const toYear = params.to_year as string;
-          let path = `/data/municipality/${kommunId}/kpi/${kpiId}`;
-          if (fromYear && toYear) {
-            path += `?from_date=${fromYear}&to_date=${toYear}`;
-          } else if (fromYear) {
-            path += `?from_date=${fromYear}`;
-          } else if (toYear) {
-            path += `?to_date=${toYear}`;
-          }
+          // Kolada API v3 format: /data/kpi/{kpi}/municipality/{municipality}/year/{year}
+          // Year is REQUIRED to avoid timeout (all years = huge response)
+          const yearPart = fromYear && toYear && fromYear !== toYear
+            ? Array.from({ length: Number(toYear) - Number(fromYear) + 1 }, (_, i) => Number(fromYear) + i).join(',')
+            : fromYear || toYear || String(currentYear() - 1);
+          const path = `/data/kpi/${kpiId}/municipality/${kommunId}/year/${yearPart}`;
           const { data } = await client.getData(path);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatKpiData(data, kpiLabel);
@@ -194,7 +192,8 @@ export class KoladaMCPServer {
         case 'kolada_data_alla_kommuner': {
           const kpiId = String(params.kpi_id);
           const year = String(params.year);
-          const { data } = await client.getData(`/data/permunicipality/${kpiId}/${year}`);
+          // v3 format: /data/kpi/{kpi}/year/{year} (all municipalities)
+          const { data } = await client.getData(`/data/kpi/${kpiId}/year/${year}`);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatKpiData(data, kpiLabel);
           break;
@@ -203,7 +202,8 @@ export class KoladaMCPServer {
         case 'kolada_data_enhet': {
           const kpiId = String(params.kpi_id);
           const year = String(params.year);
-          const { data } = await client.getData(`/data/perou/${kpiId}/${year}`);
+          // v3 format: /oudata/kpi/{kpi}/year/{year} (organizational units)
+          const { data } = await client.getData(`/oudata/kpi/${kpiId}/year/${year}`);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatKpiData(data, kpiLabel);
           break;
@@ -219,11 +219,9 @@ export class KoladaMCPServer {
         case 'kolada_jamfor_kommuner': {
           const kpiId = String(params.kpi_id);
           const kommunIds = String(params.kommun_ids);
-          const year = params.year as string;
-          let path = `/data/municipality/${kommunIds}/kpi/${kpiId}`;
-          if (year) {
-            path += `?from_date=${year}&to_date=${year}`;
-          }
+          const year = (params.year as string) || String(currentYear() - 1);
+          // v3 format: /data/kpi/{kpi}/municipality/{municipality_ids}/year/{year}
+          const path = `/data/kpi/${kpiId}/municipality/${kommunIds}/year/${year}`;
           const { data } = await client.getData(path);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatKpiData(data, kpiLabel);
@@ -234,9 +232,11 @@ export class KoladaMCPServer {
           const kpiId = String(params.kpi_id);
           const kommunId = String(params.kommun_id);
           const numYears = Number(params.years) || 5;
-          const toYear = currentYear();
-          const fromYear = toYear - numYears;
-          const path = `/data/municipality/${kommunId}/kpi/${kpiId}?from_date=${fromYear}&to_date=${toYear}`;
+          const endYear = currentYear() - 1;
+          const startYear = endYear - numYears + 1;
+          const yearList = Array.from({ length: numYears }, (_, i) => startYear + i).join(',');
+          // v3 format: /data/kpi/{kpi}/municipality/{municipality}/year/{year1,year2,...}
+          const path = `/data/kpi/${kpiId}/municipality/${kommunId}/year/${yearList}`;
           const { data } = await client.getData(path);
           const kpiLabel = POPULAR_KPIS[kpiId];
           result = formatTrend(data, kpiLabel);

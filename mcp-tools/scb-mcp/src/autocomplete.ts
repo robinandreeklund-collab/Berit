@@ -135,7 +135,7 @@ export function autoCompleteSelection(
       }
     }
 
-    // Strategy 1: Use eliminationValueCode if elimination is allowed
+    // Strategy 1: Use eliminationValueCode if elimination is allowed and code exists
     if (ext?.elimination && ext?.eliminationValueCode) {
       const elimCode = ext.eliminationValueCode;
       if (codes.includes(elimCode)) {
@@ -150,7 +150,21 @@ export function autoCompleteSelection(
       }
     }
 
-    // Strategy 2: If only one value exists, use it
+    // Strategy 2: If elimination=true but no eliminationValueCode and no smart
+    // default was found above, SKIP this variable entirely. The API will
+    // aggregate it automatically. This prevents selecting arbitrary values like
+    // "OG" (ogifta) for Civilstand or "1" (män) for Kon.
+    if (ext?.elimination) {
+      addedVariables.push({
+        code: dimCode,
+        label: dimDef.label,
+        values: [],
+        reason: `utelämnad (elimination=true, API aggregerar automatiskt)`,
+      });
+      continue;
+    }
+
+    // Strategy 3: If only one value exists, use it
     if (codes.length === 1) {
       completed[dimCode] = [codes[0]];
       addedVariables.push({
@@ -162,7 +176,7 @@ export function autoCompleteSelection(
       continue;
     }
 
-    // Strategy 3: For ContentsCode, select all (usually few values)
+    // Strategy 4: For ContentsCode, select all (usually few values)
     if (dimCode === 'ContentsCode' && codes.length <= 10) {
       completed[dimCode] = codes;
       addedVariables.push({
@@ -174,7 +188,7 @@ export function autoCompleteSelection(
       continue;
     }
 
-    // Strategy 4: For Time dimension, use TOP(1) for latest
+    // Strategy 5: For Time dimension, use TOP(1) for latest
     if (dimCode === 'Tid' || dimDef.label.toLowerCase().includes('tid') || dimDef.label.toLowerCase().includes('time')) {
       completed[dimCode] = ['TOP(1)'];
       addedVariables.push({
@@ -186,7 +200,7 @@ export function autoCompleteSelection(
       continue;
     }
 
-    // Strategy 5: Fallback — use TOP(1)
+    // Strategy 6: Fallback — use TOP(1)
     completed[dimCode] = ['TOP(1)'];
     addedVariables.push({
       code: dimCode,

@@ -80,10 +80,10 @@ describe('formatEnhetLista', () => {
 });
 
 describe('formatKpiData', () => {
-  it('formats KPI values', () => {
+  it('formats KPI values (flat format)', () => {
     const data = {
       values: [
-        { kpi: 'N00945', municipality: '0180', period: '2023', gender: 'T', value: 987654 },
+        { kpi: 'N01951', municipality: '0180', period: '2023', gender: 'T', value: 987654 },
       ],
     };
     const result = formatKpiData(data, 'Invånare totalt');
@@ -91,6 +91,62 @@ describe('formatKpiData', () => {
     expect(result.markdown).toContain('Invånare totalt');
     expect(result.markdown).toContain('2023');
     expect(result.markdown).toContain('Stockholm');
+  });
+
+  it('formats KPI values (nested Kolada API format)', () => {
+    const data = {
+      values: [
+        {
+          kpi: 'N01951',
+          municipality: '1480',
+          period: 2024,
+          values: [
+            { count: 1, gender: 'K', status: '', value: 296000.0 },
+            { count: 1, gender: 'M', status: '', value: 289000.0 },
+            { count: 1, gender: 'T', status: '', value: 585000.0 },
+          ],
+        },
+      ],
+    };
+    const result = formatKpiData(data, 'Invånare totalt');
+    // Should only show gender=T (Totalt)
+    expect(result.count).toBe(1);
+    expect(result.markdown).toContain('585000');
+    expect(result.markdown).toContain('Göteborg');
+    expect(result.markdown).toContain('2024');
+    expect(result.markdown).toContain('Totalt');
+  });
+
+  it('flattens nested values and filters gender=T', () => {
+    const data = {
+      values: [
+        {
+          kpi: 'N01951',
+          municipality: '0180',
+          period: 2023,
+          values: [
+            { gender: 'M', value: 500000 },
+            { gender: 'K', value: 510000 },
+            { gender: 'T', value: 1010000 },
+          ],
+        },
+        {
+          kpi: 'N01951',
+          municipality: '1280',
+          period: 2023,
+          values: [
+            { gender: 'T', value: 350000 },
+          ],
+        },
+      ],
+    };
+    const result = formatKpiData(data);
+    // Should show only T records: 2 municipalities
+    expect(result.count).toBe(2);
+    expect(result.markdown).toContain('Stockholm');
+    expect(result.markdown).toContain('Malmö');
+    expect(result.markdown).toContain('1010000');
+    expect(result.markdown).toContain('350000');
   });
 
   it('handles empty data', () => {
@@ -151,12 +207,12 @@ describe('formatKommunGrupper', () => {
 });
 
 describe('formatTrend', () => {
-  it('formats trend data with changes', () => {
+  it('formats trend data with changes (flat format)', () => {
     const data = {
       values: [
-        { kpi: 'N00945', municipality: '0180', period: '2021', gender: 'T', value: 975000 },
-        { kpi: 'N00945', municipality: '0180', period: '2022', gender: 'T', value: 980000 },
-        { kpi: 'N00945', municipality: '0180', period: '2023', gender: 'T', value: 987654 },
+        { kpi: 'N01951', municipality: '0180', period: '2021', gender: 'T', value: 975000 },
+        { kpi: 'N01951', municipality: '0180', period: '2022', gender: 'T', value: 980000 },
+        { kpi: 'N01951', municipality: '0180', period: '2023', gender: 'T', value: 987654 },
       ],
     };
     const result = formatTrend(data, 'Invånare totalt');
@@ -164,6 +220,31 @@ describe('formatTrend', () => {
     expect(result.markdown).toContain('2021');
     expect(result.markdown).toContain('2022');
     expect(result.markdown).toContain('2023');
+    expect(result.markdown).toContain('+');
+  });
+
+  it('formats trend data from nested Kolada API format', () => {
+    const data = {
+      values: [
+        {
+          kpi: 'N01951', municipality: '0180', period: 2021,
+          values: [{ gender: 'T', value: 975000 }, { gender: 'M', value: 480000 }],
+        },
+        {
+          kpi: 'N01951', municipality: '0180', period: 2022,
+          values: [{ gender: 'T', value: 980000 }, { gender: 'M', value: 483000 }],
+        },
+        {
+          kpi: 'N01951', municipality: '0180', period: 2023,
+          values: [{ gender: 'T', value: 987654 }, { gender: 'M', value: 487000 }],
+        },
+      ],
+    };
+    const result = formatTrend(data, 'Invånare totalt');
+    // Should only show gender=T, sorted by period
+    expect(result.count).toBe(3);
+    expect(result.markdown).toContain('975000');
+    expect(result.markdown).toContain('987654');
     expect(result.markdown).toContain('+');
   });
 
