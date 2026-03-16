@@ -37,23 +37,25 @@ class SkillToolFilterMiddleware(AgentMiddleware[AgentState]):
         self.mcp_tool_names = mcp_tool_names
 
     def _get_active_servers(self, request: ModelRequest) -> list[str]:
-        """Extract active_mcp_servers from message history.
+        """Extract active MCP servers from message history.
 
-        Looks for ToolMessages from retrieve_skill_tools that contain server activation info.
+        Looks for tool messages containing the activation pattern from retrieve_skill_tools.
+        We match on content pattern rather than message name, because LangGraph's Command
+        may not preserve the tool name on the resulting ToolMessage.
         """
         active_servers = []
         for msg in request.messages:
-            # Check for tool messages from retrieve_skill_tools
-            if hasattr(msg, "name") and msg.name == "retrieve_skill_tools":
-                content = getattr(msg, "content", "")
-                if isinstance(content, str) and "Aktiverade" in content:
-                    # Extract server name from "Aktiverade N verktyg från SERVER_NAME:"
-                    try:
-                        server_part = content.split("från ")[1].split(":")[0]
-                        if server_part not in active_servers:
-                            active_servers.append(server_part)
-                    except (IndexError, ValueError):
-                        pass
+            content = getattr(msg, "content", "")
+            if not isinstance(content, str):
+                continue
+            # Match activation pattern: "Aktiverade N verktyg från SERVER_NAME:"
+            if "Aktiverade" in content and "verktyg från " in content:
+                try:
+                    server_part = content.split("verktyg från ")[1].split(":")[0]
+                    if server_part not in active_servers:
+                        active_servers.append(server_part)
+                except (IndexError, ValueError):
+                    pass
         return active_servers
 
     def _filter_tools(self, request: ModelRequest) -> ModelRequest:

@@ -74,6 +74,7 @@ def retrieve_skill_tools_tool(skill_name: str) -> Command:
             "active_mcp_servers": [server_name],
             "messages": [{
                 "role": "tool",
+                "name": "retrieve_skill_tools",
                 "content": f"Aktiverade {len(tool_names)} verktyg från {server_name}: {', '.join(tool_names)}. Du kan nu använda dessa verktyg.",
             }],
         },

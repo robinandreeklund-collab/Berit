@@ -178,6 +178,19 @@ class TestGetActiveServers:
 
         assert servers == []
 
+    def test_extracts_server_without_name_attribute(self):
+        """Command-returned ToolMessages may not have name set — middleware should still work."""
+        middleware = SkillToolFilterMiddleware(mcp_tool_names=set())
+
+        # Simulate a ToolMessage from Command (no name attribute)
+        tool_msg = MagicMock(spec=[])  # No attributes by default
+        tool_msg.content = "Aktiverade 10 verktyg från smhi: smhi_forecast, smhi_analysis. Du kan nu använda dessa verktyg."
+
+        request = _make_request(tools=[], messages=[tool_msg])
+        servers = middleware._get_active_servers(request)
+
+        assert servers == ["smhi"]
+
     def test_deduplicates_servers(self):
         middleware = SkillToolFilterMiddleware(mcp_tool_names=set())
 
