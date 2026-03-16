@@ -363,25 +363,53 @@ export class SCBApiClient {
     pageSize?: number;
     lang?: string;
   } = {}): Promise<TablesResponse> {
-    const searchParams = new URLSearchParams();
-    // Use the label as query text — much better API results than searching by code
-    const queryText = params.searchLabel || params.subjectCode || '*';
-    searchParams.set('query', queryText);
-    searchParams.set('pageSize', String(params.pageSize || 100));
-    if (params.lang) searchParams.set('lang', params.lang);
+    const queryText = params.searchLabel || params.subjectCode || 'statistik';
+    const code = params.subjectCode?.toUpperCase();
+    const lang = params.lang || 'sv';
+    const pageSize = params.pageSize || 100;
 
-    const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
-
-    // Client-side filter by exact path matching
-    if (params.subjectCode) {
-      const code = params.subjectCode.toUpperCase();
-      result.tables = result.tables.filter(t =>
-        t.subjectCode?.toUpperCase().startsWith(code) ||
-        t.paths?.some(p => p.some(segment => segment.id.toUpperCase().startsWith(code)))
-      );
+    // Try up to 3 search queries to find tables matching the subject code
+    const queries = [queryText];
+    if (code) {
+      // Add broader fallback queries
+      const parentCode = code.replace(/[A-Z]$/, ''); // BE0101A → BE0101
+      queries.push(parentCode !== code ? parentCode : code.slice(0, 2));
     }
 
-    return result;
+    const allTables = new Map<string, any>();
+
+    for (const query of queries) {
+      const searchParams = new URLSearchParams();
+      searchParams.set('query', query);
+      searchParams.set('pageSize', String(pageSize));
+      searchParams.set('lang', lang);
+
+      try {
+        const result = await this.makeRequest<TablesResponse>(`/tables?${searchParams.toString()}`, TablesResponseSchema);
+
+        // Filter by path matching
+        if (code) {
+          for (const t of result.tables) {
+            const matchesSubject = t.subjectCode?.toUpperCase().startsWith(code);
+            const matchesPath = t.paths?.some(p => p.some(segment => segment.id.toUpperCase() === code || segment.id.toUpperCase().startsWith(code)));
+            if (matchesSubject || matchesPath) {
+              allTables.set(t.id, t);
+            }
+          }
+        } else {
+          for (const t of result.tables) {
+            allTables.set(t.id, t);
+          }
+        }
+
+        // If we found enough tables, stop searching
+        if (allTables.size >= 5) break;
+      } catch {
+        // Ignore failed queries, try next
+      }
+    }
+
+    return { tables: [...allTables.values()] } as TablesResponse;
   }
 
   /**

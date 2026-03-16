@@ -450,14 +450,13 @@ export class SCBMCPServer {
     }
 
     // --- Leaf node or deep code: fetch tables from API ---
-    // Use the label + keywords as search query for better API results
-    const keywords = getSearchKeywords(subjectCode);
+    // Use the node label + "region" as query for best API results
     const searchLabel = found?.node.label || subjectCode;
 
     const result = await this.apiClient.browseTables({
       subjectCode,
-      searchLabel: keywords.length > 0 ? keywords.slice(0, 3).join(' ') : searchLabel,
-      pageSize,
+      searchLabel: `${searchLabel} region`,
+      pageSize: 100, // Fetch many results so client-side filtering has enough to work with
       lang: language,
     });
 
