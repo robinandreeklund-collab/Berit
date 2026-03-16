@@ -1,7 +1,7 @@
 import logging
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import SummarizationMiddleware
+from langchain.agents.middleware import LLMToolSelectorMiddleware, SummarizationMiddleware
 from langchain_core.runnables import RunnableConfig
 
 from src.agents.lead_agent.prompt import apply_prompt_template
@@ -194,9 +194,64 @@ Att vara proaktiv med uppgiftshantering visar grundlighet och säkerställer att
     return TodoMiddleware(system_prompt=system_prompt, tool_description=tool_description)
 
 
+_TOOL_SELECTOR_SYSTEM_PROMPT = """Du är en verktygsväljare. Givet användarens fråga, välj de mest relevanta verktygen från listan.
+
+Regler:
+- Välj BARA verktyg som är direkt relevanta för frågan
+- Om frågan handlar om ett specifikt ämne (t.ex. väder, aktier, statistik), välj verktyg från den relevanta MCP-servern
+- Om frågan är generell eller oklar, välj inga verktyg (kärnverktygen är alltid tillgängliga)
+- Prioritera verktyg som matchar frågans domän"""
+
+
+def _create_tool_selector_middleware(model_name: str | None, tools: list) -> LLMToolSelectorMiddleware:
+    """Create LLMToolSelectorMiddleware to dynamically filter tools per query.
+
+    This solves the performance problem of sending all ~258 MCP tool schemas
+    to the LLM on every request. The selector uses a lightweight LLM call to
+    pick only relevant tools, reducing token usage by ~90%.
+
+    The always_include list is built dynamically from the actual tool list to avoid
+    validation errors when optional tools (task, view_image, etc.) are absent.
+
+    Core sandbox/builtin tools are always included. Only MCP tools are subject
+    to dynamic selection.
+    """
+    # Core tools that should always be available regardless of query.
+    # We intersect with actual tools to avoid ValueError from missing tools.
+    core_tool_names = {
+        # Sandbox tools (from config.yaml)
+        "bash", "read_file", "write_file", "ls", "str_replace",
+        # Built-in tools
+        "present_files", "ask_clarification",
+        # Config tools
+        "image_search",
+        # Subagent tool (present when subagent_enabled)
+        "task",
+        # Bootstrap tool
+        "setup_agent",
+        # Vision tool (present when model supports vision)
+        "view_image",
+        # Todo tool (present in plan mode)
+        "write_todos",
+    }
+
+    actual_tool_names = {getattr(t, "name", None) for t in tools}
+    always_include = sorted(core_tool_names & actual_tool_names)
+
+    selector_model = create_chat_model(name=model_name, thinking_enabled=False)
+
+    return LLMToolSelectorMiddleware(
+        model=selector_model,
+        system_prompt=_TOOL_SELECTOR_SYSTEM_PROMPT,
+        max_tools=15,
+        always_include=always_include,
+    )
+
+
 # ThreadDataMiddleware must be before SandboxMiddleware to ensure thread_id is available
 # UploadsMiddleware should be after ThreadDataMiddleware to access thread_id
 # DanglingToolCallMiddleware patches missing ToolMessages before model sees the history
+# LLMToolSelectorMiddleware filters MCP tools before the main model call (reduces ~258 to ~15)
 # SummarizationMiddleware should be early to reduce context before other processing
 # TodoListMiddleware should be before ClarificationMiddleware to allow todo management
 # TitleMiddleware generates title after first exchange
@@ -204,17 +259,24 @@ Att vara proaktiv med uppgiftshantering visar grundlighet och säkerställer att
 # ViewImageMiddleware should be before ClarificationMiddleware to inject image details before LLM
 # ToolErrorHandlingMiddleware should be before ClarificationMiddleware to convert tool exceptions to ToolMessages
 # ClarificationMiddleware should be last to intercept clarification requests after model calls
-def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_name: str | None = None):
+def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_name: str | None = None, tools: list | None = None):
     """Build middleware chain based on runtime configuration.
 
     Args:
         config: Runtime configuration containing configurable options like is_plan_mode.
         agent_name: If provided, MemoryMiddleware will use per-agent memory storage.
+        tools: The agent's tool list, used to build the LLMToolSelectorMiddleware's always_include list.
 
     Returns:
         List of middleware instances.
     """
     middlewares = build_lead_runtime_middlewares(lazy_init=True)
+
+    # Add LLMToolSelectorMiddleware to dynamically filter MCP tools per query.
+    # This must come before the main model call to reduce the tool schemas sent to the LLM.
+    # It uses wrap_model_call to filter tools, NOT ToolNode — all tools stay registered for execution.
+    if tools is not None:
+        middlewares.append(_create_tool_selector_middleware(model_name, tools))
 
     # Add summarization middleware if enabled
     summarization_middleware = _create_summarization_middleware()
@@ -316,10 +378,11 @@ def make_lead_agent(config: RunnableConfig):
         # Special bootstrap agent with minimal prompt for initial custom agent creation flow
         system_prompt = apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents, available_skills=set(["bootstrap"]))
 
+        bootstrap_tools = get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled) + [setup_agent]
         return create_agent(
             model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
-            tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled) + [setup_agent],
-            middleware=_build_middlewares(config, model_name=model_name),
+            tools=bootstrap_tools,
+            middleware=_build_middlewares(config, model_name=model_name, tools=bootstrap_tools),
             system_prompt=system_prompt,
             state_schema=ThreadState,
         )
@@ -330,7 +393,7 @@ def make_lead_agent(config: RunnableConfig):
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort),
         tools=base_tools,
-        middleware=_build_middlewares(config, model_name=model_name, agent_name=agent_name),
+        middleware=_build_middlewares(config, model_name=model_name, agent_name=agent_name, tools=base_tools),
         system_prompt=apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents, agent_name=agent_name),
         state_schema=ThreadState,
     )
