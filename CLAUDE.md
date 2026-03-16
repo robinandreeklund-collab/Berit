@@ -64,7 +64,7 @@ Berit/
 │       ├── components/         # React components (UI, workspace, landing)
 │       └── core/               # Business logic (threads, API, artifacts, i18n, settings)
 ├── skills/                     # Agent skills library
-│   ├── public/                 # Public skills (19 built-in)
+│   ├── public/                 # Public skills (20 built-in)
 │   └── custom/                 # Custom skills (gitignored)
 ├── mcp-tools/                  # MCP tool servers (local source)
 │   ├── scb-mcp/               # SCB MCP v3.0 (forked & enhanced from isakskogstad/SCB-MCP)
