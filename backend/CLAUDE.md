@@ -106,7 +106,7 @@ CI runs these regression tests for every pull request via [.github/workflows/bac
 
 **ThreadState** (`src/agents/thread_state.py`):
 - Extends `AgentState` with: `sandbox`, `thread_data`, `title`, `artifacts`, `todos`, `uploaded_files`, `viewed_images`
-- Uses custom reducers: `merge_artifacts` (deduplicate), `merge_viewed_images` (merge/clear)
+- Uses custom reducers: `merge_artifacts` (deduplicate), `merge_viewed_images` (merge/clear), `merge_mcp_servers` (deduplicate)
 
 **Runtime Configuration** (via `config.configurable`):
 - `thinking_enabled` - Enable model's extended thinking
@@ -122,13 +122,15 @@ Middlewares execute in strict order in `src/agents/lead_agent/agent.py`:
 2. **UploadsMiddleware** - Tracks and injects newly uploaded files into conversation
 3. **SandboxMiddleware** - Acquires sandbox, stores `sandbox_id` in state
 4. **DanglingToolCallMiddleware** - Injects placeholder ToolMessages for AIMessage tool_calls that lack responses (e.g., due to user interruption)
-5. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
-6. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
-7. **TitleMiddleware** - Auto-generates thread title after first complete exchange
-8. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
-9. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
-10. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if subagent_enabled)
-11. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+5. **SkillToolFilterMiddleware** - Two-step skill-based MCP tool filtering. Before any skill is activated, all ~258 MCP tools are hidden from the LLM. The agent sees skill descriptions and calls `retrieve_skill_tools` to activate a specific MCP server. After activation, only that server's tools are included. Uses `wrap_model_call` to filter what the LLM sees while keeping all tools registered in ToolNode for execution. Much faster, deterministic, and cheaper than the previous LLM-based approach.
+6. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
+7. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
+8. **TitleMiddleware** - Auto-generates thread title after first complete exchange
+9. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
+10. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
+11. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if subagent_enabled)
+12. **ToolCallLoopMiddleware** - Prevents LLMs from endlessly repeating the same tool call
+13. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
 
 ### Configuration System
 
@@ -208,6 +210,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 3. **Built-in tools**:
    - `present_files` - Make output files visible to user (only `/mnt/user-data/outputs`)
    - `ask_clarification` - Request clarification (intercepted by ClarificationMiddleware → interrupts)
+   - `retrieve_skill_tools` - Activate MCP tools for a specific skill/server (returns `Command` to update `active_mcp_servers` state)
    - `view_image` - Read image as base64 (added only if model supports vision)
 4. **Subagent tool** (if enabled):
    - `task` - Delegate to subagent (description, prompt, subagent_type, max_turns)
@@ -223,6 +226,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 
 - Uses `langchain-mcp-adapters` `MultiServerMCPClient` for multi-server management
 - **Lazy initialization**: Tools loaded on first use via `get_cached_mcp_tools()`
+- **Per-server caching**: Tools stored as `dict[str, list[BaseTool]]` keyed by server name. `get_cached_mcp_tools()` returns flat list (backward compatible), `get_cached_mcp_tools_by_server()` returns the dict, `get_tools_for_servers(names)` returns tools for specific servers only.
 - **Cache invalidation**: Detects config file changes via mtime comparison
 - **Transports**: stdio (command-based), SSE, HTTP
 - **OAuth (HTTP/SSE)**: Supports token endpoint flows (`client_credentials`, `refresh_token`) with automatic token refresh + Authorization header injection
@@ -233,7 +237,7 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 ### Skills System (`src/skills/`)
 
 - **Location**: `deer-flow/skills/{public,custom}/`
-- **Format**: Directory with `SKILL.md` (YAML frontmatter: name, description, license, allowed-tools)
+- **Format**: Directory with `SKILL.md` (YAML frontmatter: name, description, license, allowed-tools, mcp-server)
 - **Loading**: `load_skills()` recursively scans `skills/{public,custom}` for `SKILL.md`, parses metadata, and reads enabled state from extensions_config.json
 - **Injection**: Enabled skills listed in agent system prompt with container paths
 - **Installation**: `POST /api/skills/install` extracts .skill ZIP archive to custom/ directory

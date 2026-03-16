@@ -1,6 +1,7 @@
 ---
 name: swedish-crisis-info
 description: Använd denna färdighet när användaren frågar om kriser i Sverige, krisinformation, VMA, Viktigt Meddelande till Allmänheten, krislarm, varningar, olyckor, naturkatastrofer, översvämningar, stormar, samhällsstörningar, MSB, beredskap, nödläge, aktuella kriser och larm, vädervarningar, evakuering, eller krishantering i Sverige. Denna färdighet använder Krisinformation MCP-verktygen för att hämta data direkt från Krisinformation.se (MSB) API.
+mcp-server: krisinformation
 ---
 
 # Krisinformation (Krisinformation MCP v1.0)

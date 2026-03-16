@@ -1,6 +1,7 @@
 ---
 name: swedish-education
 description: Använd denna färdighet när användaren frågar om svensk utbildning, läroplaner, kursplaner, skolenheter, gymnasieprogram, ämnen, kurser, vuxenutbildning (YH, SFI, Komvux), Skolverket, skoltyper, studievägar, centralt innehåll, kunskapskrav, eller skolstatistik. Denna färdighet använder Skolverket MCP-verktygen för att hämta data direkt från Skolverkets öppna API:er.
+mcp-server: skolverket
 ---
 
 # Svensk Utbildning (Skolverket MCP v2.7.0)

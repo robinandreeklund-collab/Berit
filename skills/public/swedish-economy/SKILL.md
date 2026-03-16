@@ -1,6 +1,7 @@
 ---
 name: swedish-economy
 description: Använd denna färdighet när användaren frågar om svensk ekonomi, räntor, styrränta, reporänta, STIBOR, obligationsräntor, bostadsräntor, valutakurser, kronkursen, SEK, EUR/SEK, USD/SEK, SWESTR, dagslåneränta, referensränta, inflation, KPI, KPIF, BNP, tillväxt, makroekonomi, arbetslöshet, Riksbanken, penningpolitik, eller prognoser från Riksbanken. Denna färdighet använder Riksbank MCP-verktygen för att hämta data direkt från Riksbankens öppna REST-API:er.
+mcp-server: riksbank
 ---
 
 # Svensk Ekonomi (Riksbank MCP v1.0)

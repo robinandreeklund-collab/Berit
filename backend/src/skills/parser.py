@@ -48,6 +48,7 @@ def parse_skill_file(skill_file: Path, category: str, relative_path: Path | None
             return None
 
         license_text = metadata.get("license")
+        mcp_server = metadata.get("mcp-server")
 
         return Skill(
             name=name,
@@ -58,6 +59,7 @@ def parse_skill_file(skill_file: Path, category: str, relative_path: Path | None
             relative_path=relative_path or Path(skill_file.parent.name),
             category=category,
             enabled=True,  # Default to enabled, actual state comes from config file
+            mcp_server=mcp_server,
         )
 
     except Exception as e:

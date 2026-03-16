@@ -1,6 +1,7 @@
 ---
 name: swedish-tourism
 description: Använd denna färdighet när användaren frågar om turism i Sverige, sevärdheter, turistmål, hotell, boenden, restauranger, evenemang, festivaler, konserter, Visit Sweden, resmål, semester, besöksmål, attraktioner, camping, vandrarhem, vad man kan göra i en svensk stad eller region, semester i Sverige, utflykter, museer, nöjesparker, naturupplevelser, vandring, eller tips för besök i Sverige. Denna färdighet använder Visit Sweden MCP-verktygen för att hämta data direkt från Visit Swedens öppna dataplattform (data.visitsweden.com).
+mcp-server: visitsweden
 ---
 
 # Svensk Turism (Visit Sweden MCP v1.0)

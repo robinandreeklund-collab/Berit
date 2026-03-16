@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from src.agents.lead_agent.prompt import apply_prompt_template
 from src.agents.middlewares.clarification_middleware import ClarificationMiddleware
 from src.agents.middlewares.memory_middleware import MemoryMiddleware
+from src.agents.middlewares.skill_tool_filter_middleware import SkillToolFilterMiddleware
 from src.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 from src.agents.middlewares.title_middleware import TitleMiddleware
 from src.agents.middlewares.tool_call_loop_middleware import ToolCallLoopMiddleware
@@ -194,9 +195,29 @@ Att vara proaktiv med uppgiftshantering visar grundlighet och säkerställer att
     return TodoMiddleware(system_prompt=system_prompt, tool_description=tool_description)
 
 
+def _create_skill_tool_filter_middleware(tools: list) -> SkillToolFilterMiddleware:
+    """Create SkillToolFilterMiddleware to filter MCP tools based on skill activation.
+
+    Two-step flow:
+      Step 1: Agent sees only core tools + skill descriptions (no MCP tools)
+      Step 2: After retrieve_skill_tools() is called, agent gets the activated MCP tools
+
+    This replaces LLMToolSelectorMiddleware — no secondary LLM call needed.
+    The lead agent reads skill descriptions and explicitly activates the relevant
+    MCP server via retrieve_skill_tools.
+    """
+    from src.mcp.cache import get_cached_mcp_tools
+
+    mcp_tools = get_cached_mcp_tools()
+    mcp_tool_names = {t.name for t in mcp_tools}
+
+    return SkillToolFilterMiddleware(mcp_tool_names=mcp_tool_names)
+
+
 # ThreadDataMiddleware must be before SandboxMiddleware to ensure thread_id is available
 # UploadsMiddleware should be after ThreadDataMiddleware to access thread_id
 # DanglingToolCallMiddleware patches missing ToolMessages before model sees the history
+# SkillToolFilterMiddleware filters MCP tools based on active_mcp_servers state (two-step skill activation)
 # SummarizationMiddleware should be early to reduce context before other processing
 # TodoListMiddleware should be before ClarificationMiddleware to allow todo management
 # TitleMiddleware generates title after first exchange
@@ -204,17 +225,25 @@ Att vara proaktiv med uppgiftshantering visar grundlighet och säkerställer att
 # ViewImageMiddleware should be before ClarificationMiddleware to inject image details before LLM
 # ToolErrorHandlingMiddleware should be before ClarificationMiddleware to convert tool exceptions to ToolMessages
 # ClarificationMiddleware should be last to intercept clarification requests after model calls
-def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_name: str | None = None):
+def _build_middlewares(config: RunnableConfig, model_name: str | None, agent_name: str | None = None, tools: list | None = None):
     """Build middleware chain based on runtime configuration.
 
     Args:
         config: Runtime configuration containing configurable options like is_plan_mode.
         agent_name: If provided, MemoryMiddleware will use per-agent memory storage.
+        tools: The agent's tool list, used to build the LLMToolSelectorMiddleware's always_include list.
 
     Returns:
         List of middleware instances.
     """
     middlewares = build_lead_runtime_middlewares(lazy_init=True)
+
+    # Add SkillToolFilterMiddleware for two-step skill-based MCP tool filtering.
+    # Step 1: Agent sees only core tools + skill descriptions → calls retrieve_skill_tools
+    # Step 2: Middleware detects activated servers → includes those MCP tools
+    # All tools stay registered in ToolNode for execution.
+    if tools is not None:
+        middlewares.append(_create_skill_tool_filter_middleware(tools))
 
     # Add summarization middleware if enabled
     summarization_middleware = _create_summarization_middleware()
@@ -316,10 +345,11 @@ def make_lead_agent(config: RunnableConfig):
         # Special bootstrap agent with minimal prompt for initial custom agent creation flow
         system_prompt = apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents, available_skills=set(["bootstrap"]))
 
+        bootstrap_tools = get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled) + [setup_agent]
         return create_agent(
             model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
-            tools=get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled) + [setup_agent],
-            middleware=_build_middlewares(config, model_name=model_name),
+            tools=bootstrap_tools,
+            middleware=_build_middlewares(config, model_name=model_name, tools=bootstrap_tools),
             system_prompt=system_prompt,
             state_schema=ThreadState,
         )
@@ -330,7 +360,7 @@ def make_lead_agent(config: RunnableConfig):
     return create_agent(
         model=create_chat_model(name=model_name, thinking_enabled=thinking_enabled, reasoning_effort=reasoning_effort),
         tools=base_tools,
-        middleware=_build_middlewares(config, model_name=model_name, agent_name=agent_name),
+        middleware=_build_middlewares(config, model_name=model_name, agent_name=agent_name, tools=base_tools),
         system_prompt=apply_prompt_template(subagent_enabled=subagent_enabled, max_concurrent_subagents=max_concurrent_subagents, agent_name=agent_name),
         state_schema=ThreadState,
     )

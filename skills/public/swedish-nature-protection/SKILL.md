@@ -1,6 +1,7 @@
 ---
 name: swedish-nature-protection
 description: Använd denna färdighet när användaren frågar om skyddade naturområden, naturreservat, nationalparker, Natura 2000, Ramsar, våtmarker, naturvård, Naturvårdsverket, NVV, skyddad natur, naturskydd, biotopskydd, arter, djur, växter, fåglar, habitat, naturtyper, biologisk mångfald, artskydd, miljöskydd, eller naturskyddade platser i Sverige.
+mcp-server: nvv
 ---
 
 # Naturvårdsverket MCP (NVV MCP v1.0)
