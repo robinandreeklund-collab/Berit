@@ -777,8 +777,8 @@ elif [ -z "${LIGHTPANDA_MCP_URL:-}" ]; then
         if docker image inspect deer-flow-lightpanda-mcp >/dev/null 2>&1; then
             docker run -d --name deer-flow-lightpanda-mcp -p "${LIGHTPANDA_MCP_PORT}:3000" \
                 -e PORT=3000 -e NODE_ENV=production \
-                -e LIGHTPANDA_URL="${LIGHTPANDA_URL:-http://host.docker.internal:${LIGHTPANDA_PORT:-9222}}" \
-                -e LIGHTPANDA_CDP_URL="${LIGHTPANDA_CDP_URL:-ws://host.docker.internal:${LIGHTPANDA_PORT:-9222}}" \
+                -e LIGHTPANDA_URL="http://host.docker.internal:${LIGHTPANDA_PORT:-9222}" \
+                -e LIGHTPANDA_CDP_URL="ws://host.docker.internal:${LIGHTPANDA_PORT:-9222}" \
                 --add-host=host.docker.internal:host-gateway \
                 --restart unless-stopped deer-flow-lightpanda-mcp > /dev/null 2>&1
             ./scripts/wait-for-port.sh "$LIGHTPANDA_MCP_PORT" 30 "Lightpanda MCP" || true
