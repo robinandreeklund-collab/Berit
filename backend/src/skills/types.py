@@ -14,6 +14,7 @@ class Skill:
     relative_path: Path  # Relative path from category root to skill directory
     category: str  # 'public' or 'custom'
     enabled: bool = False  # Whether this skill is enabled
+    mcp_server: str | None = None  # MCP server name this skill's tools come from
 
     @property
     def skill_path(self) -> str:

@@ -45,6 +45,15 @@ def merge_viewed_images(existing: dict[str, ViewedImageData] | None, new: dict[s
     return {**existing, **new}
 
 
+def merge_mcp_servers(existing: list[str] | None, new: list[str] | None) -> list[str]:
+    """Reducer for active_mcp_servers - merges and deduplicates server names."""
+    if existing is None:
+        return new or []
+    if new is None:
+        return existing
+    return list(dict.fromkeys(existing + new))
+
+
 class ThreadState(AgentState):
     sandbox: NotRequired[SandboxState | None]
     thread_data: NotRequired[ThreadDataState | None]
@@ -53,3 +62,4 @@ class ThreadState(AgentState):
     todos: NotRequired[list | None]
     uploaded_files: NotRequired[list[dict] | None]
     viewed_images: Annotated[dict[str, ViewedImageData], merge_viewed_images]  # image_path -> {base64, mime_type}
+    active_mcp_servers: Annotated[list[str], merge_mcp_servers]  # MCP servers activated by retrieve_skill_tools

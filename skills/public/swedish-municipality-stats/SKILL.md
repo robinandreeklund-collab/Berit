@@ -1,6 +1,7 @@
 ---
 name: swedish-municipality-stats
 description: Använd denna färdighet när användaren frågar om kommunstatistik, kommunal statistik, Kolada, kommun, kommuner, nyckeltal, KPI, kommunjämförelse, skolresultat, kommunranking, äldreomsorg, barnomsorg, hemtjänst, socialtjänst, kommunalekonomi, skattesats, befolkningsstatistik, demografisk data, regional statistik, landsting, region, organisationsenhet, verksamhetsdata, eller vill jämföra kommuner i Sverige.
+mcp-server: kolada
 ---
 
 # Kolada MCP (v1.0)

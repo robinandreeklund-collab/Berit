@@ -16,11 +16,11 @@ _HTTP_RETRY_ATTEMPTS = 3
 _HTTP_RETRY_BASE_DELAY = 5  # seconds — Render cold start can take 30-60s
 
 
-async def get_mcp_tools() -> list[BaseTool]:
-    """Get all tools from enabled MCP servers.
+async def get_mcp_tools() -> dict[str, list[BaseTool]]:
+    """Get all tools from enabled MCP servers, grouped by server name.
 
     Returns:
-        List of LangChain tools from all enabled MCP servers.
+        Dict mapping server name to list of LangChain tools from that server.
     """
     try:
         from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -59,18 +59,26 @@ async def get_mcp_tools() -> list[BaseTool]:
             tool_interceptors.append(oauth_interceptor)
 
         # Load all servers concurrently so one slow server doesn't block the rest
+        server_names = list(servers_config.keys())
         results = await asyncio.gather(
             *[
                 _load_tools_from_server(server_name, {server_name: server_config}, tool_interceptors)
                 for server_name, server_config in servers_config.items()
             ]
         )
-        all_tools: list[BaseTool] = [tool for tools in results for tool in tools]
 
-        tool_names = [t.name for t in all_tools]
-        logger.info(f"Successfully loaded {len(all_tools)} total MCP tool(s): {tool_names}")
+        # Build per-server tool mapping
+        tools_by_server: dict[str, list[BaseTool]] = {}
+        total_count = 0
+        for server_name, tools in zip(server_names, results):
+            if tools:
+                tools_by_server[server_name] = tools
+                total_count += len(tools)
 
-        return all_tools
+        all_tool_names = [t.name for tools in tools_by_server.values() for t in tools]
+        logger.info(f"Successfully loaded {total_count} total MCP tool(s) from {len(tools_by_server)} server(s): {all_tool_names}")
+
+        return tools_by_server
 
     except Exception as e:
         logger.error(f"Failed to load MCP tools: {e}", exc_info=True)

@@ -1,6 +1,7 @@
 ---
 name: swedish-companies
 description: Använd denna färdighet när användaren frågar om svenska företag, bolag, aktiebolag, handelsbolag, organisationsnummer, org.nummer, orgnr, Bolagsverket, företagsregistret, företagsinformation, företagsuppgifter, styrelse, styrelseledamöter, VD, verkställande direktör, funktionärer, F-skatt, F-skattsedel, momsregistrering, moms, arbetsgivare, årsredovisning, årsredovisningar, bokslut, firmateckning, aktiekapital, SNI-koder, branschkod, juridisk form, företagsform, registreringsstatus, företagsregistrering, bolagsordning, bolagsinformation, företagssökning. Denna färdighet använder Bolagsverket MCP-verktygen för att hämta data direkt från Bolagsverkets Värdefulla datamängder API.
+mcp-server: bolagsverket
 ---
 
 # Svenska Företag (Bolagsverket MCP v1.0)
