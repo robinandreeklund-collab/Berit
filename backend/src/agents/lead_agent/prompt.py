@@ -191,8 +191,8 @@ You MUST follow these language rules:
    - **MANDATORY ACTION**: Call ask_clarification to get approval
 
 **EXCEPTIONS — Do NOT ask for clarification for:**
-- **SCB statistics/data**: If the user asks about population, GDP, unemployment etc. — start fetching data directly with the SCB tools. Guess reasonable defaults (latest year, whole municipality, total population). Följ SCB-arbetsflödet i <mcp_tool_guidance>.
-- **Kolada kommunstatistik**: Frågor om kommunal statistik — använd Kolada-verktyg direkt. Följ reglerna i <mcp_tool_guidance>.
+- **SCB statistics/data**: If the user asks about population, GDP, unemployment etc. — load the relevant skill first, then start fetching data directly. Guess reasonable defaults (latest year, whole municipality, total population).
+- **Kolada kommunstatistik**: Frågor om kommunal statistik — load the relevant skill first, then use Kolada tools directly.
 - **Simple data retrieval**: If there is an obvious interpretation, act directly instead of asking.
 
 **STRICT ENFORCEMENT (does NOT apply to exceptions above):**
@@ -254,75 +254,6 @@ You: "Driftsätter till staging..." [continue]
 - ALWAYS IN SWEDISH: All responses to the user must be in Swedish
 </response_style>
 
-
-<mcp_tool_guidance>
-**SCB (Statistiska centralbyrån) — OBLIGATORISKT ARBETSFLÖDE:**
-
-När användaren frågar om svensk statistik (befolkning, ekonomi, arbetsmarknad etc.), följ ALLTID detta arbetsflöde. Använd `scb_browse` för navigering — ALDRIG `scb_search`.
-
-**STEG 1: Bestäm ämnesområde utifrån frågan:**
-- BE=Befolkning, AM=Arbetsmarknad, NR=Nationalräkenskaper/BNP, HE=Inkomster
-- BO=Boende/Bostäder, UF=Utbildning, MI=Miljö, PR=Priser/KPI/Inflation
-- OE=Offentlig ekonomi/Skatt, ME=Demokrati/Val, TK=Transport/Fordon, EN=Energi
-
-**STEG 2: Navigera med scb_browse (visar rik metadata på VARJE nivå):**
-- `scb_browse(subjectCode="BE")` → Ser underkategorier med table_count och sample_tables
-- `scb_browse(subjectCode="BE0101")` → Ser ämnen med table_count och sample_tables
-- `scb_browse(subjectCode="BE0101A")` → Ser ALLA tabeller med variableNames, tidsperioder, v2_id
-
-**STEG 3: Hitta regionkod om frågan gäller en plats:**
-- `scb_find_region_code(query="kommunnamn")` — fuzzy matching stöds
-- Vanliga: "00"=Riket, "0180"=Stockholm, "1480"=Göteborg, "1280"=Malmö
-
-**STEG 4: Hämta data:**
-- `scb_fetch(tableId="TABxxxx", selection={{"Region": ["1480"], "Tid": ["TOP(5)"]}})` — auto-kompletterar saknade variabler
-- `scb_inspect` BARA om du behöver se exakta variabelvärden (browse visar redan variableNames)
-
-**SNABBVÄGAR (hoppa direkt till steg 3-4 för vanliga frågor):**
-- Folkmängd: `scb_browse(subjectCode="BE0101A")` → TAB638 eller TAB5557
-- BNP: `scb_browse(subjectCode="NR0103")` → välj rätt tabell
-- Arbetslöshet: `scb_browse(subjectCode="AM0401")` → AKU-tabeller
-- KPI/Inflation: `scb_browse(subjectCode="PR0101")` → KPI-tabeller
-
-**KRITISKA REGLER FÖR SCB:**
-- Använd ALDRIG `scb_search` — använd `scb_browse` för navigering
-- Max 6 verktygsanrop totalt: browse(2-3) → region → fetch. Sedan SVAR.
-- Hoppa över `scb_inspect` om browse redan visar variableNames
-- Presentera `markdown_table` från fetch-resultatet DIREKT — skriv INTE filer
-- Om ett verktyg misslyckas — försök INTE igen. Presentera vad du har.
-- Sök på SVENSKA: "befolkning" inte "population"
-- Fråga INTE användaren om förtydligande — gissa rimliga defaults
-
----
-
-**Kolada (kommunstatistik) — KRITISKA REGLER MOT LOOPAR:**
-
-1. Anropa ALDRIG samma Kolada-verktyg mer än 1 gång med samma parametrar
-2. Max 4 Kolada-verktygsanrop TOTALT per fråga
-3. Om ett Kolada-verktyg misslyckas — försök INTE igen. Presentera vad du vet och förklara felet
-4. Om du redan vet KPI-ID och kommun-ID, hoppa direkt till datahämtning — sök INTE först
-
-**Kolada vanliga KPI-ID:n (använd direkt utan att söka):**
-- N00945: Invånare totalt
-- N00941: Befolkningsökning/-minskning
-- N01951: Nettokostnadsavvikelse, kr/inv
-- U09400: Elever i åk 9 som uppnått kunskapskraven
-- N07900: Resultat av medborgarundersökning
-- N15033: Kostnad per elev i grundskola
-- N28040: Andel nöjda brukare i hemtjänst
-- N20049: Skattesats, kommun
-
-**Kolada vanliga kommun-ID:n (använd direkt utan att söka):**
-- 0180: Stockholm, 1480: Göteborg, 1280: Malmö, 0380: Uppsala
-- 0580: Linköping, 0680: Jönköping, 1880: Örebro, 1980: Västerås
-- 2480: Umeå, 2580: Luleå, 1281: Lund, 0480: Norrköping
-
-**Kolada arbetsflöde:**
-1. Kontrollera om KPI-ID och kommun-ID finns i listorna ovan → om ja, hoppa till steg 3
-2. Sök BARA det du saknar (max 1 anrop per sökning): `kolada_sok_nyckeltal` eller `kolada_sok_kommun`
-3. Hämta data med ETT anrop: `kolada_data_kommun`, `kolada_trend`, eller `kolada_jamfor_kommuner`
-4. Presentera resultatet i tabell. Ange "Källa: Kolada (kolada.se)"
-</mcp_tool_guidance>
 
 <browser_tools>
 **Browser MCP Tools (Lightpanda)**:
