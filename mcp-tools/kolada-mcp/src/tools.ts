@@ -140,7 +140,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Invånarantal i Stockholm", "Skolresultat i Malmö 2020-2024"',
     category: 'data',
     api: 'kolada',
-    endpoint: '/data/municipality/{kommun_id}/kpi/{kpi_id}',
+    endpoint: '/data/kpi/{kpi_id}/municipality/{kommun_id}/year/{year}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -154,7 +154,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         from_year: {
           type: 'string',
-          description: 'Startår (t.ex. "2020"). Valfritt.',
+          description: 'Startår (t.ex. "2020"). Valfritt, standard: föregående år.',
         },
         to_year: {
           type: 'string',
@@ -174,7 +174,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Vilken kommun har flest invånare 2023?"',
     category: 'data',
     api: 'kolada',
-    endpoint: '/data/permunicipality/{kpi_id}/{year}',
+    endpoint: '/data/kpi/{kpi_id}/year/{year}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -200,7 +200,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Skolresultat per skola 2023"',
     category: 'data',
     api: 'kolada',
-    endpoint: '/data/perou/{kpi_id}/{year}',
+    endpoint: '/oudata/kpi/{kpi_id}/year/{year}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -250,7 +250,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Jämför invånarantal Stockholm, Malmö, Göteborg"',
     category: 'jamforelse',
     api: 'kolada',
-    endpoint: '/data/municipality/{kommun_ids}/kpi/{kpi_id}',
+    endpoint: '/data/kpi/{kpi_id}/municipality/{kommun_ids}/year/{year}',
     inputSchema: {
       type: 'object',
       properties: {
@@ -280,7 +280,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       '**Exempel:** "Befolkningsutveckling Stockholm senaste 5 åren"',
     category: 'jamforelse',
     api: 'kolada',
-    endpoint: '/data/municipality/{kommun_id}/kpi/{kpi_id}',
+    endpoint: '/data/kpi/{kpi_id}/municipality/{kommun_id}/year/{years}',
     inputSchema: {
       type: 'object',
       properties: {

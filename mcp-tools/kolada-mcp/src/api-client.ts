@@ -1,7 +1,7 @@
 /**
  * Kolada REST API client.
  *
- * Connects to the Kolada API v2 (api.kolada.se/v2/)
+ * Connects to the Kolada API v3 (api.kolada.se/v3/)
  * — Swedish municipality and county council statistics from RKA.
  *
  * Features:
@@ -10,8 +10,8 @@
  * - No API key required (open API)
  */
 
-const DEFAULT_BASE_URL = 'https://api.kolada.se/v2';
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_BASE_URL = 'https://api.kolada.se/v3';
+const DEFAULT_TIMEOUT_MS = 25_000;
 const MAX_RETRIES = 4;
 const CACHE_TTL_DATA_MS = 30 * 60 * 1000; // 30 minutes
 const CACHE_TTL_META_MS = 24 * 60 * 60 * 1000; // 24 hours
